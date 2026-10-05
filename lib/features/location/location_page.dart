@@ -1,0 +1,12 @@
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../app/theme/eazy_theme.dart';
+import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
+
+class LocationPage extends StatefulWidget { const LocationPage({super.key}); @override State<LocationPage> createState()=>_LocationPageState(); }
+class _LocationPageState extends State<LocationPage>{
+ final api=ApiClient(); String message='Location is only submitted after you explicitly grant permission.'; bool busy=false;
+ Future<void> locate() async { setState(()=>busy=true); try { if(!await Geolocator.isLocationServiceEnabled()) throw Exception('Location services are turned off.'); var p=await Geolocator.checkPermission(); if(p==LocationPermission.denied)p=await Geolocator.requestPermission(); if(p==LocationPermission.denied||p==LocationPermission.deniedForever) throw Exception('Location permission was not granted.'); final pos=await Geolocator.getCurrentPosition(locationSettings:const LocationSettings(accuracy:LocationAccuracy.balanced)); final r=await api.post('location/reverse-geocode',body:{'latitude':pos.latitude,'longitude':pos.longitude},auth:true); if(mounted)setState(()=>message=(r['location'] as Map?)?['formattedAddress']?.toString()??'Location found.'); } on ApiException catch(e){if(mounted)setState(()=>message=e.message);} catch(e){if(mounted)setState(()=>message=e.toString().replaceFirst('Exception: ',''));} finally{if(mounted)setState(()=>busy=false);} }
+ @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Location',style:TextStyle(fontWeight:FontWeight.w900))),body:Padding(padding:const EdgeInsets.all(20),child:Column(children:[const Card(child:Padding(padding:EdgeInsets.all(16),child:Text('Eazy does not persist precise location. It receives coordinates only for an explicit lookup.',style:TextStyle(color:EazyColors.muted,height:1.35)))),const SizedBox(height:18),FilledButton.icon(onPressed:busy?null:locate,icon:const Icon(Icons.my_location_rounded),label:Text(busy?'Finding you...':'Use my current location')),const SizedBox(height:18),Text(message,textAlign:TextAlign.center,style:const TextStyle(color:EazyColors.muted))])); }
+}
