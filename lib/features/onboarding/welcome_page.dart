@@ -1,66 +1,100 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
+import '../../core/ui/eazy_artwork.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      child: Stack(
-        children: [
-          const Positioned.fill(child: _WelcomeBackdrop()),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+          children: [
+            Row(
               children: [
-                const _BrandMark(),
+                const _EazyLogo(),
                 const Spacer(),
-                Text('Everything\nyou need.\nOne Eazy.', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800, height: .98, letterSpacing: -1.5)),
-                const SizedBox(height: 18),
-                const Text('Connect. Discover. Pay. Chat.\nBuilt into one social-first experience.', style: TextStyle(color: EazyColors.muted, fontSize: 16, height: 1.5)),
-                const SizedBox(height: 30),
-                SizedBox(width: double.infinity, height: 58, child: FilledButton(onPressed: () => context.go('/auth'), child: const Text('Get started', style: TextStyle(fontWeight: FontWeight.w800)))),
-                const SizedBox(height: 12),
-                SizedBox(width: double.infinity, height: 56, child: OutlinedButton(onPressed: () => context.go('/auth'), child: const Text('I already have an account'))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: EazyColors.surface,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: EazyColors.border),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.public_rounded, size: 14, color: EazyColors.green),
+                      SizedBox(width: 6),
+                      Text('Everywhere', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 20),
+            const EazyArtwork(kind: EazyArtworkKind.welcome, height: 390),
+            const SizedBox(height: 22),
+            Text(
+              'A global community\nfor people, products\nand possibilities.',
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontSize: 34,
+                height: 1.02,
+                letterSpacing: -1.8,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Connect. Discover. Pay. Chat. Build your world in one social-first experience.',
+              style: TextStyle(color: EazyColors.muted, fontSize: 15, height: 1.5),
+            ),
+            const SizedBox(height: 26),
+            SizedBox(
+              height: 58,
+              child: FilledButton.icon(
+                onPressed: () => context.go('/auth'),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+                label: const Text('Get started'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 54,
+              child: OutlinedButton(
+                onPressed: () => context.go('/auth'),
+                child: const Text('Sign in'),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Center(
+              child: Text(
+                'People. Products. Payments. Everywhere.',
+                style: TextStyle(color: EazyColors.muted, fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EazyLogo extends StatelessWidget {
+  const _EazyLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: const TextSpan(
+        style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -2),
+        children: [
+          TextSpan(text: 'ea', style: TextStyle(color: EazyColors.ink)),
+          TextSpan(text: 'zy', style: TextStyle(color: EazyColors.green)),
         ],
       ),
-    ),
-  );
-}
-
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
-  @override
-  Widget build(BuildContext context) => Row(children: [
-    Container(width: 42, height: 42, decoration: BoxDecoration(color: EazyColors.green, borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.bolt_rounded, color: EazyColors.canvas)),
-    const SizedBox(width: 12),
-    const Text('eazy', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -1)),
-  ]);
-}
-
-class _WelcomeBackdrop extends StatelessWidget {
-  const _WelcomeBackdrop();
-  @override
-  Widget build(BuildContext context) => CustomPaint(painter: _BackdropPainter());
-}
-
-class _BackdropPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final glow = Paint()..shader = RadialGradient(colors: [EazyColors.green.withValues(alpha: .22), Colors.transparent]).createShader(Rect.fromCircle(center: Offset(size.width * .75, size.height * .18), radius: size.width * .72));
-    canvas.drawCircle(Offset(size.width * .75, size.height * .18), size.width * .72, glow);
-    final line = Paint()..color = EazyColors.border.withValues(alpha: .55)..style = PaintingStyle.stroke..strokeWidth = 1;
-    for (var i = -2; i < 8; i++) {
-      final path = Path()..moveTo(size.width * .45 + i * 58, 0)..quadraticBezierTo(size.width * .15, size.height * .38, size.width * .9, size.height * .72)..quadraticBezierTo(size.width * .65, size.height * .9, size.width * .2, size.height);
-      canvas.drawPath(path, line);
-    }
+    );
   }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
