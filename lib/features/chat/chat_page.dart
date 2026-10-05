@@ -269,7 +269,7 @@ class _ConversationPageState extends State<ConversationPage> {
       ListTile(leading:const Icon(Icons.reply_rounded),title:const Text('Reply'),onTap:(){Navigator.pop(ctx);setState(()=>replying=m);}),
       if(status!='deleted')ListTile(leading:const Icon(Icons.translate_rounded),title:const Text('Translate to English'),onTap:(){Navigator.pop(ctx);translate(m);}),
       if(status!='deleted')ListTile(leading:const Icon(Icons.flag_outlined),title:const Text('Report'),onTap:(){Navigator.pop(ctx);report(m,'Other inappropriate content');}),
-      if(status!='deleted')ListTile(leading:const Icon(Icons.edit_outlined),title:const Text('Edit'),onTap:(){Navigator.pop(ctx);setState(()=>{editing=m;draft.text=m['body']?.toString() ?? '';});}),
+      if(status!='deleted')ListTile(leading:const Icon(Icons.edit_outlined),title:const Text('Edit'),onTap:(){Navigator.pop(ctx);setState(() { editing=m; draft.text=m['body']?.toString() ?? ''; });}),
       if(status!='deleted')ListTile(leading:const Icon(Icons.delete_outline_rounded),title:const Text('Delete'),onTap:(){Navigator.pop(ctx);deleteMessage(m);}),
       const SizedBox(height:8)
     ])));
@@ -284,7 +284,7 @@ class _ConversationPageState extends State<ConversationPage> {
       ]),actions:[IconButton(onPressed:loadMessages,icon:const Icon(Icons.refresh_rounded))]),
       body:Column(children:[
         if(replying!=null)_ContextBar(label:'REPLYING',value:replying!['body']?.toString() ?? '',onClose:()=>setState(()=>replying=null)),
-        if(editing!=null)_ContextBar(label:'EDITING',value:editing!['body']?.toString() ?? '',onClose:()=>setState(()=>{editing=null;draft.clear();})),
+        if(editing!=null)_ContextBar(label:'EDITING',value:editing!['body']?.toString() ?? '',onClose:()=>setState(() { editing=null; draft.clear(); })),
         Expanded(child:loading?const Center(child:CircularProgressIndicator()):error!=null?_ChatState(error!,loadMessages):messages.isEmpty
           ?const _ChatState('No messages yet. Start the conversation.')
           :ListView.builder(controller:scroll,padding:const EdgeInsets.fromLTRB(16,12,16,16),itemCount:messages.length,itemBuilder:(_,i){
