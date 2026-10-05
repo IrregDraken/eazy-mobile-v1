@@ -144,7 +144,7 @@ class _PostState extends State<_Post>{
           TextButton.icon(onPressed:busy?null:comment,icon:const Icon(Icons.chat_bubble_outline_rounded),label:Text('${widget.post['commentCount']??0}')),
           const Spacer(),IconButton(onPressed:busy?null:()=>mutate(saved?'delete':'post','engagement/posts/$id/save'),icon:Icon(saved?Icons.bookmark:Icons.bookmark_border)),
         ]),
-      ])));
+      ]))));
   }
 }
 
