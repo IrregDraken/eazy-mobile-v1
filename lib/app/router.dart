@@ -49,7 +49,7 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
     GoRoute(path: '/location', builder: (_, __) => const LocationPage()),
     GoRoute(path: '/notifications', builder: (_, __) => const NotificationsPage()),
     GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
-    GoRoute(path: '/security', builder: (_, __) => const SecurityPage()),
+    GoRoute(path: '/security', builder: (_, __) => SecurityPage(auth: auth)),
   ],
   errorBuilder: (context, state) => Scaffold(
     body: Center(
