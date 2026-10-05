@@ -263,7 +263,6 @@ class _ConversationPageState extends State<ConversationPage> {
   }
 
   void actions(Map<String,dynamic> m) {
-    final sender=m['sender'] is Map?Map<String,dynamic>.from(m['sender'] as Map):<String,dynamic>{};
     final status=m['status']?.toString() ?? 'sent';
     showModalBottomSheet(context:context,showDragHandle:true,builder:(ctx)=>SafeArea(child:Wrap(children:[
       ListTile(leading:const Icon(Icons.reply_rounded),title:const Text('Reply'),onTap:(){Navigator.pop(ctx);setState(()=>replying=m);}),
