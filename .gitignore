@@ -14,5 +14,7 @@ coverage/
 android/.gradle/
 ios/Pods/
 macos/Pods/
+node_modules/
+backend/dist/
 .DS_Store
 Thumbs.db
