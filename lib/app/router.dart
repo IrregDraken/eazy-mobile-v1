@@ -8,6 +8,7 @@ import '../features/translation/translation_page.dart';
 import '../features/notifications/notifications_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/security/security_page.dart';
+import '../features/security/blocks_page.dart';
 import '../features/home/home_shell.dart';
 import '../features/marketplace/cart_page.dart';
 import '../features/onboarding/profile_setup_page.dart';
@@ -50,6 +51,7 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
     GoRoute(path: '/notifications', builder: (_, __) => const NotificationsPage()),
     GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
     GoRoute(path: '/security', builder: (_, __) => SecurityPage(auth: auth)),
+    GoRoute(path: '/blocks', builder: (_, __) => const BlocksPage()),
   ],
   errorBuilder: (context, state) => Scaffold(
     body: Center(
