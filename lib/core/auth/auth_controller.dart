@@ -142,7 +142,7 @@ class AuthController extends ChangeNotifier {
             ? WebAuthenticationOptions(
                 clientId: const String.fromEnvironment('APPLE_SERVICE_ID', defaultValue: ''),
                 redirectUri: Uri.parse(const String.fromEnvironment('APPLE_REDIRECT_URI',
-                    defaultValue: 'https://eazy-24e6a.firebaseapp.com/__/auth/handler')))
+                    defaultValue: '')))
             : null);
       final idToken = credential.identityToken;
       if (idToken == null || idToken.isEmpty) {
