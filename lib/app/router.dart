@@ -43,8 +43,7 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
     body: Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Text('This view is temporarily unavailable.
-${state.error}'),
+        child: Text('This view is temporarily unavailable.\\n${state.error}'),
       ),
     ),
   ),
