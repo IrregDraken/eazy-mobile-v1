@@ -121,7 +121,7 @@ class _ConversationTile extends StatelessWidget {
           const SizedBox(height:4),Text(latest['body']?.toString() ?? 'Start a conversation',
             maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:12))
         ])),
-        if(unread>0)Container(minWidth:25,height:25,alignment:Alignment.center,
+        if(unread>0)Container(constraints:const BoxConstraints(minWidth:25),height:25,alignment:Alignment.center,
           padding:const EdgeInsets.symmetric(horizontal:7),decoration:const BoxDecoration(color:EazyColors.green,shape:BoxShape.circle),
           child:Text(unread.toString(),style:const TextStyle(color:EazyColors.canvas,fontSize:10,fontWeight:FontWeight.w900))),
         const SizedBox(width:4),const Icon(Icons.chevron_right_rounded,color:EazyColors.muted)
@@ -319,10 +319,18 @@ class _MessageBubble extends StatelessWidget {
         Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color:deleted?EazyColors.muted:EazyColors.ink,fontSize:14,height:1.35,fontStyle:deleted?FontStyle.italic:FontStyle.normal)),
         if(message['replyTo'] is Map)Padding(padding:const EdgeInsets.only(top:8),child:Text('↳ ' + ((message['replyTo']['body'] ?? 'Deleted message').toString()),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))),
         if(message['_translation']!=null)Padding(padding:const EdgeInsets.only(top:8),child:Text(message['_translation'].toString(),style:const TextStyle(color:EazyColors.mint,fontSize:12,height:1.35))),
-        if(reactions.isNotEmpty)Padding(padding:const EdgeInsets.only(top:7),child:Wrap(spacing:4,children:reactions.map((r)=>InkWell(
-          onTap:()=>onReaction(r['reaction'].toString()),borderRadius:BorderRadius.circular(20),child:Container(
-            padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),decoration:BoxDecoration(color:EazyColors.green.withValues(alpha:.08),borderRadius:BorderRadius.circular(20),border:Border.all(color:EazyColors.border)),
-            child:Text(r['reaction'].toString() + ' ' + (r['count'] ?? 0).toString(),style:const TextStyle(fontSize:11)))).toList())),
+        if(reactions.isNotEmpty)Padding(padding:const EdgeInsets.only(top:7),child:Wrap(
+          spacing:4,
+          children:reactions.map<Widget>((r) => InkWell(
+            onTap:()=>onReaction(r['reaction'].toString()),
+            borderRadius:BorderRadius.circular(20),
+            child:Container(
+              padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+              decoration:BoxDecoration(color:EazyColors.green.withValues(alpha:.08),borderRadius:BorderRadius.circular(20),border:Border.all(color:EazyColors.border)),
+              child:Text(r['reaction'].toString() + ' ' + (r['count'] ?? 0).toString(),style:const TextStyle(fontSize:11)),
+            ),
+          )).toList(),
+        )),
         if(!deleted)SizedBox(height:28,child:ListView(scrollDirection:Axis.horizontal,children:_reactions.map((r)=>IconButton(
           padding:EdgeInsets.zero,constraints:const BoxConstraints(minWidth:30),onPressed:()=>onReaction(r),icon:Text(r,style:const TextStyle(fontSize:16)))).toList())),
         Row(children:[
