@@ -3,6 +3,7 @@ import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/media/media_service.dart';
 
 class SocialPage extends StatefulWidget {
   const SocialPage({super.key, required this.auth});
@@ -13,12 +14,13 @@ class SocialPage extends StatefulWidget {
 class _SocialPageState extends State<SocialPage> {
   final api=ApiClient();
   final composer=TextEditingController();
+  late final EazyMediaService media;
   bool loading=true, posting=false;
   String? error;
   String mode='for_you';
   List<Map<String,dynamic>> posts=[];
 
-  @override void initState(){super.initState();load();}
+  @override void initState(){super.initState();media=EazyMediaService(api);load();}
   @override void dispose(){composer.dispose();super.dispose();}
 
   Future<void> load() async {
@@ -33,6 +35,7 @@ class _SocialPageState extends State<SocialPage> {
 
   Future<void> compose() async {
     composer.clear();
+    MediaUpload? attachment;
     final body=await showModalBottomSheet<String>(
       context:context,isScrollControlled:true,showDragHandle:true,
       builder:(ctx)=>Padding(
@@ -42,13 +45,20 @@ class _SocialPageState extends State<SocialPage> {
           const SizedBox(height:14),
           TextField(controller:composer,maxLines:6,maxLength:5000,autofocus:true,decoration:const InputDecoration(hintText:'Share something with your world')),
           const SizedBox(height:8),
+          StatefulBuilder(builder:(ctx,setSheetState)=>Row(children:[
+            OutlinedButton.icon(onPressed:()=>media.pickAndUpload(kind:'post').then((value){attachment=value;setSheetState((){});}),icon:const Icon(Icons.photo_outlined),label:Text(attachment==null?'Add photo':'Photo attached')),
+            if(attachment!=null)const Padding(padding:EdgeInsets.only(left:10),child:Icon(Icons.check_circle,color:EazyColors.green)),
+          ])),
+          const SizedBox(height:8),
           SizedBox(width:double.infinity,height:54,child:FilledButton(onPressed:()=>Navigator.pop(ctx,composer.text.trim()),child:const Text('Publish'))),
         ]));
     );
     if(body==null||body.isEmpty)return;
     setState(()=>posting=true);
     try{
-      await api.post('posts',auth:true,body:{'content':body,'visibility':'public','media':<Map<String,dynamic>>[]});
+      await api.post('posts',auth:true,body:{'content':body,'visibility':'public','media':[
+        if(attachment!=null){'storageKey':attachment!.path,'mediaType':'image','position':0}
+      ]});
       await load();
     }on ApiException catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.message)));}
     finally{if(mounted)setState(()=>posting=false);}
