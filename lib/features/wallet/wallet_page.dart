@@ -34,15 +34,17 @@ class _WalletPageState extends State<WalletPage> {
         result = await api.post('wallet', auth: true, body: {'currency': 'NGN'});
         wallet = result['wallet'] is Map ? Map<String, dynamic>.from(result['wallet'] as Map) : null;
       }
-      final results = await Future.wait([
-        api.get('wallet/transactions?page=1&limit=20', auth: true),
-        api.get('wallet/virtual-account', auth: true),
-      ]);
-      transactions = (results[0]['items'] as List? ?? const [])
+      final transactionResult = await api.get('wallet/transactions?page=1&limit=20', auth: true);
+      transactions = (transactionResult['items'] as List? ?? const [])
           .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-      virtualAccount = results[1]['virtualAccount'] is Map
-          ? Map<String, dynamic>.from(results[1]['virtualAccount'] as Map)
-          : null;
+      try {
+        final accountResult = await api.get('wallet/virtual-account', auth: true);
+        virtualAccount = accountResult['virtualAccount'] is Map
+            ? Map<String, dynamic>.from(accountResult['virtualAccount'] as Map)
+            : null;
+      } on ApiException {
+        virtualAccount = null;
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
