@@ -34,6 +34,10 @@ class AuthController extends ChangeNotifier {
       if (!firebaseReady) return;
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
+      if (user.emailVerified == false && user.providerData.any((p) => p.providerId == 'password')) {
+        await FirebaseAuth.instance.signOut();
+        return;
+      }
       await _syncFirebaseUser(user, forceRefresh: true);
     } catch (_) {
       await api.clearToken();
