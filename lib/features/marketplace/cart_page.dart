@@ -38,6 +38,6 @@ class _CartPageState extends State<CartPage>{
     Row(children:[const Text('Subtotal',style:TextStyle(fontWeight:FontWeight.w800)),const Spacer(),Text('$currency $subtotal',style:const TextStyle(fontWeight:FontWeight.w900,fontSize:18))]),
     const SizedBox(height:14),SizedBox(width:double.infinity,height:54,child:FilledButton(onPressed:busy?null:checkout,child:busy?const SizedBox(width:22,height:22,child:CircularProgressIndicator(strokeWidth:2)):const Text('Checkout'))),
    ])),
-  ]);
+  ]));
  }
 }
