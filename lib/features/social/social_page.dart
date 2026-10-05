@@ -51,7 +51,7 @@ class _SocialPageState extends State<SocialPage> {
           ])),
           const SizedBox(height:8),
           SizedBox(width:double.infinity,height:54,child:FilledButton(onPressed:()=>Navigator.pop(ctx,composer.text.trim()),child:const Text('Publish'))),
-        ]))));
+        ])));
     );
     if(body==null||body.isEmpty)return;
     setState(()=>posting=true);
