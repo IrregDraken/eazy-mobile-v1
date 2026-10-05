@@ -102,5 +102,5 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       TextField(controller:bio,maxLines:4,maxLength:500,decoration:const InputDecoration(labelText:'Bio',hintText:'Tell people a little about you')),
       const SizedBox(height:20),
       SizedBox(height:56,child:FilledButton(onPressed:busy?null:save,child:busy?const SizedBox(width:22,height:22,child:CircularProgressIndicator(strokeWidth:2)):const Text('Finish setup'))),
-    ])););
+    ])));
 }
