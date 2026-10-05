@@ -39,6 +39,7 @@ class _ProfilePageState extends State<ProfilePage>{
       _Menu(Icons.notifications_none_rounded,'Notifications',onTap:()=>context.push('/notifications')),
       _Menu(Icons.settings_outlined,'Settings',onTap:()=>context.push('/settings')),
       _Menu(Icons.shield_outlined,'Security & sessions',onTap:()=>context.push('/security')),
+      _Menu(Icons.block_outlined,'Blocked accounts',onTap:()=>context.push('/blocks')),
       const SizedBox(height:8),
       OutlinedButton.icon(onPressed:()async{await widget.auth.signOut();if(context.mounted)context.go('/welcome');},icon:const Icon(Icons.logout_rounded),label:const Text('Sign out')),
       if(error!=null)Padding(padding:const EdgeInsets.only(top:12),child:Text(error!,style:const TextStyle(color:EazyColors.red))),
