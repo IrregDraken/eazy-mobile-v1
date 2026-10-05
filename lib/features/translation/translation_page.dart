@@ -1,2 +1,12 @@
 import 'package:flutter/material.dart';
-class TranslationPage extends StatelessWidget { const TranslationPage({super.key}); @override Widget build(BuildContext context)=>const Scaffold(body:Center(child:Text('Translation'))); }
+import '../../app/theme/eazy_theme.dart';
+import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
+
+class TranslationPage extends StatefulWidget{const TranslationPage({super.key});@override State<TranslationPage> createState()=>_TranslationPageState();}
+class _TranslationPageState extends State<TranslationPage>{
+ final api=ApiClient(),input=TextEditingController();String target='fr',result='',error='';bool busy=false;
+ Future<void> translate()async{if(input.text.trim().isEmpty)return;setState(()=>busy=true);try{final r=await api.post('translation',body:{'text':input.text.trim(),'targetLanguage':target},auth:true);setState(()=>result=r['translatedText']?.toString()??'');}on ApiException catch(e){setState(()=>error=e.message);}finally{if(mounted)setState(()=>busy=false);}}
+ @override void dispose(){input.dispose();super.dispose();}
+ @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Translation',style:TextStyle(fontWeight:FontWeight.w900))),body:ListView(padding:const EdgeInsets.all(20),children:[const Card(child:Padding(padding:EdgeInsets.all(16),child:Text('Translation uses the production provider boundary. If no vendor is configured, Eazy reports that honestly instead of fabricating a result.',style:TextStyle(color:EazyColors.muted,height:1.35)))),const SizedBox(height:18),TextField(controller:input,minLines:6,maxLines:10,decoration:const InputDecoration(hintText:'Write something to translate...')),const SizedBox(height:12),DropdownButtonFormField<String>(value:target,items:const[DropdownMenuItem(value:'fr',child:Text('French')),DropdownMenuItem(value:'es',child:Text('Spanish')),DropdownMenuItem(value:'de',child:Text('German')),DropdownMenuItem(value:'yo',child:Text('Yorùbá'))],onChanged:(v)=>setState(()=>target=v??'fr'),decoration:const InputDecoration(labelText:'Target language')),const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:translate,icon:const Icon(Icons.translate_rounded),label:Text(busy?'Translating...':'Translate')),if(error.isNotEmpty)Padding(padding:const EdgeInsets.only(top:12),child:Text(error,style:const TextStyle(color:EazyColors.red))),if(result.isNotEmpty)Card(margin:const EdgeInsets.only(top:16),child:Padding(padding:const EdgeInsets.all(16),child:Text(result,style:const TextStyle(fontSize:17,height:1.4))))]));}
+}
