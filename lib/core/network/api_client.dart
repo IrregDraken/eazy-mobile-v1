@@ -30,6 +30,14 @@ class ApiClient {
   Future<String?> readToken() => _storage.read(key: 'eazy.accessToken');
   Future<void> clearToken() => _storage.delete(key: 'eazy.accessToken');
 
+  Future<void> uploadBytes(String signedUrl, List<int> bytes, String contentType) async {
+    final response = await _client.put(Uri.parse(signedUrl), headers: {'Content-Type': contentType}, body: bytes)
+        .timeout(const Duration(seconds: 60));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('Media upload failed. Please try again.', statusCode: response.statusCode, kind: ApiErrorKind.provider);
+    }
+  }
+
   Future<Map<String, dynamic>> _send(String method, String path, {
     Map<String, dynamic>? body,
     bool auth = false,
