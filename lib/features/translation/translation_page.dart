@@ -1,0 +1,2 @@
+import 'package:flutter/material.dart';
+class TranslationPage extends StatelessWidget { const TranslationPage({super.key}); @override Widget build(BuildContext context)=>const Scaffold(body:Center(child:Text('Translation'))); }
