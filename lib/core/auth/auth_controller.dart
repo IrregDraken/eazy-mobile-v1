@@ -100,6 +100,43 @@ class AuthController extends ChangeNotifier {
     );
   }
 
+  Future<EmailVerificationChallenge> beginEmailRegistration(String email) {
+    return requestEmailVerificationCode(email);
+  }
+
+  Future<void> verifyEmailRegistration(
+    EmailVerificationChallenge challenge,
+    String code,
+  ) async {
+    await api.post(
+      'email-verification/verify-code',
+      body: {'challengeId': challenge.challengeId, 'code': code.trim()},
+    );
+  }
+
+  Future<void> registerEmailAfterVerification(
+    String email,
+    String password,
+  ) async {
+    await _run(() async {
+      _requireFirebase();
+      try {
+        final credential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+              email: email.trim().toLowerCase(),
+              password: password,
+            );
+        final user = credential.user;
+        if (user == null) {
+          throw const ApiException('Unable to create your Eazy account.');
+        }
+        await _syncFirebaseUser(user, forceRefresh: true);
+      } on FirebaseAuthException catch (e) {
+        throw ApiException(_firebaseMessage(e));
+      }
+    });
+  }
+
   Future<void> verifyEmailCode(
     EmailVerificationChallenge challenge,
     String code,

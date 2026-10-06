@@ -24,20 +24,19 @@ export function createEmailVerificationRouter(service: EmailVerificationService,
   router.post('/email-verification/verify-code', verifyLimit, validate('body', verifySchema), async (request, response, next) => {
     try {
       const header = request.header('authorization');
-      if (!header) throw new AppError('UNAUTHORIZED', 'Firebase authentication is required');
-      const [scheme, token] = header.split(' ');
-      if (scheme?.toLowerCase() !== 'bearer' || !token) throw new AppError('UNAUTHORIZED', 'Invalid authorization header');
-
-      const identity = await firebaseProvider.verifyIdentity(token);
       const body = request.body as { challengeId: string; code: string };
       const result = await service.verifyCode(body.challengeId, body.code);
-      const firebaseEmail = typeof identity.claims.email === 'string' ? identity.claims.email.trim().toLowerCase() : '';
-      if (!firebaseEmail || firebaseEmail !== result.email) {
-        throw new AppError('FORBIDDEN', 'Verification request does not match the authenticated account');
+      if (header) {
+        const [scheme, token] = header.split(' ');
+        if (scheme?.toLowerCase() !== 'bearer' || !token) throw new AppError('UNAUTHORIZED', 'Invalid authorization header');
+        const identity = await firebaseProvider.verifyIdentity(token);
+        const firebaseEmail = typeof identity.claims.email === 'string' ? identity.claims.email.trim().toLowerCase() : '';
+        if (!firebaseEmail || firebaseEmail !== result.email) {
+          throw new AppError('FORBIDDEN', 'Verification request does not match the authenticated account');
+        }
+        await firebaseProvider.markEmailVerified(identity.firebaseUid);
       }
-
-      await firebaseProvider.markEmailVerified(identity.firebaseUid);
-      sendSuccess(response, { challengeId: result.challengeId, verified: true });
+      sendSuccess(response, { challengeId: result.challengeId, email: result.email, verified: true });
     } catch (error) { next(error); }
   });
 

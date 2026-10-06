@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -7,99 +8,137 @@ import '../../app/theme/eazy_theme.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
-
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
 
 class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scale;
-  late final Animation<double> _rotation;
-  late final Animation<double> _fade;
-  Timer? _timer;
+  late final AnimationController controller;
+  Timer? transition;
+  int stage = 0;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1700),
-    )..forward();
-    _scale = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0, .62, curve: Curves.easeOutBack),
-    );
-    _rotation = Tween<double>(begin: -.35, end: 0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0, .7, curve: Curves.easeOutCubic),
-      ),
-    );
-    _fade = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(.35, 1, curve: Curves.easeIn),
-    );
-    _timer = Timer(const Duration(milliseconds: 2300), () {
+      duration: const Duration(milliseconds: 2200),
+    )..repeat();
+    Timer.periodic(const Duration(milliseconds: 780), (timer) {
+      if (!mounted) return timer.cancel();
+      if (stage < 3) setState(() => stage++);
+      if (stage == 3) timer.cancel();
+    });
+    transition = Timer(const Duration(milliseconds: 3900), () {
       if (mounted) context.go('/welcome');
     });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _controller.dispose();
+    transition?.cancel();
+    controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final copy =
+        [
+          'More than an app.',
+          'More than an app.',
+          'Getting things ready for you…',
+          'People. Products. Payments. In one place.',
+        ][stage];
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF071B11), EazyColors.canvas, Color(0xFF020604)],
+            colors: [Color(0xFF031E13), EazyColors.canvas, Color(0xFF020604)],
           ),
         ),
         child: Center(
           child: AnimatedBuilder(
-            animation: _controller,
+            animation: controller,
             builder:
                 (context, _) => Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Transform.rotate(
-                      angle: _rotation.value,
-                      child: Transform.scale(
-                        scale: .72 + (_scale.value * .28),
-                        child: const _SplashMark(),
+                    SizedBox(
+                      width: 178,
+                      height: 178,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Transform.rotate(
+                            angle: controller.value * math.pi * 2,
+                            child: Container(
+                              width: 166,
+                              height: 166,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: EazyColors.green.withValues(
+                                    alpha: .26,
+                                  ),
+                                  width: 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: EazyColors.green.withValues(
+                                      alpha: .14,
+                                    ),
+                                    blurRadius: 28,
+                                    spreadRadius: 4,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Transform.scale(
+                            scale:
+                                .92 +
+                                math.sin(controller.value * math.pi * 2) * .06,
+                            child: const _EazyLeafMark(),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    FadeTransition(
-                      opacity: _fade,
-                      child: const Text(
-                        'eazy',
-                        style: TextStyle(
-                          fontSize: 42,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -3,
-                          color: EazyColors.ink,
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Eazy',
+                      style: TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -3,
+                        color: EazyColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 240),
+                      child: Text(
+                        copy,
+                        key: ValueKey(copy),
+                        style: const TextStyle(
+                          color: EazyColors.muted,
+                          fontSize: 13,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    FadeTransition(
-                      opacity: _fade,
-                      child: const Text(
-                        'Your life, made easier.',
-                        style: TextStyle(
-                          color: EazyColors.muted,
-                          fontSize: 13,
-                          letterSpacing: .2,
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: 170,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: (stage + 1) / 4,
+                          minHeight: 4,
+                          backgroundColor: EazyColors.border,
+                          color: EazyColors.green,
                         ),
                       ),
                     ),
@@ -112,48 +151,59 @@ class _SplashPageState extends State<SplashPage>
   }
 }
 
-class _SplashMark extends StatelessWidget {
-  const _SplashMark();
+class _EazyLeafMark extends StatelessWidget {
+  const _EazyLeafMark();
+  @override
+  Widget build(BuildContext context) =>
+      CustomPaint(size: const Size(88, 100), painter: _LeafPainter());
+}
+
+class _LeafPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [EazyColors.mint, EazyColors.green],
+          ).createShader(Offset.zero & size);
+    final top =
+        Path()
+          ..moveTo(size.width * .12, size.height * .42)
+          ..quadraticBezierTo(
+            size.width * .48,
+            size.height * .28,
+            size.width * .84,
+            0,
+          )
+          ..quadraticBezierTo(
+            size.width * .85,
+            size.height * .26,
+            size.width * .58,
+            size.height * .48,
+          )
+          ..lineTo(size.width * .12, size.height * .72)
+          ..close();
+    final bottom =
+        Path()
+          ..moveTo(size.width * .12, size.height * .66)
+          ..quadraticBezierTo(
+            size.width * .42,
+            size.height * .48,
+            size.width * .82,
+            size.height * .24,
+          )
+          ..quadraticBezierTo(
+            size.width * .82,
+            size.height * .53,
+            size.width * .5,
+            size.height * .72,
+          )
+          ..lineTo(size.width * .12, size.height)
+          ..close();
+    canvas.drawPath(top, paint);
+    canvas.drawPath(bottom, paint);
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 104,
-      height: 104,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const RadialGradient(
-          colors: [EazyColors.mint, EazyColors.green, EazyColors.greenDeep],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: EazyColors.green.withValues(alpha: .42),
-            blurRadius: 34,
-            spreadRadius: 6,
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: 62,
-          height: 62,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: EazyColors.canvas,
-          ),
-          child: const Center(
-            child: Text(
-              'e',
-              style: TextStyle(
-                fontSize: 42,
-                height: .9,
-                fontWeight: FontWeight.w900,
-                color: EazyColors.green,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
