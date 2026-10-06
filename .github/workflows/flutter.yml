@@ -40,11 +40,7 @@ jobs:
               "compileOptions {\n        isCoreLibraryDesugaringEnabled = true",
               1,
           )
-          s = s.replace(
-              "dependencies {",
-              'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',
-              1,
-          )
+          s += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n'
           p.write_text(s)
           PY
       - run: flutter build apk --release --no-tree-shake-icons
