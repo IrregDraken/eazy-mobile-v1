@@ -29,7 +29,8 @@ export class DiscoverService {
     if (input.type === 'categories') return { type: 'categories', ...(await this.marketplace.categories(input.page, input.limit)) };
     // Keep the unified discovery discriminator out of the marketplace schema.
     // Both schemas remain strict, while each service receives only its own fields.
-    const { type: _type, ...productInput } = input;\n    return { type: 'products', ...(await this.marketplace.search(productSearchSchema.parse(productInput), viewerId)) };
+    const { type: _type, ...productInput } = input;
+    return { type: 'products', ...(await this.marketplace.search(productSearchSchema.parse(productInput), viewerId)) };
   }
 
   async products(input: z.infer<typeof productSearchSchema>, viewerId?: string) {
