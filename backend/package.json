@@ -2,7 +2,7 @@
   "name": "eazy-backend",
   "version": "0.1.0",
   "private": true,
-  "description": "Eazy V2 backend foundation",
+  "description": "Eazy production API backend",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
