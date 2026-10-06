@@ -42,7 +42,7 @@ jobs:
           )
           s = s.replace(
               "dependencies {",
-              "dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")",
+              'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',
               1,
           )
           p.write_text(s)
