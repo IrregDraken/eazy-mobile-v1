@@ -9,7 +9,7 @@ class ApiClient {
       : _client = client ?? http.Client(),
         _storage = storage ?? const FlutterSecureStorage();
 
-  static const defaultBaseUrl = 'https://eazy-mobile-v2-production.up.railway.app/v1';
+  static const defaultBaseUrl = 'https://eazy-mobile-v1-production.up.railway.app/v1';
   final http.Client _client;
   final FlutterSecureStorage _storage;
 
