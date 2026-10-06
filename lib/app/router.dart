@@ -12,10 +12,11 @@ import '../features/security/blocks_page.dart';
 import '../features/home/home_shell.dart';
 import '../features/marketplace/cart_page.dart';
 import '../features/onboarding/profile_setup_page.dart';
+import '../features/onboarding/splash_page.dart';
 import '../features/onboarding/welcome_page.dart';
 
 GoRouter buildRouter(AuthController auth) => GoRouter(
-  initialLocation: '/welcome',
+  initialLocation: '/splash',
   refreshListenable: auth,
   redirect: (context, state) {
     final path = state.uri.path;
@@ -25,7 +26,8 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
     if (auth.isRestoring) return null;
 
     if (!signedIn) {
-      if (path == '/welcome' || path == '/auth') return null;
+      if (path == '/splash' || path == '/welcome' || path == '/auth')
+        return null;
       return '/auth';
     }
 
@@ -34,31 +36,51 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
       return '/onboarding';
     }
 
-    if (path == '/welcome' || path == '/auth' || path == '/onboarding') {
+    if (path == '/splash' ||
+        path == '/welcome' ||
+        path == '/auth' ||
+        path == '/onboarding') {
       return '/home';
     }
     return null;
   },
   routes: [
+    GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
     GoRoute(path: '/welcome', builder: (_, __) => const WelcomePage()),
-    GoRoute(path: '/auth', builder: (_, __) => AuthPage(auth: auth)),
-    GoRoute(path: '/onboarding', builder: (_, __) => ProfileSetupPage(auth: auth)),
+    GoRoute(
+      path: '/auth',
+      builder:
+          (_, state) => AuthPage(
+            auth: auth,
+            initialRegister: state.uri.queryParameters['mode'] == 'register',
+          ),
+    ),
+    GoRoute(
+      path: '/onboarding',
+      builder: (_, __) => ProfileSetupPage(auth: auth),
+    ),
     GoRoute(path: '/cart', builder: (_, __) => const CartPage()),
     GoRoute(path: '/home', builder: (_, __) => HomeShell(auth: auth)),
     GoRoute(path: '/assist', builder: (_, __) => const AssistPage()),
     GoRoute(path: '/translation', builder: (_, __) => const TranslationPage()),
     GoRoute(path: '/location', builder: (_, __) => const LocationPage()),
-    GoRoute(path: '/notifications', builder: (_, __) => const NotificationsPage()),
+    GoRoute(
+      path: '/notifications',
+      builder: (_, __) => const NotificationsPage(),
+    ),
     GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
     GoRoute(path: '/security', builder: (_, __) => SecurityPage(auth: auth)),
     GoRoute(path: '/blocks', builder: (_, __) => const BlocksPage()),
   ],
-  errorBuilder: (context, state) => Scaffold(
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text('This view is temporarily unavailable.\\n${state.error}'),
+  errorBuilder:
+      (context, state) => Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'This view is temporarily unavailable.\\n${state.error}',
+            ),
+          ),
+        ),
       ),
-    ),
-  ),
 );
