@@ -47,13 +47,14 @@ export function createApp(config: AppConfig, logger: Logger, options: AppOptions
   app.disable('x-powered-by');
   if (config.TRUST_PROXY) app.set('trust proxy', true);
   app.use(helmet());
+  // Establish request IDs before CORS/body parsing so edge/parser failures retain the same error contract.
+  app.use(requestId);
   const corsOrigins = config.CORS_ORIGIN.split(',').map(origin => origin.trim()).filter(Boolean);
   app.use(cors({ origin: config.CORS_ORIGIN === '*' ? true : (origin, callback) => {
     if (!origin || corsOrigins.includes(origin)) return callback(null, true);
     return callback(new Error('CORS origin not allowed'));
   }}));
   app.use(express.json({ limit: '1mb', verify: (request, _response, buffer) => { (request as import('express').Request).rawBody = buffer.toString('utf8'); } }));
-  app.use(requestId);
   app.use((request, response, next) => {
     const startedAt = Date.now();
     logger.info({ event: 'request.started', requestId: request.id, method: request.method, path: request.path }, 'request started');
