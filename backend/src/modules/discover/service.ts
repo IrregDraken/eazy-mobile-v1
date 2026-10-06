@@ -27,7 +27,7 @@ export class DiscoverService {
       return { type: 'people', ...(await this.social.search(viewerId, searchQuerySchema.parse({ q: input.q, page: input.page, limit: input.limit }))) };
     }
     if (input.type === 'categories') return { type: 'categories', ...(await this.marketplace.categories(input.page, input.limit)) };
-    return { type: 'products', ...(await this.marketplace.search(productSearchSchema.parse(input), viewerId)) };
+    // Keep the unified discovery discriminator out of the marketplace schema.\n    // Both schemas remain strict, while each service receives only its own fields.\n    const { type: _type, ...productInput } = input;\n    return { type: 'products', ...(await this.marketplace.search(productSearchSchema.parse(productInput), viewerId)) };
   }
 
   async products(input: z.infer<typeof productSearchSchema>, viewerId?: string) {
