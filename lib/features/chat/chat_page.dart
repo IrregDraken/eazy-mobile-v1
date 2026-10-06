@@ -244,7 +244,7 @@ class _ConversationPageState extends State<ConversationPage> {
   Future<void> translate(Map<String,dynamic> m) async {
     final body=m['body']?.toString() ?? '';if(body.isEmpty)return;
     try{
-      final r=await widget.api.post('translation/translate',auth:true,body:{'text':body,'targetLanguage':'en'});
+      final r=await widget.api.post('translation',auth:true,body:{'text':body,'targetLanguage':'en'});
       final value=r['translatedText']?.toString() ?? r['text']?.toString();
       if(value!=null&&mounted)setState(()=>m['_translation']=value);
     }on ApiException catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.message)));}
