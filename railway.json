@@ -3,7 +3,7 @@
   "build": {
     "builder": "RAILPACK",
     "railpackVersion": "0.40.0",
-    "buildCommand": "npm --prefix backend run build"
+    "buildCommand": "npm --prefix backend ci && npm --prefix backend run build"
   },
   "deploy": {
     "startCommand": "npm --prefix backend run start",
