@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "370546190167",
+    "project_id": "eazy-24e6a",
+    "storage_bucket": "eazy-24e6a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:370546190167:android:ea1329366c5df02af74012",
+        "android_client_info": {
+          "package_name": "com.eazy.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "370546190167-qo53n74eeocq4iqcncvvjlbst6es9uji.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eazy.app",
+            "certificate_hash": "508981f7b9331d21923e3431455865296dcc041b"
+          }
+        },
+        {
+          "client_id": "370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZcbI0FL3GLmzZDAeM322jtGvE7ERxvTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
