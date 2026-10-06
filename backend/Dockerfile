@@ -1,23 +1,23 @@
 FROM node:22-alpine AS build
-WORKDIR /app/backend
+WORKDIR /app
 
-COPY backend/package.json backend/package-lock.json ./
+COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY backend/tsconfig.json ./
-COPY backend/src ./src
-COPY backend/migrations ./migrations
+COPY tsconfig.json ./
+COPY src ./src
+COPY migrations ./migrations
 RUN npm run build
 
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
-WORKDIR /app/backend
+WORKDIR /app
 
-COPY backend/package.json backend/package-lock.json ./
+COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-COPY --from=build /app/backend/dist ./dist
-COPY --from=build /app/backend/migrations ./migrations
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/migrations ./migrations
 
 EXPOSE 3000
 CMD ["node", "dist/src/server.js"]
