@@ -29,6 +29,24 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter create --platforms=android --org com.eazy .
+      - name: Enable Android core library desugaring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/build.gradle.kts")
+          s = p.read_text()
+          s = s.replace(
+              "compileOptions {",
+              "compileOptions {\n        isCoreLibraryDesugaringEnabled = true",
+              1,
+          )
+          s = s.replace(
+              "dependencies {",
+              "dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")",
+              1,
+          )
+          p.write_text(s)
+          PY
       - run: flutter build apk --release --no-tree-shake-icons
 
   backend-build-test:
