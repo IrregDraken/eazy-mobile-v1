@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "370546190167-qo53n74eeocq4iqcncvvjlbst6es9uji.apps.googleusercontent.com",
+          "client_id": "370546190167-d1ufh3pvlcii3ff9849tcsjfhji9ikpu.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.eazy.app",
-            "certificate_hash": "508981f7b9331d21923e3431455865296dcc041b"
+            "certificate_hash": "40ba51a3db6a42bd7be9dcd674a33bf7542f34b7"
           }
         },
         {
