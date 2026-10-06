@@ -10,6 +10,7 @@ export type ErrorCode =
   | 'CONFLICT'
   | 'VALIDATION_ERROR'
   | 'RATE_LIMITED'
+  | 'PAYLOAD_TOO_LARGE'
   | 'INTERNAL_ERROR'
   | 'SERVICE_UNAVAILABLE';
 
@@ -34,8 +35,24 @@ export const notFoundHandler: RequestHandler = (request, response) => {
   sendError(response, request.id, { code: 'NOT_FOUND', message: `Route ${request.method} ${request.path} not found` }, 404);
 };
 
+function isJsonSyntaxError(error: unknown): boolean {
+  return error instanceof SyntaxError && (error as { type?: string }).type === 'entity.parse.failed';
+}
+
+function isPayloadTooLargeError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null &&
+    ((error as { type?: string }).type === 'entity.too.large' || (error as { status?: number }).status === 413);
+}
+
+function isCorsError(error: unknown): boolean {
+  return error instanceof Error && error.message === 'CORS origin not allowed';
+}
+
 export function toAppError(error: unknown): AppError {
   if (error instanceof AppError) return error;
+  if (isCorsError(error)) return new AppError('FORBIDDEN', 'CORS origin not allowed');
+  if (isJsonSyntaxError(error)) return new AppError('BAD_REQUEST', 'Malformed JSON payload');
+  if (isPayloadTooLargeError(error)) return new AppError('PAYLOAD_TOO_LARGE', 'Request body is too large');
   return new AppError('INTERNAL_ERROR', 'An unexpected error occurred');
 }
 
