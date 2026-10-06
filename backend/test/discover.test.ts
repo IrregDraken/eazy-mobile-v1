@@ -28,3 +28,20 @@ test('unified categories discovery reads database-backed categories through mark
   assert.equal(result.type, 'categories');
   assert.equal((result.items as { slug: string }[])[0]?.slug, 'books');
 });
+
+
+test('unified product discovery projects out the discovery type discriminator', async () => {
+  let received: Record<string, unknown> | undefined;
+  const marketplace = {
+    search: async (input: Record<string, unknown>) => {
+      received = input;
+      return { items: [], meta: { page: 1, limit: 20, total: 0, pages: 0, cursor: null } };
+    },
+    categories: async () => ({ items: [], total: 0 })
+  } as unknown as MarketplaceService;
+  const service = new DiscoverService(marketplace, {} as SocialService);
+  const result = await service.unified({ type: 'products', sort: 'newest', page: 1, limit: 20 });
+  assert.equal(result.type, 'products');
+  assert.equal(received?.type, undefined);
+  assert.equal(received?.sort, 'newest');
+});
