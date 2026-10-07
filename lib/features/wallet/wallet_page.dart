@@ -27,6 +27,7 @@ class _WalletPageState extends State<WalletPage> {
   Map<String, dynamic>? wallet;
   Map<String, dynamic>? virtualAccount;
   Map<String, dynamic>? receiveQr;
+  String? username;
   List<Map<String, dynamic>> transactions = [];
 
   @override
@@ -59,6 +60,13 @@ class _WalletPageState extends State<WalletPage> {
             result['wallet'] is Map
                 ? Map<String, dynamic>.from(result['wallet'] as Map)
                 : null;
+      }
+      try {
+        final profileResult = await api.get('profiles/me', auth: true);
+        final profile = _map(profileResult['profile']);
+        username = profile['username']?.toString();
+      } on ApiException {
+        username = null;
       }
       final transactionResult = await api.get(
         'wallet/transactions?page=1&limit=20',
@@ -584,7 +592,7 @@ class _WalletPageState extends State<WalletPage> {
 
   String get _currency => wallet?['currency']?.toString() ?? 'NGN';
   String get _username =>
-      wallet?['username']?.toString() ?? 'your Eazy username';
+      username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
   bool _validMoney(String value) =>
       RegExp(r'^(?:0|[1-9][0-9]{0,17})\.[0-9]{2}$').hasMatch(value);
