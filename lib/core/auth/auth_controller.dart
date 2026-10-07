@@ -90,7 +90,7 @@ class AuthController extends ChangeNotifier {
     String email,
   ) async {
     final result = await api.post(
-      'email-verification/request-code',
+      'auth/email-verification/request-code',
       body: {'email': email.trim().toLowerCase()},
     );
     return EmailVerificationChallenge(
@@ -109,7 +109,7 @@ class AuthController extends ChangeNotifier {
     String code,
   ) async {
     await api.post(
-      'email-verification/verify-code',
+      'auth/email-verification/verify-code',
       body: {'challengeId': challenge.challengeId, 'code': code.trim()},
     );
   }
@@ -142,7 +142,7 @@ class AuthController extends ChangeNotifier {
     String code,
   ) async {
     await api.post(
-      'email-verification/verify-code',
+      'auth/email-verification/verify-code',
       auth: true,
       body: {'challengeId': challenge.challengeId, 'code': code.trim()},
     );
@@ -247,7 +247,8 @@ class AuthController extends ChangeNotifier {
       await google.initialize(
         serverClientId: const String.fromEnvironment(
           'GOOGLE_SERVER_CLIENT_ID',
-          defaultValue: '',
+          defaultValue:
+              '370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com',
         ),
       );
       final account = await google.authenticate();
