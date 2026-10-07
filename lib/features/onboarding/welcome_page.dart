@@ -135,17 +135,20 @@ class _EazyLogo extends StatelessWidget {
   const _EazyLogo();
 
   @override
-  Widget build(BuildContext context) => const Text.rich(
-    TextSpan(
-      style: TextStyle(
-        fontSize: 30,
-        fontWeight: FontWeight.w900,
-        letterSpacing: -2,
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Image.asset('assets/images/eazy_logo_mark.png', width: 28, height: 32),
+      const SizedBox(width: 7),
+      const Text(
+        'Eazy',
+        style: TextStyle(
+          fontSize: 29,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -1.8,
+          color: EazyColors.ink,
+        ),
       ),
-      children: [
-        TextSpan(text: 'ea', style: TextStyle(color: EazyColors.ink)),
-        TextSpan(text: 'zy', style: TextStyle(color: EazyColors.green)),
-      ],
-    ),
+    ],
   );
 }

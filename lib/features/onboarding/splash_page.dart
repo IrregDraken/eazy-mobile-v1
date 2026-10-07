@@ -102,7 +102,11 @@ class _SplashPageState extends State<SplashPage>
                             scale:
                                 .92 +
                                 math.sin(controller.value * math.pi * 2) * .06,
-                            child: const _EazyLeafMark(),
+                            child: Image.asset(
+                              'assets/images/eazy_logo_mark.png',
+                              width: 88,
+                              height: 100,
+                            ),
                           ),
                         ],
                       ),
@@ -149,61 +153,4 @@ class _SplashPageState extends State<SplashPage>
       ),
     );
   }
-}
-
-class _EazyLeafMark extends StatelessWidget {
-  const _EazyLeafMark();
-  @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: const Size(88, 100), painter: _LeafPainter());
-}
-
-class _LeafPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..shader = const LinearGradient(
-            colors: [EazyColors.mint, EazyColors.green],
-          ).createShader(Offset.zero & size);
-    final top =
-        Path()
-          ..moveTo(size.width * .12, size.height * .42)
-          ..quadraticBezierTo(
-            size.width * .48,
-            size.height * .28,
-            size.width * .84,
-            0,
-          )
-          ..quadraticBezierTo(
-            size.width * .85,
-            size.height * .26,
-            size.width * .58,
-            size.height * .48,
-          )
-          ..lineTo(size.width * .12, size.height * .72)
-          ..close();
-    final bottom =
-        Path()
-          ..moveTo(size.width * .12, size.height * .66)
-          ..quadraticBezierTo(
-            size.width * .42,
-            size.height * .48,
-            size.width * .82,
-            size.height * .24,
-          )
-          ..quadraticBezierTo(
-            size.width * .82,
-            size.height * .53,
-            size.width * .5,
-            size.height * .72,
-          )
-          ..lineTo(size.width * .12, size.height)
-          ..close();
-    canvas.drawPath(top, paint);
-    canvas.drawPath(bottom, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
