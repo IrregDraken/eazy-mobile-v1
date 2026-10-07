@@ -206,7 +206,24 @@ class _AuthPageState extends State<AuthPage> {
                       ],
                     ),
                     SizedBox(height: compact ? 4 : 10),
-                    Expanded(child: _FormCard(compact: compact)),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight:
+                                compact
+                                    ? constraints.maxHeight * .58
+                                    : constraints.maxHeight * .50,
+                            maxHeight:
+                                compact
+                                    ? constraints.maxHeight * .86
+                                    : constraints.maxHeight * .78,
+                          ),
+                          child: _FormCard(compact: compact),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -254,6 +271,7 @@ class _AuthPageState extends State<AuthPage> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -369,7 +387,7 @@ class _AuthPageState extends State<AuthPage> {
                 style: const TextStyle(color: Color(0xFFC03935), fontSize: 12),
               ),
             ),
-          const Spacer(),
+          const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
             height: compact ? 48 : 52,
