@@ -1,47 +1,85 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 
 class WalletPage extends StatefulWidget {
   const WalletPage({super.key});
-  @override State<WalletPage> createState() => _WalletPageState();
+
+  @override
+  State<WalletPage> createState() => _WalletPageState();
 }
 
 class _WalletPageState extends State<WalletPage> {
   final api = ApiClient();
   final storage = const FlutterSecureStorage();
-  bool loading = true, busy = false;
+  bool loading = true;
+  bool busy = false;
   String? error;
   Map<String, dynamic>? wallet;
-  List<Map<String, dynamic>> transactions = [];
   Map<String, dynamic>? virtualAccount;
+  Map<String, dynamic>? receiveQr;
+  List<Map<String, dynamic>> transactions = [];
 
-  @override void initState() { super.initState(); load(); }
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
 
   String idempotency(String prefix) =>
-      prefix + '-' + DateTime.now().microsecondsSinceEpoch.toString() + '-' + Random.secure().nextInt(1 << 32).toString();
+      '$prefix-${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}';
 
   Future<void> load() async {
-    setState(() { loading = true; error = null; });
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
       var result = await api.get('wallet', auth: true);
-      wallet = result['wallet'] is Map ? Map<String, dynamic>.from(result['wallet'] as Map) : null;
+      wallet =
+          result['wallet'] is Map
+              ? Map<String, dynamic>.from(result['wallet'] as Map)
+              : null;
       if (wallet == null) {
-        result = await api.post('wallet', auth: true, body: {'currency': 'NGN'});
-        wallet = result['wallet'] is Map ? Map<String, dynamic>.from(result['wallet'] as Map) : null;
+        result = await api.post(
+          'wallet',
+          auth: true,
+          body: {'currency': 'NGN'},
+        );
+        wallet =
+            result['wallet'] is Map
+                ? Map<String, dynamic>.from(result['wallet'] as Map)
+                : null;
       }
-      final transactionResult = await api.get('wallet/transactions?page=1&limit=20', auth: true);
-      transactions = (transactionResult['items'] as List? ?? const [])
-          .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      final transactionResult = await api.get(
+        'wallet/transactions?page=1&limit=20',
+        auth: true,
+      );
+      transactions =
+          (transactionResult['items'] as List? ?? const [])
+              .whereType<Map>()
+              .map((entry) => Map<String, dynamic>.from(entry))
+              .toList();
       try {
-        final accountResult = await api.get('wallet/virtual-account', auth: true);
-        virtualAccount = accountResult['virtualAccount'] is Map
-            ? Map<String, dynamic>.from(accountResult['virtualAccount'] as Map)
-            : null;
+        final accountResult = await api.get(
+          'wallet/virtual-account',
+          auth: true,
+        );
+        virtualAccount =
+            accountResult['virtualAccount'] is Map
+                ? Map<String, dynamic>.from(
+                  accountResult['virtualAccount'] as Map,
+                )
+                : null;
       } on ApiException {
         virtualAccount = null;
       }
@@ -53,44 +91,44 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   Future<void> deposit() async {
-    final controller = TextEditingController();
-    final amount = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add money'),
-        content: TextField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: 'Amount', prefixText: '₦ ', hintText: '1000.00'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Continue')),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (amount == null || !RegExp(r'^(?:0|[1-9][0-9]{0,17})\.[0-9]{2}$').hasMatch(amount)) return;
-
+    final amount = await _amountDialog(title: 'Add money', action: 'Continue');
+    if (amount == null) return;
     setState(() => busy = true);
     try {
       final result = await api.post(
         'payments/initialize',
         auth: true,
         headers: {'Idempotency-Key': idempotency('deposit')},
-        body: {'purpose': 'wallet_deposit', 'amount': amount, 'currency': 'NGN'},
+        body: {
+          'purpose': 'wallet_deposit',
+          'amount': amount,
+          'currency': _currency,
+        },
       );
-      final payment = result['payment'] is Map ? Map<String, dynamic>.from(result['payment'] as Map) : <String, dynamic>{};
-      final transaction = result['transaction'] is Map ? Map<String, dynamic>.from(result['transaction'] as Map) : <String, dynamic>{};
+      final payment = _map(result['payment']);
+      final transaction = _map(result['transaction']);
       final transactionId = transaction['id']?.toString();
-      if (transactionId != null) await storage.write(key: 'eazy.pendingPayment', value: transactionId);
+      if (transactionId != null) {
+        await storage.write(key: 'eazy.pendingPayment', value: transactionId);
+      }
       final url = payment['authorizationUrl']?.toString();
-      if (url == null || url.isEmpty) throw const ApiException('Payment provider did not return a checkout link.', kind: ApiErrorKind.provider);
-      if (!await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)) {
-        throw const ApiException('Could not open the payment checkout.', kind: ApiErrorKind.provider);
+      if (url == null || url.isEmpty) {
+        throw const ApiException(
+          'Payment provider did not return a checkout link.',
+          kind: ApiErrorKind.provider,
+        );
+      }
+      if (!await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      )) {
+        throw const ApiException(
+          'Could not open the payment checkout.',
+          kind: ApiErrorKind.provider,
+        );
       }
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      _showError(e.message);
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -99,160 +137,968 @@ class _WalletPageState extends State<WalletPage> {
   Future<void> verifyPending() async {
     final id = await storage.read(key: 'eazy.pendingPayment');
     if (id == null || id.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No pending payment found.')));
+      _showError('No pending payment found.');
       return;
     }
     setState(() => busy = true);
     try {
-      await api.post('payments/' + id + '/verify', auth: true);
+      await api.post('payments/$id/verify', auth: true);
       await storage.delete(key: 'eazy.pendingPayment');
       await load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment verified and wallet updated.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment verified and wallet updated.')),
+        );
+      }
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      _showError(e.message);
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
-  Future<void> transfer() async {
+  Future<void> sendToEazyUser() async {
     final username = TextEditingController();
     final amount = TextEditingController();
     final values = await showDialog<Map<String, String>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Send money'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: username, autocorrect: false, decoration: const InputDecoration(labelText: 'Recipient username', prefixText: '@ ')),
-          const SizedBox(height: 12),
-          TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Amount', prefixText: '₦ ', hintText: '1000.00')),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, {'username': username.text.trim(), 'amount': amount.text.trim()}), child: const Text('Send')),
-        ],
-      ),
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Send to an Eazy user'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: username,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'Recipient username',
+                    prefixText: '@ ',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amount,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Amount',
+                    prefixText: '$_currency ',
+                    hintText: '1000.00',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed:
+                    () => Navigator.pop(dialogContext, {
+                      'username': username.text.trim(),
+                      'amount': amount.text.trim(),
+                    }),
+                child: const Text('Review transfer'),
+              ),
+            ],
+          ),
     );
     username.dispose();
     amount.dispose();
     if (values == null) return;
-
-    final handle = values['username'] ?? '';
+    final handle =
+        values['username']?.replaceFirst('@', '').toLowerCase() ?? '';
     final value = values['amount'] ?? '';
-    if (!RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(handle.toLowerCase()) ||
-        !RegExp(r'^(?:0|[1-9][0-9]{0,17})\.[0-9]{2}$').hasMatch(value)) return;
+    if (!_validUsername(handle) || !_validMoney(value)) {
+      _showError('Enter a valid username and amount with two decimal places.');
+      return;
+    }
+    await _confirmAndRun(
+      title: 'Confirm Eazy transfer',
+      message:
+          'Send $_currency $value to @$handle? Your wallet balance will be debited by the server.',
+      action:
+          () => api.post(
+            'wallet/transfers',
+            auth: true,
+            headers: {'Idempotency-Key': idempotency('transfer')},
+            body: {
+              'recipientUsername': handle,
+              'amount': value,
+              'currency': _currency,
+            },
+          ),
+    );
+  }
 
+  Future<void> sendToExternalBank() async {
+    final accountNumber = TextEditingController();
+    final bankCode = TextEditingController();
+    final bankName = TextEditingController();
+    final amount = TextEditingController();
+    final reason = TextEditingController();
+    final values = await showDialog<Map<String, String>>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Send to an external bank'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: accountNumber,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Account number',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: bankCode,
+                    decoration: const InputDecoration(labelText: 'Bank code'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: bankName,
+                    decoration: const InputDecoration(
+                      labelText: 'Bank name (optional)',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: amount,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Amount',
+                      prefixText: '$_currency ',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: reason,
+                    maxLength: 140,
+                    decoration: const InputDecoration(
+                      labelText: 'Reason (optional)',
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Account resolution and transfer status are controlled by the bank provider. Eazy will show an unavailable state if it is not configured.',
+                    style: TextStyle(
+                      color: EazyColors.muted,
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed:
+                    () => Navigator.pop(dialogContext, {
+                      'accountNumber': accountNumber.text.trim(),
+                      'bankCode': bankCode.text.trim(),
+                      'bankName': bankName.text.trim(),
+                      'amount': amount.text.trim(),
+                      'reason': reason.text.trim(),
+                    }),
+                child: const Text('Resolve account'),
+              ),
+            ],
+          ),
+    );
+    for (final controller in [
+      accountNumber,
+      bankCode,
+      bankName,
+      amount,
+      reason,
+    ]) {
+      controller.dispose();
+    }
+    if (values == null) return;
+    final number = values['accountNumber'] ?? '';
+    final code = values['bankCode'] ?? '';
+    final value = values['amount'] ?? '';
+    if (!RegExp(r'^\d{10}$').hasMatch(number) ||
+        code.length < 2 ||
+        !_validMoney(value)) {
+      _showError('Enter a valid 10-digit account, bank code, and amount.');
+      return;
+    }
     setState(() => busy = true);
     try {
-      await api.post(
-        'wallet/transfers',
+      final resolved = await api.post(
+        'banks/resolve',
         auth: true,
-        headers: {'Idempotency-Key': idempotency('transfer')},
-        body: {'recipientUsername': handle.toLowerCase(), 'amount': value, 'currency': 'NGN'},
+        body: {'accountNumber': number, 'bankCode': code},
+      );
+      final account = _map(resolved['account']);
+      final resolvedName =
+          account['accountName']?.toString() ?? values['bankName'] ?? '';
+      if (resolvedName.isEmpty)
+        throw const ApiException('The bank did not return an account name.');
+      if (!mounted) return;
+      setState(() => busy = false);
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder:
+            (dialogContext) => AlertDialog(
+              title: const Text('Confirm bank recipient'),
+              content: Text(
+                'Send $_currency $value to $resolvedName at ${values['bankName']?.isEmpty == true ? 'the selected bank' : values['bankName']}?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Send securely'),
+                ),
+              ],
+            ),
+      );
+      if (confirmed != true) return;
+      setState(() => busy = true);
+      await api.post(
+        'bank-transfers',
+        auth: true,
+        headers: {'Idempotency-Key': idempotency('bank-transfer')},
+        body: {
+          'accountNumber': number,
+          'bankCode': code,
+          'accountName': resolvedName,
+          'bankName': values['bankName'],
+          'amount': value,
+          'currency': _currency,
+          'reason': values['reason'],
+        },
       );
       await load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Money sent successfully.')));
+      _showMessage(
+        'Bank transfer initiated. Check its status in wallet activity.',
+      );
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      _showError(e.message);
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  Future<void> receiveFromEazyUser() async {
+    setState(() => busy = true);
+    try {
+      final result = await api.post(
+        'wallet/qr',
+        auth: true,
+        body: {'expiresInDays': 30},
+      );
+      receiveQr = _map(result['qr']);
+      if (mounted) {
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: true,
+          builder: (_) => _ReceiveQrSheet(qr: receiveQr!, username: _username),
+        );
+      }
+    } on ApiException catch (e) {
+      _showError(e.message);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> receiveFromExternalBank() async {
+    if (virtualAccount == null) {
+      await requestVirtualAccount();
+    }
+    if (!mounted || virtualAccount == null) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => _BankReceiveSheet(account: virtualAccount!),
+    );
   }
 
   Future<void> requestVirtualAccount() async {
     setState(() => busy = true);
     try {
-      final result = await api.post('wallet/virtual-account', auth: true, body: {'consent': true});
-      virtualAccount = result['virtualAccount'] is Map ? Map<String, dynamic>.from(result['virtualAccount'] as Map) : null;
+      final result = await api.post(
+        'wallet/virtual-account',
+        auth: true,
+        body: {'consent': true},
+      );
+      virtualAccount = _map(result['virtualAccount']);
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      _showError(e.message);
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
-  @override Widget build(BuildContext context) {
-    final currency = wallet?['currency']?.toString() ?? 'NGN';
-    final balance = wallet?['balance']?.toString() ?? '0.00';
-    return SafeArea(child: RefreshIndicator(
-      onRefresh: load,
-      child: ListView(padding: const EdgeInsets.only(bottom: 32), children: [
-        Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 12), child: Row(children: [
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Wallet', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-            SizedBox(height: 3), Text('Your money, clearly organised', style: TextStyle(color: EazyColors.muted)),
-          ])),
-          IconButton(onPressed: load, icon: const Icon(Icons.refresh_rounded)),
-        ])),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(28), gradient: const LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [EazyColors.greenDeep, Color(0xFF0B4D32)],
-          )),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Available balance', style: TextStyle(color: Colors.white70)),
-            const SizedBox(height: 8),
-            Text(loading ? '••••••' : currency + ' ' + balance, style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: Colors.white)),
-            const SizedBox(height: 14),
-            Text(wallet?['status']?.toString() ?? 'Wallet', style: const TextStyle(color: Colors.white70)),
-          ]),
-        )),
-        const SizedBox(height: 14),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Row(children: [
-          Expanded(child: _Action(icon: Icons.arrow_upward_rounded, label: 'Send', onTap: busy ? null : transfer)),
-          const SizedBox(width: 10),
-          Expanded(child: _Action(icon: Icons.add_rounded, label: 'Add money', onTap: busy ? null : deposit)),
-          const SizedBox(width: 10),
-          Expanded(child: _Action(icon: Icons.verified_outlined, label: 'Verify', onTap: busy ? null : verifyPending)),
-        ])),
-        if (error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 14, 20, 0), child: Text(error!, style: const TextStyle(color: EazyColors.red))),
-        const SizedBox(height: 18),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Row(children: [Icon(Icons.account_balance_outlined, color: EazyColors.green), SizedBox(width: 10), Text('Receive by bank', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16))]),
-          const SizedBox(height: 8),
-          if (virtualAccount == null) ...[
-            const Text('Create a dedicated NGN receiving account for bank deposits.', style: TextStyle(color: EazyColors.muted, height: 1.4)),
-            const SizedBox(height: 12),
-            SizedBox(width: double.infinity, child: OutlinedButton(onPressed: busy ? null : requestVirtualAccount, child: const Text('Create receiving account'))),
-          ] else ...[
-            _Info('Bank', virtualAccount!['bankName']?.toString() ?? 'Pending'),
-            _Info('Account number', virtualAccount!['accountNumber']?.toString() ?? 'Pending'),
-            _Info('Account name', virtualAccount!['accountName']?.toString() ?? 'Pending'),
-            _Info('Status', virtualAccount!['status']?.toString() ?? 'pending'),
-          ],
-        ])))),
-        const SizedBox(height: 20),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 20), child: Text('Recent activity', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
-        const SizedBox(height: 8),
-        if (transactions.isEmpty)
-          const Padding(padding: EdgeInsets.symmetric(horizontal: 20), child: Card(child: Padding(padding: EdgeInsets.all(22), child: Text('No transactions yet.', style: TextStyle(color: EazyColors.muted)))))
-        else
-          ...transactions.map((x) => Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4), child: Card(child: ListTile(
-            leading: CircleAvatar(backgroundColor: EazyColors.green.withValues(alpha: .12), child: const Icon(Icons.receipt_long_rounded, color: EazyColors.green)),
-            title: Text(x['type']?.toString() ?? 'Transaction', style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text(x['status']?.toString() ?? '', style: const TextStyle(color: EazyColors.muted)),
-            trailing: Text((x['currency']?.toString() ?? currency) + ' ' + (x['amount']?.toString() ?? '0.00'), style: const TextStyle(fontWeight: FontWeight.w900)),
-          )))),
-      ]),
-    ));
+  Future<void> scanQr() async {
+    final token = await Navigator.of(
+      context,
+    ).push<String>(MaterialPageRoute(builder: (_) => const _QrScannerPage()));
+    if (!mounted || token == null || token.isEmpty) return;
+    setState(() => busy = true);
+    try {
+      final result = await api.post(
+        'wallet/qr/resolve',
+        auth: true,
+        body: {'token': token},
+      );
+      final recipient = _map(result['recipient']);
+      if (!mounted) return;
+      setState(() => busy = false);
+      final amount = await _amountDialog(
+        title: 'Pay ${recipient['displayName'] ?? 'Eazy user'}',
+        action: 'Review payment',
+      );
+      if (amount == null) return;
+      await _confirmAndRun(
+        title: 'Confirm QR payment',
+        message:
+            'Pay $_currency $amount to ${recipient['displayName'] ?? recipient['username'] ?? 'this Eazy user'}?',
+        action:
+            () => api.post(
+              'wallet/qr/pay',
+              auth: true,
+              headers: {'Idempotency-Key': idempotency('qr-payment')},
+              body: {'token': token, 'amount': amount, 'currency': _currency},
+            ),
+      );
+    } on ApiException catch (e) {
+      _showError(e.message);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
+
+  Future<String?> _amountDialog({
+    required String title,
+    required String action,
+  }) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: Text(title),
+            content: TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                labelText: 'Amount',
+                prefixText: '$_currency ',
+                hintText: '1000.00',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed:
+                    () => Navigator.pop(dialogContext, controller.text.trim()),
+                child: Text(action),
+              ),
+            ],
+          ),
+    );
+    controller.dispose();
+    if (result == null || !_validMoney(result)) {
+      if (result != null)
+        _showError('Enter an amount with two decimal places.');
+      return null;
+    }
+    return result;
+  }
+
+  Future<void> _confirmAndRun({
+    required String title,
+    required String message,
+    required Future<Map<String, dynamic>> Function() action,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Confirm'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true) return;
+    setState(() => busy = true);
+    try {
+      await action();
+      await load();
+      _showMessage('Transfer completed and wallet activity refreshed.');
+    } on ApiException catch (e) {
+      _showError(e.message);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  void _showError(String message) {
+    if (mounted)
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showMessage(String message) {
+    if (mounted)
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String get _currency => wallet?['currency']?.toString() ?? 'NGN';
+  String get _username =>
+      wallet?['username']?.toString() ?? 'your Eazy username';
+  String get _balance => wallet?['balance']?.toString() ?? '0.00';
+  bool _validMoney(String value) =>
+      RegExp(r'^(?:0|[1-9][0-9]{0,17})\.[0-9]{2}$').hasMatch(value);
+  bool _validUsername(String value) =>
+      RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value);
+  Map<String, dynamic> _map(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: RefreshIndicator(
+      onRefresh: load,
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 32),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Wallet',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Move money with clarity and control',
+                        style: TextStyle(color: EazyColors.muted),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: loading ? null : load,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [EazyColors.greenDeep, Color(0xFF0B4D32)],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Available balance',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    loading ? '••••••' : '$_currency $_balance',
+                    style: const TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    wallet?['status']?.toString() ?? 'Wallet',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const _SectionTitle('Send money'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _Action(
+                    icon: Icons.person_outline_rounded,
+                    label: 'Eazy user',
+                    onTap: busy ? null : sendToEazyUser,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _Action(
+                    icon: Icons.account_balance_outlined,
+                    label: 'External bank',
+                    onTap: busy ? null : sendToExternalBank,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _Action(
+                    icon: Icons.qr_code_scanner_rounded,
+                    label: 'Scan QR',
+                    onTap: busy ? null : scanQr,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          const _SectionTitle('Receive money'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _Action(
+                    icon: Icons.qr_code_2_rounded,
+                    label: 'Eazy QR',
+                    onTap: busy ? null : receiveFromEazyUser,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _Action(
+                    icon: Icons.account_balance_rounded,
+                    label: 'External bank',
+                    onTap: busy ? null : receiveFromExternalBank,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _Action(
+                    icon: Icons.add_rounded,
+                    label: 'Add money',
+                    onTap: busy ? null : deposit,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              child: Text(
+                error!,
+                style: const TextStyle(color: EazyColors.red),
+              ),
+            ),
+          const SizedBox(height: 18),
+          const _SectionTitle('Bank receiving account'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child:
+                    virtualAccount == null
+                        ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Receive from an external bank',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Create a dedicated receiving account. Provider availability and account status are shown honestly.',
+                              style: TextStyle(
+                                color: EazyColors.muted,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: busy ? null : requestVirtualAccount,
+                                child: const Text('Create receiving account'),
+                              ),
+                            ),
+                          ],
+                        )
+                        : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _Info(
+                              'Bank',
+                              virtualAccount!['bankName']?.toString() ??
+                                  'Pending',
+                            ),
+                            _Info(
+                              'Account number',
+                              virtualAccount!['accountNumber']?.toString() ??
+                                  'Pending',
+                            ),
+                            _Info(
+                              'Account name',
+                              virtualAccount!['accountName']?.toString() ??
+                                  'Pending',
+                            ),
+                            _Info(
+                              'Status',
+                              virtualAccount!['status']?.toString() ??
+                                  'pending',
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'Incoming external-bank deposits are credited by the configured provider webhook; this screen never fabricates a balance update.',
+                              style: TextStyle(
+                                color: EazyColors.muted,
+                                fontSize: 12,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const _SectionTitle('Recent activity'),
+          if (transactions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Card(
+                child: Padding(
+                  padding: EdgeInsets.all(22),
+                  child: Text(
+                    'No transactions yet.',
+                    style: TextStyle(color: EazyColors.muted),
+                  ),
+                ),
+              ),
+            ),
+          ...transactions.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: EazyColors.green.withValues(alpha: .12),
+                    child: const Icon(
+                      Icons.receipt_long_rounded,
+                      color: EazyColors.green,
+                    ),
+                  ),
+                  title: Text(
+                    entry['type']?.toString() ?? 'Transaction',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: Text(
+                    entry['status']?.toString() ?? '',
+                    style: const TextStyle(color: EazyColors.muted),
+                  ),
+                  trailing: Text(
+                    '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: OutlinedButton.icon(
+              onPressed: busy ? null : verifyPending,
+              icon: const Icon(Icons.verified_outlined),
+              label: const Text('Verify pending payment'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
-class _Info extends StatelessWidget {
-  const _Info(this.label, this.value);
-  final String label, value;
-  @override Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(top: 7), child: Row(children: [
-    SizedBox(width: 105, child: Text(label, style: const TextStyle(color: EazyColors.muted, fontSize: 12))),
-    Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w800))),
-  ]));
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title);
+  final String title;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+    child: Text(
+      title,
+      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+    ),
+  );
 }
 
 class _Action extends StatelessWidget {
   const _Action({required this.icon, required this.label, required this.onTap});
-  final IconData icon; final String label; final VoidCallback? onTap;
-  @override Widget build(BuildContext context) => Card(child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(EazyRadius.lg), child: Padding(
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    child: Column(children: [Icon(icon, color: EazyColors.green), const SizedBox(height: 7), Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12))]),
-  )));
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) => Card(
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(EazyRadius.lg),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 5),
+        child: Column(
+          children: [
+            Icon(icon, color: EazyColors.green),
+            const SizedBox(height: 7),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _Info extends StatelessWidget {
+  const _Info(this.label, this.value);
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 7),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 105,
+          child: Text(
+            label,
+            style: const TextStyle(color: EazyColors.muted, fontSize: 12),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ReceiveQrSheet extends StatelessWidget {
+  const _ReceiveQrSheet({required this.qr, required this.username});
+  final Map<String, dynamic> qr;
+  final String username;
+  @override
+  Widget build(BuildContext context) {
+    final content = qr['content']?.toString() ?? '';
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Receive from an Eazy user',
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Share this QR or your username: @$username',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: EazyColors.muted),
+            ),
+            const SizedBox(height: 18),
+            if (content.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: QrImageView(data: content, size: 220),
+              ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: content));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('QR token copied.')),
+                );
+              },
+              icon: const Icon(Icons.copy_rounded),
+              label: const Text('Copy QR token'),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Expires ${qr['expiresAt'] ?? 'soon'}',
+              style: const TextStyle(color: EazyColors.muted, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BankReceiveSheet extends StatelessWidget {
+  const _BankReceiveSheet({required this.account});
+  final Map<String, dynamic> account;
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Receive from an external bank',
+            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Give these details to the sender. Eazy will update the wallet only after the configured bank webhook confirms the deposit.',
+            style: TextStyle(color: EazyColors.muted, height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          _Info('Bank', account['bankName']?.toString() ?? 'Pending'),
+          _Info(
+            'Account number',
+            account['accountNumber']?.toString() ?? 'Pending',
+          ),
+          _Info(
+            'Account name',
+            account['accountName']?.toString() ?? 'Pending',
+          ),
+          _Info('Status', account['status']?.toString() ?? 'pending'),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Clipboard.setData(
+                  ClipboardData(
+                    text:
+                        '${account['bankName'] ?? ''}\n${account['accountNumber'] ?? ''}\n${account['accountName'] ?? ''}',
+                  ),
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Bank details copied.')),
+                );
+              },
+              icon: const Icon(Icons.copy_rounded),
+              label: const Text('Copy bank details'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _QrScannerPage extends StatefulWidget {
+  const _QrScannerPage();
+  @override
+  State<_QrScannerPage> createState() => _QrScannerPageState();
+}
+
+class _QrScannerPageState extends State<_QrScannerPage> {
+  bool handled = false;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text(
+        'Scan Eazy QR',
+        style: TextStyle(fontWeight: FontWeight.w900),
+      ),
+    ),
+    body: Stack(
+      children: [
+        MobileScanner(
+          onDetect: (capture) {
+            if (handled) return;
+            final value = capture.barcodes.firstOrNull?.rawValue;
+            if (value == null || value.isEmpty) return;
+            handled = true;
+            Navigator.pop(context, value);
+          },
+        ),
+        Center(
+          child: Container(
+            width: 250,
+            height: 250,
+            decoration: BoxDecoration(
+              border: Border.all(color: EazyColors.green, width: 3),
+              borderRadius: BorderRadius.circular(26),
+            ),
+          ),
+        ),
+        const Positioned(
+          left: 28,
+          right: 28,
+          bottom: 36,
+          child: Text(
+            'Point your camera at an Eazy receive QR code.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    ),
+  );
 }
