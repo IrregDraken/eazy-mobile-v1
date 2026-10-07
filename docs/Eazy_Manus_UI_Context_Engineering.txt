@@ -1,0 +1,1306 @@
+EAZY MOBILE V1 MASTER UI / UX VISUAL CONTEXT FOR MANUS
+========================================
+
+PURPOSE
+
+This document converts the two supplied Eazy UI reference boards into an
+actionable visual and product prompt for Manus.
+
+The two images are visual references, not disposable inspiration. They
+establish the intended visual language, information hierarchy, component
+style, screen density, navigation model, branding treatment, and the
+overall relationship between Eazy’s social, marketplace, chat, wallet,
+AI, translation, profile, and settings experiences.
+
+Reference image A: 1000975966.png
+
+Reference image B: 1000929119.png
+
+IMPLEMENTATION TARGET
+
+The product being built is Eazy Mobile V1.
+
+Technology: - Flutter - Android - iOS
+
+The UI should reproduce the visual direction shown in the references
+while connecting every screen to the real Eazy architecture and backend
+where functionality exists.
+
+This is a production application. The references are not permission to
+create static mock screens, fake transactions, fake products, fake AI
+answers, fake translation, or dead buttons.
+
+The visual system and the functional system must meet in the same
+implementation.
+
+============================================================ PART 1:
+MASTER VISUAL PROMPT FOR MANUS
+============================================================
+
+PROMPT A: INTERPRETATION OF THE FIRST REFERENCE BOARD
+
+Study the supplied first Eazy UI reference image as a single cohesive
+product system.
+
+Recreate its design language in Flutter rather than copying it as a flat
+image.
+
+The visual direction is a premium dark mobile ecosystem built around
+Eazy’s identity.
+
+The dominant visual characteristics are:
+
+-   Deep black and near-black backgrounds
+-   Dark forest green surfaces
+-   Emerald and mint green accents
+-   Bright neon-green action controls
+-   White primary text
+-   Muted gray secondary text
+-   Rounded cards and controls
+-   Thin subtle borders
+-   Soft green atmospheric glow
+-   Large rounded corners
+-   Minimal visual clutter
+-   Strong typography
+-   High contrast
+-   Dense but controlled information
+-   Premium financial-product precision combined with social-product
+    warmth
+-   Cinematic imagery used selectively
+-   Consistent Eazy branding
+-   Very little visual noise
+
+The product must feel modern, global, premium, confident, and
+technology-forward.
+
+It must NOT look like: - A generic banking template - A generic Flutter
+Material app - A generic social-media clone - A collection of unrelated
+screens - A template filled with green buttons
+
+The green color is part of the brand language, not decoration.
+
+Use dark surfaces to create hierarchy and reserve the brightest green
+for important actions, active navigation, confirmation states,
+highlights, and brand moments.
+
+The interface should feel almost black at first glance, with green light
+appearing where the user needs direction.
+
+GLOBAL COMPOSITION
+
+Use a mobile-first portrait layout.
+
+The screenshots show tall phone frames with substantial use of vertical
+hierarchy.
+
+Every screen should have: 1. A clear top region 2. A dominant content
+area 3. A clear primary action where necessary 4. Controlled bottom
+navigation when the screen belongs to a primary section 5. Consistent
+safe-area handling 6. Consistent spacing 7. Consistent corner radii 8.
+Consistent icon sizing
+
+Avoid filling every available pixel.
+
+The interface uses breathing room even when information density is high.
+
+VISUAL DEPTH
+
+Create depth through: - Surface contrast - Subtle borders - Very
+restrained shadows - Green glow - Image depth - Layered cards -
+Overlapping profile avatars - Bottom sheets - Floating controls
+
+Do not use heavy drop shadows.
+
+Do not use excessive gradients.
+
+Do not make every card glow.
+
+The visual hierarchy should remain readable when the green effects are
+removed.
+
+BRAND COLORS
+
+Use the reference as the visual authority for the palette.
+
+Primary direction: - Near-black - Forest black-green - Deep emerald -
+Emerald green - Mint green - Bright neon green - White - Cool light
+gray - Muted gray
+
+Approximate design tokens can be established around: - Main background:
+very dark green-black, close to #04150F - Secondary surface: dark
+green-black - Elevated surface: slightly lighter forest green - Primary
+action: bright emerald/mint green - Accent glow: saturated green with
+low opacity - Primary text: white - Secondary text: cool gray - Disabled
+text: darker gray
+
+Do not overfit the exact RGB values from screenshots if doing so damages
+accessibility. Preserve the visual relationship and contrast.
+
+TYPOGRAPHY
+
+Typography is clean, modern, and highly legible.
+
+Use: - Strong semibold/bold headings - Medium-weight labels - Regular
+body text - Small muted metadata - Numeric emphasis for wallet amounts
+and prices
+
+Large amounts such as wallet balances and product prices should be
+visually prominent.
+
+Do not use decorative fonts.
+
+Do not use excessive font sizes.
+
+Maintain consistent type hierarchy: - Display / hero - Screen title -
+Section title - Body - Label - Caption - Metadata
+
+COMPONENT LANGUAGE
+
+Use one reusable component system.
+
+Buttons: - Rounded - Bright green for primary actions - Dark or outlined
+for secondary actions - White text on dark buttons - Dark text on bright
+green buttons where contrast is stronger - Consistent height -
+Consistent corner radius
+
+Inputs: - Dark surface - Thin border - Rounded corners - Clear
+placeholder - White entered text - Optional trailing icon - Green focus
+state - Inline validation state
+
+Cards: - Dark elevated surface - Rounded corners - Subtle border -
+Controlled padding - No excessive decoration
+
+Chips: - Compact - Rounded - Dark background - Active chip uses green
+highlight
+
+Icons: - Simple - Consistent stroke/weight - White or muted gray by
+default - Green for active states - No random icon styles
+
+Avatars: - Circular - High quality - Optional green ring for
+active/selected stories - Small status indicators where appropriate
+
+Toggles: - Dark track when disabled - Bright green when active - Smooth
+state transition
+
+============================================================ PART 2:
+SECOND REFERENCE BOARD
+============================================================
+
+PROMPT B: INTERPRETATION OF THE SECOND REFERENCE BOARD
+
+Treat the second reference board as a complete Eazy application journey.
+
+It shows Eazy as one connected ecosystem with:
+
+1.  Splash
+2.  Onboarding
+3.  Sign Up
+4.  Home / Social Feed
+5.  Discover / Marketplace
+6.  Product Detail
+7.  Cart / Checkout
+8.  Wallet
+9.  Chat List
+10. Chat Conversation
+11. Message Actions
+12. Calls
+13. Eazy Assist
+14. Translator
+15. Create Post
+16. Notifications
+17. Profile
+18. Settings
+19. Search
+20. More / Menu
+
+The important design instruction is that all of these screens must feel
+like they belong to ONE product.
+
+Do not design each module independently.
+
+A user should be able to move from: Social -> Product -> Cart -> Payment
+-> Wallet -> Chat -> Assist -> Profile
+
+without feeling that the visual system changes.
+
+============================================================ PART 3:
+DETAILED SCREEN SPECIFICATION
+============================================================
+
+SCREEN 01: SPLASH
+
+Purpose: Establish Eazy immediately.
+
+Visual: - Nearly black background - Deep green atmospheric shapes/glow -
+Large centered Eazy wordmark - Strong white/light logo treatment with
+green accent - Minimal content - Small bottom progress/loading element -
+No clutter
+
+The first reference shows a cinematic green environment behind the
+brand.
+
+Use abstract green shapes, gradients, or atmospheric forms rather than a
+busy photograph.
+
+Brand: Eazy wordmark must be crisp.
+
+The logo must not look blurry.
+
+The splash should feel intentional and premium, not like a loading
+screen accidentally exposed to the user.
+
+Behavior: - Display briefly while startup state is resolved - Do not
+create an unnecessary long artificial delay - Transition to the correct
+next state based on authentication/onboarding state
+
+SCREEN 02: WELCOME
+
+This screen appears immediately after the splash animation has completed.
+
+Use the SECOND uploaded image as the Welcome visual.
+
+Do not use the first uploaded image here.
+
+Structure:
+- Eazy branding
+- Large cinematic hero image
+- Short product statement
+- Primary CTA: "Get Started"
+- Secondary account-entry text: "I already have an account"
+- "Login" action beneath it
+
+AUTHENTICATION ENTRY HIERARCHY
+
+GET STARTED
+-> Opens the Create Account workflow.
+
+I ALREADY HAVE AN ACCOUNT
+LOGIN
+-> Opens the Sign In workflow.
+
+The visible primary CTA must say "Get Started". Its destination is the Create Account flow.
+
+Do not put Google or Apple authentication buttons directly on the Welcome screen. They belong inside the Create Account and Sign In workflows.
+
+The Welcome screen should feel aspirational and premium without becoming a marketing landing page.
+SCREEN 03: CREATE ACCOUNT / AUTHENTICATION ENTRY
+
+The Create Account workflow is intentionally different from the older reference-board registration form.
+
+When the user taps "Get Started", the first account-creation screen must be simple.
+
+Show:
+- Eazy branding
+- Email OR phone number input
+- Clear explanation that a verification code will be sent
+- Continue action
+- Continue with Google
+- Continue with Apple
+
+The user chooses one of these paths:
+1. Email
+2. Phone number
+3. Continue with Google
+4. Continue with Apple
+
+For email or phone registration:
+- Collect the identifier.
+- Send the real verification code.
+- Continue to the verification-code screen.
+- Do NOT ask for a password yet.
+- Do NOT ask for profile fields yet.
+
+Google and Apple:
+- Start the real provider authentication flow.
+- Use recognizable official provider branding.
+- Do not use generic Material icons as fake provider logos.
+
+Visual:
+- Dark background
+- Dark rounded inputs
+- Green focus/accent states
+- Clear primary action
+- Consistent Eazy typography and spacing
+- Minimal cognitive load
+
+SCREEN 03A: EMAIL / PHONE VERIFICATION
+
+After the user submits an email address or phone number, show a dedicated verification screen.
+
+Include:
+- Back navigation
+- Verification title
+- Explanation that the code was sent
+- Verification code input
+- Verify/Continue CTA
+- Resend code
+- Countdown/rate-limit state where supported
+- Invalid/expired code error state
+
+Verification must be backed by the real authentication system. Never treat a locally entered code as proof of verification.
+
+SCREEN 03B: PROFILE SETUP + PASSWORD
+
+After successful verification, move to Profile Setup.
+
+At the top:
+- Large circular profile-picture upload control
+- Camera/edit/upload affordance
+
+Then collect:
+- First name: required
+- Last name: optional
+- Username: required and must be checked for availability
+- Date of birth: required
+- Bio: profile field, optional unless backend requirements make it mandatory
+- Password: required
+
+Username:
+- Check availability against the real backend.
+- Show available/unavailable states clearly.
+- Prevent account creation with an unavailable username.
+
+Date of birth:
+- Use a proper native date picker.
+- Display the selected date clearly.
+
+Password:
+- Visibility toggle.
+- Live password requirements.
+
+Display these password requirements:
+- Minimum character length
+- Uppercase letter
+- Lowercase letter
+- Number
+- Special character
+
+Each requirement should visibly change between unsatisfied and satisfied while typing.
+
+Then show:
+- Terms and Conditions / Privacy acknowledgement
+- Primary "Create Account" CTA
+
+The final Create Account action should only be enabled when all required fields, username availability, password requirements, and required legal acknowledgement are valid.
+
+After successful account creation, do NOT send the user directly to Home. Continue to the Discovery flow.
+SCREEN 04: SIGN IN
+
+The Sign In flow is deliberately simple.
+
+Show:
+- Eazy logo
+- "Welcome back"
+- Email input
+- Password input
+- Remember me
+- Forgot password?
+- "Sign in" primary CTA
+- Divider / "or continue with"
+- Continue with Google
+- Continue with Apple
+- Account-creation link where appropriate
+
+Authentication methods:
+- Email + password
+- Google
+- Apple
+
+Do not add phone verification, profile setup, or other onboarding fields to Sign In.
+
+Password:
+- Visibility toggle
+- Inline validation/error state
+
+Remember me:
+- Clear checkbox/toggle.
+- Persist the intended session behavior through the real authentication system.
+
+Forgot password:
+- Launch the actual password-reset flow.
+
+Google and Apple:
+- Use real provider authentication.
+- Use recognizable provider branding.
+- Do not substitute generic Material icons.
+
+The screen should remain intentionally uncomplicated.
+SCREEN 05: DISCOVERY / FIND FRIENDS + LISTINGS
+
+This screen replaces the old "Tell us about yourself" onboarding destination.
+
+After successful account creation, the user enters Discovery before reaching the normal Home experience.
+
+Purpose:
+Help the new user discover relevant friends/people and Eazy listings/products.
+
+Discovery can use:
+- Contacts, only after explicit permission
+- People they may know
+- Existing Eazy users
+- Relevant products/listings
+- Relevant interests/content where supported
+
+Suggested structure:
+- Discovery welcome/title
+- Suggested friends
+- People from contacts, if permission is granted
+- Suggested listings/products
+- Follow/add/connect actions
+- Search or category entry points where useful
+- Skip/Done action
+
+Contact permissions:
+- Request permission explicitly.
+- Explain why contacts are needed.
+- Never access/upload contacts without the appropriate permission and backend flow.
+- Handle permission denied cleanly.
+
+Recommendations:
+- Use real backend/application data where available.
+- Never fill the UI with fake users or fake listings just to make it look populated.
+
+Empty state:
+- Explain that no recommendations are currently available.
+- Offer useful actions such as Search, Invite Friends, or Continue.
+
+After the user completes or skips Discovery, transition to Home.
+
+IMPORTANT:
+The old profile-onboarding screen is no longer the account-creation entry point. Profile setup happens after verification, and Discovery happens after account creation.
+SCREEN 06: HOME / SOCIAL FEED
+
+The Home screen is one of the most important screens.
+
+Top: - Eazy wordmark/logo - Search - Notifications/home utility icon
+
+Stories: - Horizontal story row - “Your story” - Circular avatars -
+Green active rings - Names beneath or near avatars
+
+Feed controls: - For You - Following - Trending
+
+Post: - Profile avatar - Username - Location/time - Overflow menu -
+Text - Large media - Engagement row - Like - Comment - Share/send - Save
+where appropriate
+
+Bottom navigation: - Home - Search/Discover - Create - Marketplace/Chat
+depending on current navigation model - Wallet/Profile according to the
+finalized Eazy navigation
+
+The navigation must remain consistent across the app.
+
+The Home feed should feel content-rich but not chaotic.
+
+Use strong image presentation and generous card spacing.
+
+SCREEN 07: CREATE POST
+
+Reference A and B both show Create Post.
+
+Top: - Back - “Create Post” - Post CTA
+
+User: - Avatar - Username - Visibility control
+
+Composer: - “What’s on your mind?” - Media selection - Image/video
+previews - Add location - Tag people - Add to album - Post to
+marketplace toggle where supported
+
+The media row should feel like a horizontal gallery.
+
+The final Post action should be bright green.
+
+Use clear disabled/loading states when content is not ready.
+
+SCREEN 08: PROFILE
+
+Profile is identity + social graph + content.
+
+Top: - Back - Profile utilities/settings
+
+Header: - Large avatar - Verification/status indicator where
+applicable - Name - Username - Bio - Location - Creator/category
+information where available
+
+Stats: - Posts - Followers - Following
+
+Primary: - Edit Profile or Follow depending on viewer
+
+Content tabs: - Posts - Saved - Tagged
+
+Grid: - Clean media thumbnails - Consistent aspect ratio - Small
+spacing - High-quality imagery
+
+The profile must not look like a banking account page.
+
+It is a social identity surface.
+
+SCREEN 09: DISCOVER
+
+Discover is visually shown as a search/exploration experience.
+
+Top: - Search field - Search icon - Profile/avatar or utility action
+
+Category chips: - All - Fashion - Electronics - Home - Beauty - Other
+relevant categories
+
+Sections: - Featured - Trending - Products - People/content where
+appropriate
+
+Product cards: - Large image - Product name - Price - Rating -
+Seller/metadata when appropriate
+
+The Discover experience should connect social discovery and commerce.
+
+Do not make it marketplace-only.
+
+SCREEN 10: MARKETPLACE
+
+Marketplace reference: - Screen title - Cart icon - Search bar -
+Category chips - Featured section - Product cards - See all links
+
+Product cards should contain: - Image - Product name - Price - Rating -
+Review count - Favorite/heart control where supported
+
+Use a dense but breathable two-column grid.
+
+Images should dominate each card.
+
+Do not overload cards with text.
+
+SCREEN 11: PRODUCT DETAIL
+
+Product detail should be immersive.
+
+Top: - Back - Favorite - Share where appropriate
+
+Main: - Large product image - Image pagination - Product title - Price -
+Rating/review count - Description - Color selector - Size selector -
+Quantity - Add to cart - Buy now
+
+Bottom actions: - Add to cart - Buy now
+
+The product image should receive the most visual weight.
+
+Selectors must have clear selected/unselected states.
+
+Prices must use strong typography.
+
+SCREEN 12: CART & CHECKOUT
+
+Cart reference includes: - Back - “Your Cart” - Item count - Select
+all - Individual item checkboxes - Product image - Product name -
+Price - Quantity controls - Remove/edit interaction - Order summary
+
+Order summary: - Items subtotal - Delivery fee - Total - Checkout CTA
+
+The checkout CTA is bright green.
+
+Empty cart: - Clear empty state - CTA to marketplace
+
+Do not permit checkout with an empty cart.
+
+SCREEN 13: WALLET HOME
+
+Wallet is a premium financial dashboard inside Eazy.
+
+Top: - Wallet title - Security/settings/utility icon - Optional eye
+visibility control
+
+Balance card: - Total balance - Currency - Hide/show amount - Green
+gradient/glow - Rounded card
+
+Quick actions: - Add Money - Send - Scan - More
+
+Recent transactions: - Transaction icon - Title - Date/time - Amount -
+Status - Direction
+
+Examples in the reference include: - Wallet deposit - Transfer to user -
+Marketplace purchase - Received from user - Paystack payment
+
+Amounts must clearly distinguish incoming/outgoing.
+
+Wallet should feel trustworthy and precise.
+
+Do not overdecorate financial data.
+
+SCREEN 14: ADD MONEY / PAYSTACK
+
+Top: - Back - Add Money
+
+Amount: - Currency symbol - Large amount input - Preset amount chips
+
+Payment method: - Card (Paystack) - Bank Transfer - Virtual Account
+where supported
+
+Security indicator: - Secure payment messaging
+
+Primary CTA: - Continue to Paystack
+
+The flow should lead into actual hosted payment where configured.
+
+After returning: - Backend verifies - Transaction reconciles - UI
+updates
+
+Never display success simply because Paystack opened.
+
+SCREEN 15: TRANSFER MONEY
+
+Top: - Back - Send Money
+
+Recipient: - Search input - Username / phone / email - Recent contacts -
+Avatar list
+
+Amount: - Currency - Amount input - Optional preset amounts
+
+Note: - Optional note
+
+Primary: - Continue
+
+Then: - Confirmation - Security/biometric step where required - Backend
+transfer - Result
+
+Recipient identity must be clearly shown before final confirmation.
+
+SCREEN 16: PAYMENT SUCCESS
+
+The reference uses a dedicated success screen.
+
+Visual: - Dark background - Bright green success/check animation or
+icon - Large “Payment Successful!” - Amount - Description
+
+Transaction card: - Transaction ID - Date - Status
+
+Actions: - View Receipt - Back to Wallet
+
+The success state must only be displayed after backend verification.
+
+SCREEN 17: CHAT LIST
+
+Chat list includes: - Screen title - Search - Utility/settings action -
+Tabs/filter chips such as All, Unread, Groups, Calls - Conversation rows
+
+Each row: - Avatar - Name - Latest message - Timestamp - Unread
+indicator - Typing/online state where applicable
+
+Bottom navigation remains consistent.
+
+SCREEN 18: CHAT CONVERSATION
+
+Conversation: - Back - Avatar - Name - Online state - Call actions
+
+Message bubbles: - Incoming dark surface - Outgoing green surface -
+Timestamp - Read state - Media/file attachments
+
+Composer: - Text field - Attachment - Voice action - Send
+
+Support: - Replies - Reactions - Editing - Deletion - Translation -
+Reporting
+
+Messages should feel tactile and easy to scan.
+
+SCREEN 19: MESSAGE ACTIONS
+
+The reference shows a context menu/action sheet.
+
+Actions: - React - Reply - Copy - Forward - Highlight - Delete for me -
+Delete for everyone where permitted
+
+Dangerous actions such as delete should be visually distinct.
+
+Use a bottom sheet or context menu rather than cluttering the message
+UI.
+
+SCREEN 20: CALLS
+
+Reference includes voice/video call UI.
+
+Visual: - Full-screen dark interface - Large remote/self video - Small
+self-preview - Camera control - Microphone control - Speaker/audio
+control - End call
+
+Controls should be circular and high contrast.
+
+The UI should remain usable in low-light conditions.
+
+If call backend/provider infrastructure is not actually available, do
+not fake a working call connection. Build the UI and integration
+boundary only where supported.
+
+SCREEN 21: EAZY ASSIST
+
+The reference shows Eazy Assist as an integrated assistant.
+
+Top: - Back - “Eazy Assist”
+
+Assistant introduction: - Green/dark assistant card - Friendly
+greeting - Short explanation of capabilities
+
+Suggested actions: - Track my order - Find a good laptop under a
+budget - Translate this message - Show recent transactions - Other
+contextual actions
+
+Bottom: - Ask anything input - Send button
+
+The assistant should feel like a native Eazy utility.
+
+It should understand the ecosystem context where backend capabilities
+permit.
+
+Examples: - Marketplace/order context - Translation context - Wallet
+context - General Eazy assistance
+
+Do not fabricate answers when the provider is unavailable.
+
+SCREEN 22: TRANSLATOR
+
+Top: - Back - Translator
+
+Language selectors: - Source language - Swap - Destination language
+
+Input: - Large text area - Type/paste - Microphone if supported
+
+CTA: - Translate
+
+Output: - Translation card - Copy - Share/speak where supported
+
+Use the provider integration rather than local fake translation.
+
+SCREEN 23: CREATE POST
+
+Second Create Post reference: - Avatar - Composer - Media gallery - Add
+people - Add location - Add product where appropriate - Visibility
+selector - Post CTA
+
+The UI should be compact and focused.
+
+Avoid turning content creation into a giant form.
+
+SCREEN 24: NOTIFICATIONS
+
+Top: - Notifications - Settings/filter
+
+Filter chips: - All - Social - Marketplace - Wallet
+
+Notification rows: - Avatar/icon - Message - Time - Navigation target -
+Unread state
+
+Examples: - Someone liked your post - Someone commented - Order
+shipped - Money received - New message - Support/report update
+
+Notifications should deep-link into the relevant Eazy surface.
+
+SCREEN 25: PROFILE
+
+The second reference reinforces the profile as a clean creator/social
+identity page.
+
+Include: - Avatar - Name - Username - Bio - Edit Profile - Posts -
+Followers - Following - Posts grid - Products where applicable - Saved
+content
+
+Keep the visual hierarchy clean.
+
+Do not make profile pages visually identical to settings.
+
+SCREEN 26: SETTINGS
+
+Settings is grouped and scannable.
+
+Sections: ACCOUNT - Profile - Password and security - Sessions - Account
+information
+
+APPEARANCE - Theme - Appearance preferences
+
+PREFERENCES - Auto-translate conversations - Notifications - Location
+sharing
+
+SECURITY - Biometrics - Privacy - Blocked users - Sessions
+
+ACCOUNT ACTIONS - Sign out - Delete account
+
+Each row: - Icon - Title - Supporting description - Chevron/toggle where
+appropriate
+
+Dangerous actions should be clearly distinguished.
+
+SCREEN 27: SEARCH
+
+Search is a universal Eazy discovery surface.
+
+Search field: - People - Products - Posts/content - Tags
+
+Tabs: - All - People - Products - Posts
+
+Recent searches: - Search icon - Query - Remove action
+
+Popular/trending: - Tags/topics
+
+Results should connect into the relevant Eazy module.
+
+SCREEN 28: MORE / MENU
+
+The reference shows a profile-driven menu.
+
+Header: - Avatar - Name - Username - View profile
+
+Menu: - Upgrade / premium where applicable - Orders - Cart - Wallet -
+Saved - History - Invite friends - Help and support - Settings - Log out
+
+The menu should feel like an ecosystem control center, not a random
+drawer.
+
+============================================================
+PART 4: AUTHORITATIVE AUTHENTICATION + NEW USER WORKFLOW
+============================================================
+
+This workflow is authoritative. It supersedes older authentication and
+onboarding descriptions contained in the visual reference boards.
+
+SPLASH
+  ↓
+WELCOME
+  ├── GET STARTED
+  │     ↓
+  │   EMAIL OR PHONE
+  │     ↓
+  │   VERIFICATION CODE
+  │     ↓
+  │   PROFILE SETUP + PASSWORD
+  │     ↓
+  │   TERMS / CREATE ACCOUNT
+  │     ↓
+  │   DISCOVERY: FRIENDS + LISTINGS
+  │     ↓
+  │   HOME
+  │
+  └── I ALREADY HAVE AN ACCOUNT / LOGIN
+        ↓
+      EMAIL + PASSWORD
+        ├── Remember me
+        ├── Forgot password
+        ├── Continue with Google
+        └── Continue with Apple
+        ↓
+      HOME
+
+AUTHORITATIVE RULES
+-------------------
+
+1. The splash animation completes, then opens Welcome.
+2. Welcome's primary CTA is "Get Started".
+3. "Get Started" opens Create Account.
+4. Create Account begins with email OR phone number.
+5. Email/phone registration requires a real verification-code step.
+6. Password creation happens after successful verification.
+7. Profile setup happens after verification.
+8. Profile setup includes:
+   - Profile picture
+   - First name
+   - Optional last name
+   - Username with availability check
+   - Date of birth
+   - Bio
+   - Password
+   - Terms and Conditions / Privacy acknowledgement
+9. Successful account creation leads to Discovery.
+10. Discovery can use contacts only after explicit permission.
+11. Discovery covers friends/people and listings/products where relevant.
+12. Completing or skipping Discovery leads to Home.
+13. Existing users use the simpler Sign In flow.
+14. Sign In contains:
+   - Email
+   - Password
+   - Remember me
+   - Forgot password
+   - Sign in
+   - Continue with Google
+   - Continue with Apple
+15. Do not merge Create Account and Sign In into one overloaded form.
+16. Do not send existing users through new-user onboarding unnecessarily.
+17. OAuth users may require a reduced profile-completion path only for
+    Eazy-required fields that the provider does not supply.
+
+AUTHENTICATION EDGE CASES
+-------------------------
+
+Handle:
+- Invalid email
+- Invalid phone number
+- Verification code expired
+- Incorrect verification code
+- Verification resend/rate-limit state
+- Network failure
+- Email/phone already registered
+- Username unavailable
+- Username validation failure
+- Weak password
+- Required terms not accepted
+- Google authentication cancelled/failed
+- Apple authentication cancelled/failed
+- Account creation failure
+- Contact permission denied
+- No contact matches
+- No discovery recommendations
+- User skips Discovery
+- Session restoration after registration/login
+
+Never trap the user in an onboarding loop.
+
+
+============================================================ PART 5:
+SHARED NAVIGATION
+============================================================
+
+PRIMARY MOBILE NAVIGATION
+
+The reference consistently presents a compact bottom navigation system.
+
+The core experience should provide access to:
+
+-   Home
+-   Discover/Search
+-   Create
+-   Chat
+-   Wallet
+
+Profile and other secondary surfaces can be accessed through appropriate
+top actions/menu depending on the finalized navigation architecture.
+
+The exact number of visible tabs may be adjusted only if necessary for
+usability, but the conceptual hierarchy must remain:
+
+HOME DISCOVER CREATE CHAT WALLET
+
+The Create action may visually receive stronger emphasis.
+
+Active tab: - Green icon - Green label where labels are shown
+
+Inactive: - Muted gray/white
+
+Navigation background: - Dark - Subtle separation from content - No
+bright solid panel competing with the screen
+
+============================================================ PART 6:
+VISUAL SYSTEM DETAILS
+============================================================
+
+SURFACES
+
+Use a hierarchy such as:
+
+Level 0: Near-black application background
+
+Level 1: Dark forest surface
+
+Level 2: Slightly elevated card
+
+Level 3: Focused/active surface
+
+Do not make every surface the same black.
+
+The difference between surfaces should be subtle but visible.
+
+BORDERS
+
+Use thin low-opacity borders.
+
+Borders should: - Separate surfaces - Define inputs - Improve scanning
+
+Do not create visible boxes around everything.
+
+CORNER RADII
+
+Use rounded geometry throughout.
+
+Suggested hierarchy: - Small controls: 10-14 px - Inputs: 12-16 px -
+Cards: 16-22 px - Large hero cards: 20-28 px - Bottom sheets: 24+ px at
+top corners - Buttons: pill or highly rounded
+
+Keep radii consistent.
+
+SPACING
+
+Use a predictable spacing system.
+
+Base unit: 4 or 8 px.
+
+Typical: - 8 px small gap - 12 px control gap - 16 px standard padding -
+20-24 px screen padding - 24-32 px section separation
+
+Do not compress everything to fit more content.
+
+IMAGERY
+
+Images are a major part of Eazy’s visual personality.
+
+Use: - High-quality portraits - Product photography - Cinematic
+environmental imagery - Strong crop - Rounded corners - Correct aspect
+ratios
+
+Never stretch images.
+
+Use intentional cropping.
+
+GLOW
+
+Green glow is used sparingly.
+
+Use it for: - Brand moments - Wallet balance - Success - Active focus -
+Hero visuals - Assistant accent
+
+Do not place neon glow behind every component.
+
+ANIMATION
+
+Motion should be: - Fast - Subtle - Functional
+
+Use transitions for: - Navigation - Bottom sheets - Button states -
+Loading - Success - Story interactions - Wallet confirmation - Assistant
+responses
+
+Avoid excessive animation that makes financial flows feel playful.
+
+============================================================ PART 7: UI
+BEHAVIOR RULES
+============================================================
+
+EVERY INTERACTIVE ELEMENT MUST HAVE A STATE.
+
+Buttons: - Normal - Pressed - Disabled - Loading - Success/error where
+applicable
+
+Inputs: - Empty - Focused - Filled - Error - Disabled
+
+Network screens: - Loading - Loaded - Empty - Error - Retry
+
+Financial operations: - Preparing - Awaiting confirmation - Processing -
+Pending - Success - Failed - Cancelled
+
+============================================================ PART 8:
+ACCESSIBILITY
+============================================================
+
+Do not sacrifice usability for aesthetics.
+
+Support: - Readable text - Sufficient contrast - Touch targets -
+Screen-reader labels - Meaningful semantic labels - Error descriptions -
+Accessible icons - Scalable text where possible
+
+Green-on-black must remain readable.
+
+============================================================ PART 9:
+RESPONSIVE BEHAVIOR
+============================================================
+
+The screenshots are references, not permission to hardcode one phone
+size.
+
+Build responsively for: - Small phones - Standard phones - Large
+phones - Android aspect ratios - iOS aspect ratios
+
+Do not: - hardcode screenshot coordinates - use giant
+absolute-positioned layouts for normal content - crop essential content
+on smaller screens - let keyboards cover inputs - allow bottom
+navigation to overlap content
+
+============================================================ PART 10:
+PRODUCTION FUNCTIONALITY RULE
+============================================================
+
+Every visual screen must correspond to a real feature.
+
+Never create:
+
+-   Fake wallet balance
+-   Fake transaction success
+-   Fake Paystack confirmation
+-   Fake AI response
+-   Fake translation
+-   Fake order status
+-   Fake nearby places
+-   Fake social relationships
+-   Fake product inventory
+
+If a provider is unavailable: - Build the correct UI - Connect the real
+integration boundary - Display provider-unavailable state - Document the
+missing credential/configuration
+
+Do not disguise an unavailable service as working.
+
+============================================================ PART 11:
+ASSET RULES ============================================================
+
+FIRST UPLOADED IMAGE
+
+Role: - In-app Eazy logo - Application icon
+
+Use it consistently but appropriately.
+
+Generate platform-specific icon assets if required.
+
+Do not simply stretch the same source file everywhere if platform icon
+specifications require separate exports.
+
+SECOND UPLOADED IMAGE
+
+Role: - Welcome screen visual
+
+Do not use it as the app icon.
+
+Do not substitute the first image into the Welcome page.
+
+GENERATED CLEAN ASSET
+
+Create a refined visual based on the supplied reference.
+
+Requirements: - Remove unrelated logos - Remove accidental branding -
+Preserve Eazy identity - High resolution - Clean edges - No watermark -
+No distorted lettering - No random symbols - Production quality
+
+============================================================ PART 12:
+MANUS EXECUTION PROMPT
+============================================================
+
+Use the following as the operational instruction after loading this
+document:
+
+“Treat this document as the visual and product context for Eazy.
+
+First inspect the existing Flutter repository.
+
+Do not immediately start rewriting screens.
+
+Map every existing screen and service against this specification.
+
+Create an implementation matrix:
+
+SCREEN CURRENT STATE BACKEND SUPPORT MISSING UI MISSING LOGIC MISSING
+NATIVE CONFIG MISSING PROVIDER TEST STATUS
+
+Then implement the product.
+
+Preserve working functionality.
+
+Do not create duplicate architecture.
+
+Use the existing backend wherever it already supports the feature.
+
+For missing backend capabilities, extend the existing architecture
+instead of fabricating client-side behavior.
+
+Implement the visual language from the reference boards across the
+entire app.
+
+The two supplied UI boards are the design authority for: - color -
+spacing - component language - hierarchy - navigation - density -
+branding - visual tone
+
+They are not static screenshots to copy.
+
+Build real Flutter screens.
+
+Make them responsive.
+
+Make them accessible.
+
+Connect them to real application state.
+
+Handle loading, empty, error, permission, processing, success, pending
+and failure states.
+
+For payments and wallet functionality, backend state is authoritative.
+
+For provider-dependent features, never fake successful provider
+behavior.
+
+Use the first uploaded image as the in-app logo and app icon.
+
+Use the second uploaded image as the Welcome visual.
+
+Authoritative authentication workflow:
+Splash -> Welcome -> Get Started -> Email/Phone -> Verification Code -> Profile Setup + Password -> Terms/Create Account -> Discovery -> Home.
+
+Sign In:
+Email + Password -> Remember Me / Forgot Password -> Sign In, with Google and Apple below.
+
+Do not revert to the older registration flow shown in the reference boards. The reference boards define the visual language; this workflow defines the current product behavior.
+
+
+Generate the improved clean asset and remove unrelated logos from the
+supplied imagery.
+
+After implementation, run all available Flutter analysis, tests, builds
+and CI checks.
+
+Do not claim anything was tested if it was not actually tested.
+
+Do not stop because one screen is complete.
+
+The objective is to make the entire Eazy ecosystem visually and
+functionally coherent.”
+
+============================================================ PART 13:
+VISUAL QUALITY GATE
+============================================================
+
+Before declaring the UI complete, inspect the whole application as one
+product.
+
+Ask:
+
+1.  Does every screen look like Eazy?
+2.  Is the dark green visual system consistent?
+3.  Are the bright green actions reserved for meaningful actions?
+4.  Are cards and inputs using consistent geometry?
+5.  Is typography consistent?
+6.  Are icons consistent?
+7.  Does the bottom navigation remain coherent?
+8.  Do marketplace screens feel related to social screens?
+9.  Does wallet feel trustworthy rather than flashy?
+10. Does Eazy Assist feel native to Eazy?
+11. Does chat feel like the same application?
+12. Does profile feel social rather than financial?
+13. Do settings feel structured?
+14. Are loading and error states designed?
+15. Are empty states designed?
+16. Are images sharp?
+17. Are assets correctly assigned?
+18. Is the Welcome image the second upload?
+19. Is the first upload the logo and app icon?
+20. Have unrelated logos been removed from the generated visual?
+21. Does the application still look good without the green glow?
+22. Does it remain readable on a small screen?
+23. Are Android and iOS layouts both sane?
+24. Are there any dead buttons?
+25. Are there any screens that exist only as visual placeholders?
+
+If any answer is no, the UI is not finished.
+
+============================================================ PART 13: DO
+NOT CONFUSE VISUAL COMPLETION WITH PRODUCT COMPLETION
+============================================================
+
+A beautiful screenshot is not a finished product.
+
+A feature is finished only when the relevant:
+
+-   screen
+-   navigation
+-   state
+-   backend
+-   API
+-   security
+-   permissions
+-   provider
+-   loading state
+-   error state
+-   persistence
+-   validation
+
+are correctly connected.
+
+The reference boards define how Eazy should LOOK.
+
+The Eazy product/technical architecture defines how Eazy should WORK.
+
+Manus must satisfy both.
