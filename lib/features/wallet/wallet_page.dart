@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -594,6 +595,7 @@ class _WalletPageState extends State<WalletPage> {
   String get _username =>
       username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
+  String get _heldBalance => wallet?['heldBalance']?.toString() ?? '0.00';
   bool _validMoney(String value) =>
       RegExp(r'^(?:0|[1-9][0-9]{0,17})\.[0-9]{2}$').hasMatch(value);
   bool _validUsername(String value) =>
@@ -601,245 +603,279 @@ class _WalletPageState extends State<WalletPage> {
   Map<String, dynamic> _map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
 
+  Future<void> _showSendOptions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 12),
+              children: [
+                const ListTile(
+                  title: Text(
+                    'Send money',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text('Choose where the money should go.'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person_outline_rounded),
+                  title: const Text('Send to an Eazy user'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    sendToEazyUser();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.account_balance_outlined),
+                  title: const Text('Send to an external bank'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    sendToExternalBank();
+                  },
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Future<void> _showReceiveOptions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 12),
+              children: [
+                const ListTile(
+                  title: Text(
+                    'Receive money',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text('Receive from Eazy or an external bank.'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.qr_code_2_rounded),
+                  title: const Text('Receive from an Eazy user'),
+                  subtitle: Text('Show your QR code or username: @$_username'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    receiveFromEazyUser();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.account_balance_rounded),
+                  title: const Text('Receive from an external bank'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    receiveFromExternalBank();
+                  },
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => SafeArea(
     child: RefreshIndicator(
       onRefresh: load,
       child: ListView(
-        padding: const EdgeInsets.only(bottom: 32),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Row(
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Wallet',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: loading ? null : load,
+                icon: const Icon(Icons.history_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF168C58), Color(0xFF075B3A)],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: EazyColors.greenDeep.withValues(alpha: .28),
+                  blurRadius: 22,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Wallet',
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Total Balance',
                         style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      SizedBox(height: 3),
-                      Text(
-                        'Move money with clarity and control',
-                        style: TextStyle(color: EazyColors.muted),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: loading ? null : load,
-                  icon: const Icon(Icons.refresh_rounded),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [EazyColors.greenDeep, Color(0xFF0B4D32)],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Available balance',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    loading ? '••••••' : '$_currency $_balance',
-                    style: const TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    wallet?['status']?.toString() ?? 'Wallet',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const _SectionTitle('Send money'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _Action(
-                    icon: Icons.person_outline_rounded,
-                    label: 'Eazy user',
-                    onTap: busy ? null : sendToEazyUser,
+                    IconButton(
+                      onPressed: () {},
+                      icon: const Icon(
+                        Icons.visibility_outlined,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  loading ? '••••••' : '$_currency $_balance',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _Action(
-                    icon: Icons.account_balance_outlined,
-                    label: 'External bank',
-                    onTap: busy ? null : sendToExternalBank,
+                const SizedBox(height: 4),
+                Text(
+                  'Held balance  $_currency $_heldBalance',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _Action(
-                    icon: Icons.qr_code_scanner_rounded,
-                    label: 'Scan QR',
-                    onTap: busy ? null : scanQr,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          const _SectionTitle('Receive money'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _Action(
-                    icon: Icons.qr_code_2_rounded,
-                    label: 'Eazy QR',
-                    onTap: busy ? null : receiveFromEazyUser,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _Action(
-                    icon: Icons.account_balance_rounded,
-                    label: 'External bank',
-                    onTap: busy ? null : receiveFromExternalBank,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _Action(
-                    icon: Icons.add_rounded,
-                    label: 'Add money',
-                    onTap: busy ? null : deposit,
-                  ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _WalletAction(
+                        icon: Icons.arrow_upward_rounded,
+                        label: 'Send',
+                        onTap: busy ? null : _showSendOptions,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _WalletAction(
+                        icon: Icons.arrow_downward_rounded,
+                        label: 'Receive',
+                        onTap: busy ? null : _showReceiveOptions,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _WalletAction(
+                        icon: Icons.qr_code_scanner_rounded,
+                        label: 'Scan QR',
+                        onTap: busy ? null : scanQr,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              child: Text(
-                error!,
-                style: const TextStyle(color: EazyColors.red),
-              ),
-            ),
-          const SizedBox(height: 18),
-          const _SectionTitle('Bank receiving account'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Card(
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(error!, style: const TextStyle(color: EazyColors.red)),
+          ],
+          const SizedBox(height: 22),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => context.push('/assist'),
               child: Padding(
                 padding: const EdgeInsets.all(18),
-                child:
-                    virtualAccount == null
-                        ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Receive from an external bank',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
-                              ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: EazyColors.green.withValues(alpha: .14),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: EazyColors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Easy Access',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
                             ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Create a dedicated receiving account. Provider availability and account status are shown honestly.',
-                              style: TextStyle(
-                                color: EazyColors.muted,
-                                height: 1.4,
-                              ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Tap to open Eazy Assist and get help with your wallet.',
+                            style: TextStyle(
+                              color: EazyColors.muted,
+                              height: 1.35,
                             ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton(
-                                onPressed: busy ? null : requestVirtualAccount,
-                                child: const Text('Create receiving account'),
-                              ),
-                            ),
-                          ],
-                        )
-                        : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _Info(
-                              'Bank',
-                              virtualAccount!['bankName']?.toString() ??
-                                  'Pending',
-                            ),
-                            _Info(
-                              'Account number',
-                              virtualAccount!['accountNumber']?.toString() ??
-                                  'Pending',
-                            ),
-                            _Info(
-                              'Account name',
-                              virtualAccount!['accountName']?.toString() ??
-                                  'Pending',
-                            ),
-                            _Info(
-                              'Status',
-                              virtualAccount!['status']?.toString() ??
-                                  'pending',
-                            ),
-                            const SizedBox(height: 10),
-                            const Text(
-                              'Incoming external-bank deposits are credited by the configured provider webhook; this screen never fabricates a balance update.',
-                              style: TextStyle(
-                                color: EazyColors.muted,
-                                fontSize: 12,
-                                height: 1.35,
-                              ),
-                            ),
-                          ],
-                        ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const _SectionTitle('Recent activity'),
-          if (transactions.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Card(
-                child: Padding(
-                  padding: EdgeInsets.all(22),
-                  child: Text(
-                    'No transactions yet.',
-                    style: TextStyle(color: EazyColors.muted),
-                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: EazyColors.muted,
+                    ),
+                  ],
                 ),
               ),
             ),
-          ...transactions.map(
-            (entry) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-              child: Card(
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Transaction history',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 10),
+          if (transactions.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(22),
+                child: Text(
+                  'No transactions yet.',
+                  style: TextStyle(color: EazyColors.muted),
+                ),
+              ),
+            )
+          else
+            ...transactions.map(
+              (entry) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: EazyColors.green.withValues(alpha: .12),
@@ -863,59 +899,47 @@ class _WalletPageState extends State<WalletPage> {
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: OutlinedButton.icon(
-              onPressed: busy ? null : verifyPending,
-              icon: const Icon(Icons.verified_outlined),
-              label: const Text('Verify pending payment'),
-            ),
-          ),
         ],
       ),
     ),
   );
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
-  final String title;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-    child: Text(
-      title,
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-    ),
-  );
-}
-
-class _Action extends StatelessWidget {
-  const _Action({required this.icon, required this.label, required this.onTap});
+class _WalletAction extends StatelessWidget {
+  const _WalletAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
+
   @override
-  Widget build(BuildContext context) => Card(
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(EazyRadius.lg),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 5),
-        child: Column(
-          children: [
-            Icon(icon, color: EazyColors.green),
-            const SizedBox(height: 7),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
-            ),
-          ],
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(18),
+    child: Column(
+      children: [
+        Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .14),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Icon(icon, color: Colors.white, size: 29),
         ),
-      ),
+        const SizedBox(height: 7),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+          ),
+        ),
+      ],
     ),
   );
 }
