@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme/eazy_theme.dart';
-import '../../app/theme/theme_controller.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -51,13 +50,7 @@ class WelcomePage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      _BrandLockup(dark: dark),
-                      const Spacer(),
-                      _ModeChip(dark: dark),
-                    ],
-                  ),
+                  Row(children: [_BrandLockup(dark: dark)]),
                   const Spacer(),
                   Container(
                     width: double.infinity,
@@ -171,53 +164,6 @@ class _BrandLockup extends StatelessWidget {
         ),
       ),
     ],
-  );
-}
-
-class _ModeChip extends StatelessWidget {
-  const _ModeChip({required this.dark});
-  final bool dark;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () {
-      eazyThemeMode.value = dark ? ThemeMode.light : ThemeMode.dark;
-    },
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color:
-            dark
-                ? Colors.black.withValues(alpha: .22)
-                : Colors.white.withValues(alpha: .82),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color:
-              dark
-                  ? Colors.white.withValues(alpha: .25)
-                  : const Color(0xFFD2E6D9),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-            size: 14,
-            color: dark ? EazyColors.green : EazyColors.greenDeep,
-          ),
-          const SizedBox(width: 5),
-          Text(
-            dark ? 'Dark' : 'Light',
-            style: TextStyle(
-              color: dark ? Colors.white : const Color(0xFF10231A),
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    ),
   );
 }
 
