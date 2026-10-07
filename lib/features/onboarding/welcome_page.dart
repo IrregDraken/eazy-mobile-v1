@@ -11,7 +11,6 @@ class WelcomePage extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final foreground = dark ? Colors.white : const Color(0xFF10231A);
     final muted = dark ? const Color(0xFFD0DDD5) : const Color(0xFF4D6256);
-    final panel = dark ? const Color(0xE6071710) : const Color(0xF2FFFFFF);
 
     return Scaffold(
       body: Stack(
@@ -30,18 +29,18 @@ class WelcomePage extends StatelessWidget {
                 colors:
                     dark
                         ? const [
-                          Color(0x20030B07),
+                          Color(0x00030B07),
                           Color(0x10030B07),
-                          Color(0xB5030B07),
-                          Color(0xF5030B07),
+                          Color(0xB8071D12),
+                          Color(0xF504110B),
                         ]
                         : const [
-                          Color(0x120FFFFFF),
-                          Color(0x080FFFFFF),
-                          Color(0xB8F3FBF6),
-                          Color(0xF5F3FBF6),
+                          Color(0x00030B07),
+                          Color(0x12030B07),
+                          Color(0xB8DFF4E8),
+                          Color(0xF3F3FBF6),
                         ],
-                stops: const [0, .32, .70, 1],
+                stops: const [0, .35, .70, 1],
               ),
             ),
           ),
@@ -50,30 +49,13 @@ class WelcomePage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
               child: Column(
                 children: [
-                  Row(children: [_BrandLockup(dark: dark)]),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _BrandLockup(dark: dark),
+                  ),
                   const Spacer(),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-                    decoration: BoxDecoration(
-                      color: panel,
-                      borderRadius: BorderRadius.circular(26),
-                      border: Border.all(
-                        color:
-                            dark
-                                ? Colors.white.withValues(alpha: .15)
-                                : const Color(0xFFD8E9DE),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: dark ? .32 : .12,
-                          ),
-                          blurRadius: 26,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -81,10 +63,10 @@ class WelcomePage extends StatelessWidget {
                           'Your world, made easier.',
                           style: TextStyle(
                             color: foreground,
-                            fontSize: 30,
+                            fontSize: 32,
                             height: 1.05,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: -1.2,
+                            letterSpacing: -1.3,
                           ),
                         ),
                         const SizedBox(height: 9),

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -171,7 +173,7 @@ class _AuthPageState extends State<AuthPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0B5C3C), Color(0xFF19B875), Color(0xFFB9FFD9)],
+            colors: [Color(0xFF031E13), Color(0xFF062B1B), Color(0xFF0B5C3C)],
           ),
         ),
         child: SafeArea(
@@ -198,7 +200,7 @@ class _AuthPageState extends State<AuthPage> {
                                       : context.go('/welcome'),
                           icon: const Icon(
                             Icons.arrow_back_rounded,
-                            color: Color(0xFF062116),
+                            color: Colors.white,
                           ),
                         ),
                         const Spacer(),
@@ -264,9 +266,14 @@ class _AuthPageState extends State<AuthPage> {
         borderRadius: BorderRadius.circular(28),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 24,
-            offset: Offset(0, 10),
+            color: Color(0x66000000),
+            blurRadius: 30,
+            offset: Offset(0, 16),
+          ),
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 5,
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -431,13 +438,13 @@ class _AuthPageState extends State<AuthPage> {
             SizedBox(height: compact ? 7 : 10),
             _ProviderButton(
               label: 'Continue with Google',
-              icon: Icons.g_mobiledata_rounded,
+              icon: const _GoogleMark(),
               onPressed: busy ? null : () => social(widget.auth.signInGoogle),
             ),
             const SizedBox(height: 7),
             _ProviderButton(
               label: 'Continue with Apple',
-              icon: Icons.apple,
+              icon: const Icon(Icons.apple, color: Color(0xFF082117), size: 20),
               onPressed: busy ? null : () => social(widget.auth.signInApple),
             ),
           ],
@@ -660,7 +667,7 @@ class _ProviderButton extends StatelessWidget {
     required this.onPressed,
   });
   final String label;
-  final IconData icon;
+  final Widget icon;
   final VoidCallback? onPressed;
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -668,7 +675,7 @@ class _ProviderButton extends StatelessWidget {
     height: 43,
     child: OutlinedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, color: const Color(0xFF082117), size: 20),
+      icon: icon,
       label: Text(
         label,
         style: const TextStyle(
@@ -683,4 +690,62 @@ class _ProviderButton extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _GoogleMark extends StatelessWidget {
+  const _GoogleMark();
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 20,
+    height: 20,
+    child: CustomPaint(painter: _GoogleMarkPainter()),
+  );
+}
+
+class _GoogleMarkPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width * .36;
+    final stroke = size.width * .18;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final colors = <Color>[
+      const Color(0xFF4285F4),
+      const Color(0xFF34A853),
+      const Color(0xFFFBBC05),
+      const Color(0xFFEA4335),
+    ];
+    final starts = <double>[
+      -math.pi / 4,
+      math.pi / 4,
+      3 * math.pi / 4,
+      5 * math.pi / 4,
+    ];
+    for (var i = 0; i < colors.length; i++) {
+      canvas.drawArc(
+        rect,
+        starts[i],
+        math.pi / 2 + .08,
+        false,
+        Paint()
+          ..color = colors[i]
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..strokeCap = StrokeCap.butt,
+      );
+    }
+    canvas.drawRect(
+      Rect.fromLTWH(
+        center.dx,
+        center.dy - stroke / 2,
+        radius + stroke / 2,
+        stroke,
+      ),
+      Paint()..color = const Color(0xFF4285F4),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
