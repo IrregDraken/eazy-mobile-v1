@@ -2,133 +2,255 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme/eazy_theme.dart';
+import '../../app/theme/theme_controller.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = dark ? Colors.white : const Color(0xFF10231A);
+    final muted = dark ? const Color(0xFFD0DDD5) : const Color(0xFF4D6256);
+    final panel = dark ? const Color(0xE6071710) : const Color(0xF2FFFFFF);
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0B5C3C), Color(0xFF19B875), Color(0xFFB9FFD9)],
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/eazy_onboarding_hero.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
           ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 24, 22, 28),
-            child: Column(
-              children: [
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors:
+                    dark
+                        ? const [
+                          Color(0x20030B07),
+                          Color(0x10030B07),
+                          Color(0xB5030B07),
+                          Color(0xF5030B07),
+                        ]
+                        : const [
+                          Color(0x120FFFFFF),
+                          Color(0x080FFFFFF),
+                          Color(0xB8F3FBF6),
+                          Color(0xF5F3FBF6),
+                        ],
+                stops: const [0, .32, .70, 1],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      _BrandLockup(dark: dark),
+                      const Spacer(),
+                      _ModeChip(dark: dark),
+                    ],
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: .12),
-                      borderRadius: BorderRadius.circular(30),
+                      color: panel,
+                      borderRadius: BorderRadius.circular(26),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: .35),
+                        color:
+                            dark
+                                ? Colors.white.withValues(alpha: .15)
+                                : const Color(0xFFD8E9DE),
                       ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.public_rounded,
-                          size: 15,
-                          color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: dark ? .32 : .12,
+                          ),
+                          blurRadius: 26,
+                          offset: const Offset(0, 12),
                         ),
-                        SizedBox(width: 6),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          'Everywhere',
+                          'Your world, made easier.',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                            color: foreground,
+                            fontSize: 30,
+                            height: 1.05,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+                        Text(
+                          'Connect with people, discover what matters, and move through everyday life with Eazy.',
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        const Center(child: _PageDots()),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: FilledButton.icon(
+                            onPressed: () => context.go('/auth?mode=register'),
+                            icon: const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 19,
+                            ),
+                            label: const Text('GET STARTED'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 42,
+                          child: TextButton(
+                            onPressed: () => context.go('/auth?mode=login'),
+                            style: TextButton.styleFrom(
+                              foregroundColor:
+                                  dark ? Colors.white : EazyColors.greenDeep,
+                            ),
+                            child: const Text('I ALREADY HAVE AN ACCOUNT'),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                const Spacer(),
-                const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: Colors.white,
-                  size: 54,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Your world,\nmade easier.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 42,
-                    height: .98,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -2,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Connect with people, discover what matters, and make everyday life feel simpler in one beautifully connected place.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xE6FFFFFF),
-                    fontSize: 15,
-                    height: 1.45,
-                  ),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 58,
-                  child: FilledButton.icon(
-                    onPressed: () => context.go('/auth?mode=register'),
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 20),
-                    label: const Text('Get Started'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF087A4A),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: OutlinedButton(
-                    onPressed: () => context.go('/auth?mode=login'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: .7),
-                      ),
-                    ),
-                    child: const Text('I Already Have An Account'),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'People · Products · Possibilities',
-                  style: TextStyle(
-                    color: Color(0xD9FFFFFF),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: .2,
-                  ),
-                ),
-              ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BrandLockup extends StatelessWidget {
+  const _BrandLockup({required this.dark});
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.asset(
+          'assets/images/eazy_app_icon.png',
+          width: 30,
+          height: 30,
+        ),
+      ),
+      const SizedBox(width: 8),
+      Text(
+        'Eazy',
+        style: TextStyle(
+          color: dark ? Colors.white : const Color(0xFF10231A),
+          fontSize: 24,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -1.2,
+        ),
+      ),
+    ],
+  );
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({required this.dark});
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () {
+      eazyThemeMode.value = dark ? ThemeMode.light : ThemeMode.dark;
+    },
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color:
+            dark
+                ? Colors.black.withValues(alpha: .22)
+                : Colors.white.withValues(alpha: .82),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color:
+              dark
+                  ? Colors.white.withValues(alpha: .25)
+                  : const Color(0xFFD2E6D9),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+            size: 14,
+            color: dark ? EazyColors.green : EazyColors.greenDeep,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            dark ? 'Dark' : 'Light',
+            style: TextStyle(
+              color: dark ? Colors.white : const Color(0xFF10231A),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _PageDots extends StatelessWidget {
+  const _PageDots();
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 22,
+        height: 5,
+        decoration: BoxDecoration(
+          color: EazyColors.green,
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      const SizedBox(width: 5),
+      ...List.generate(
+        2,
+        (_) => Padding(
+          padding: const EdgeInsets.only(left: 5),
+          child: Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: EazyColors.green.withValues(alpha: .38),
+              shape: BoxShape.circle,
             ),
           ),
         ),
       ),
-    );
-  }
+    ],
+  );
 }

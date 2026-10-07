@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/auth/auth_controller.dart';
 import 'router.dart';
 import 'theme/eazy_theme.dart';
+import 'theme/theme_controller.dart';
 
 class EazyApp extends StatefulWidget {
   const EazyApp({super.key, required this.auth});
@@ -31,13 +32,17 @@ class _EazyAppState extends State<EazyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Eazy',
-      debugShowCheckedModeBanner: false,
-      theme: EazyTheme.light(),
-      darkTheme: EazyTheme.dark(),
-      themeMode: ThemeMode.dark,
-      routerConfig: _router,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: eazyThemeMode,
+      builder:
+          (context, mode, _) => MaterialApp.router(
+            title: 'Eazy',
+            debugShowCheckedModeBanner: false,
+            theme: EazyTheme.light(),
+            darkTheme: EazyTheme.dark(),
+            themeMode: mode,
+            routerConfig: _router,
+          ),
     );
   }
 }

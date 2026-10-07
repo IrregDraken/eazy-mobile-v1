@@ -8,6 +8,7 @@ import '../../app/theme/eazy_theme.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
+
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
@@ -16,7 +17,6 @@ class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController controller;
   Timer? transition;
-  int stage = 0;
 
   @override
   void initState() {
@@ -25,12 +25,7 @@ class _SplashPageState extends State<SplashPage>
       vsync: this,
       duration: const Duration(milliseconds: 2200),
     )..repeat();
-    Timer.periodic(const Duration(milliseconds: 780), (timer) {
-      if (!mounted) return timer.cancel();
-      if (stage < 3) setState(() => stage++);
-      if (stage == 3) timer.cancel();
-    });
-    transition = Timer(const Duration(milliseconds: 3900), () {
+    transition = Timer(const Duration(milliseconds: 3000), () {
       if (mounted) context.go('/welcome');
     });
   }
@@ -44,20 +39,30 @@ class _SplashPageState extends State<SplashPage>
 
   @override
   Widget build(BuildContext context) {
-    final copy =
-        [
-          'More than an app.',
-          'More than an app.',
-          'Getting things ready for you…',
-          'People. Products. Payments. In one place.',
-        ][stage];
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final background = dark ? EazyColors.canvas : const Color(0xFFF3FBF6);
+    final foreground = dark ? EazyColors.ink : const Color(0xFF10231A);
+    final muted = dark ? EazyColors.muted : const Color(0xFF5B6C63);
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
+      backgroundColor: background,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF031E13), EazyColors.canvas, Color(0xFF020604)],
+            colors:
+                dark
+                    ? const [
+                      Color(0xFF031E13),
+                      EazyColors.canvas,
+                      Color(0xFF020604),
+                    ]
+                    : const [
+                      Color(0xFFE1F8EA),
+                      Color(0xFFF8FFFA),
+                      Color(0xFFD5F4E2),
+                    ],
           ),
         ),
         child: Center(
@@ -67,81 +72,57 @@ class _SplashPageState extends State<SplashPage>
                 (context, _) => Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(
-                      width: 178,
-                      height: 178,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Transform.rotate(
-                            angle: controller.value * math.pi * 2,
-                            child: Container(
-                              width: 166,
-                              height: 166,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: EazyColors.green.withValues(
-                                    alpha: .26,
-                                  ),
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: EazyColors.green.withValues(
-                                      alpha: .14,
-                                    ),
-                                    blurRadius: 28,
-                                    spreadRadius: 4,
-                                  ),
-                                ],
-                              ),
-                            ),
+                    Transform.scale(
+                      scale:
+                          .98 + math.sin(controller.value * math.pi * 2) * .025,
+                      child: Container(
+                        width: 116,
+                        height: 116,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: dark ? const Color(0xFF031E13) : Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: EazyColors.green.withValues(alpha: .65),
+                            width: 1.5,
                           ),
-                          Transform.scale(
-                            scale:
-                                .92 +
-                                math.sin(controller.value * math.pi * 2) * .06,
-                            child: Image.asset(
-                              'assets/images/eazy_logo_mark.png',
-                              width: 88,
-                              height: 100,
+                          boxShadow: [
+                            BoxShadow(
+                              color: EazyColors.green.withValues(alpha: .25),
+                              blurRadius: 28,
+                              spreadRadius: 3,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: Image.asset('assets/images/eazy_app_icon.png'),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
+                    const SizedBox(height: 18),
+                    Text(
                       'Eazy',
                       style: TextStyle(
+                        color: foreground,
                         fontSize: 42,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -3,
-                        color: EazyColors.ink,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 240),
-                      child: Text(
-                        copy,
-                        key: ValueKey(copy),
-                        style: const TextStyle(
-                          color: EazyColors.muted,
-                          fontSize: 13,
-                        ),
-                      ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Your world, made easier.',
+                      style: TextStyle(color: muted, fontSize: 14),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     SizedBox(
                       width: 170,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
-                          value: (stage + 1) / 4,
+                          value: null,
                           minHeight: 4,
-                          backgroundColor: EazyColors.border,
+                          backgroundColor: EazyColors.green.withValues(
+                            alpha: .16,
+                          ),
                           color: EazyColors.green,
                         ),
                       ),
