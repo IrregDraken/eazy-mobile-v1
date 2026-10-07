@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { currentUserId, requireAuth } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { sendSuccess } from '../../utils/http.js';
+import { paginationQuerySchema, type Pagination } from '../../utils/pagination.js';
 import { MarketplaceService, inventorySchema, productCreateSchema, productIdSchema, productSearchSchema, productUpdateSchema } from './service.js';
 
 export function createMarketplaceRouter(service: MarketplaceService): Router {
@@ -16,7 +17,10 @@ export function createMarketplaceRouter(service: MarketplaceService): Router {
 
 export function createCategoryRouter(service: MarketplaceService): Router {
   const router = Router();
-  router.get('/', async (_request, response) => sendSuccess(response, await service.categories()));
+  router.get('/', validate('query', paginationQuerySchema), async (request, response) => {
+    const query = request.query as unknown as Pagination;
+    return sendSuccess(response, await service.categories(query.page, query.limit));
+  });
   return router;
 }
 
