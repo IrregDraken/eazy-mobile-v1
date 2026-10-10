@@ -41,11 +41,10 @@ android {
     }
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            if (!keystorePropertiesFile.exists()) {
+                throw GradleException("Release signing is not configured. Add android/key.properties; refusing to use debug signing.")
             }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

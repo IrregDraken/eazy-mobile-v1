@@ -9,6 +9,7 @@ export interface DeletionBlocker { code: DeletionBlockerCode; message: string }
 
 /** Removes the sign-in identity (Firebase) so the person can no longer authenticate. */
 export interface IdentityRemover { deleteIdentity(firebaseUid: string): Promise<void> }
+export interface MediaDeleter { deleteObjects(paths: readonly string[]): Promise<{ deleted: number; requested: number }> }
 
 const BLOCKER_MESSAGES: Record<DeletionBlockerCode, string> = {
   WALLET_BALANCE: 'Move or withdraw the money in your Eazy wallet before deleting your account.',
@@ -28,7 +29,8 @@ export class AccountDeletionService {
   constructor(
     private readonly pool: Pool,
     private readonly identityRemover?: IdentityRemover,
-    private readonly terminator?: SessionTerminator
+    private readonly terminator?: SessionTerminator,
+    private readonly mediaDeleter?: MediaDeleter
   ) {}
 
   async preflight(userId: string): Promise<{ canDelete: boolean; blockers: DeletionBlocker[] }> {
@@ -36,7 +38,8 @@ export class AccountDeletionService {
     return { canDelete: blockers.length === 0, blockers };
   }
 
-  async deleteAccount(userId: string, metadata: { ipAddress?: string } = {}): Promise<{ deleted: true }> {
+  async deleteAccount(userId: string, metadata: { ipAddress?: string } = {}): Promise<{ deleted: true; cleanupPending?: true }> {
+    let firebaseUid = '';
     await withTransaction(this.pool, async client => {
       const locked = await client.query<{ firebase_uid: string; email: string | null; status: string }>(
         'SELECT firebase_uid, email, status FROM users WHERE id = $1 FOR UPDATE', [userId]
@@ -44,9 +47,23 @@ export class AccountDeletionService {
       const user = locked.rows[0];
       if (!user) throw new AppError('NOT_FOUND', 'Account not found');
       if (user.status === 'deleted') return;
+      firebaseUid = user.firebase_uid;
 
       const blockers = await this.findBlockers(client, userId);
       if (blockers.length) throw new AppError('CONFLICT', blockers[0]!.message, { blockers });
+
+      const mediaKeys = await this.collectOwnedMediaKeys(client, userId);
+      await client.query(
+        `INSERT INTO account_deletion_jobs (user_id, firebase_uid) VALUES ($1, $2)
+         ON CONFLICT (user_id) DO UPDATE SET firebase_uid = EXCLUDED.firebase_uid, updated_at = now()`,
+        [userId, user.firebase_uid]
+      );
+      for (const storageKey of mediaKeys) {
+        await client.query(
+          `INSERT INTO account_deletion_media (user_id, storage_key) VALUES ($1, $2)
+           ON CONFLICT (user_id, storage_key) DO NOTHING`, [userId, storageKey]
+        );
+      }
 
       // ---- Content the person created or took part in ------------------------------------------------------
       await client.query('DELETE FROM likes WHERE user_id = $1', [userId]);
@@ -101,11 +118,75 @@ export class AccountDeletionService {
         [userId, validIp(metadata.ipAddress)]
       );
 
-      // Last step before COMMIT: if the identity cannot be removed, everything above rolls back and the person can retry.
-      await this.identityRemover?.deleteIdentity(user.firebase_uid);
     });
+    const cleanup = await this.finishExternalCleanup(userId, firebaseUid);
     this.terminator?.terminateUserSessions(userId);
-    return { deleted: true };
+    return cleanup.pending ? { deleted: true, cleanupPending: true } : { deleted: true };
+  }
+
+  /** Retries media and Firebase cleanup without reopening a deleted account. */
+  async retryCleanup(userId: string): Promise<{ pending: boolean }> { return this.finishExternalCleanup(userId); }
+
+  private async collectOwnedMediaKeys(client: DbClient, userId: string): Promise<string[]> {
+    const result = await client.query<{ storage_key: string }>(
+      `SELECT storage_key FROM (
+         SELECT p.avatar_url AS storage_key FROM profiles p WHERE p.user_id = $1 AND p.avatar_url LIKE $2
+         UNION ALL SELECT pm.storage_key FROM post_media pm JOIN posts p ON p.id = pm.post_id WHERE p.author_id = $1 AND pm.storage_key LIKE $2
+         UNION ALL SELECT pm.storage_key FROM product_media pm JOIN products p ON p.id = pm.product_id WHERE p.seller_id = $1 AND pm.storage_key LIKE $2
+         UNION ALL SELECT ma.storage_key FROM message_attachments ma JOIN messages m ON m.id = ma.message_id WHERE m.sender_id = $1 AND ma.storage_key LIKE $2
+       ) owned WHERE storage_key IS NOT NULL AND storage_key <> '' AND storage_key !~ '(^/|\\.\\.|\\\\)'`,
+      [userId, `${userId}/%`]
+    );
+    return [...new Set(result.rows.map(row => row.storage_key))];
+  }
+
+  private async finishExternalCleanup(userId: string, firebaseUidHint?: string): Promise<{ pending: boolean }> {
+    const claimed = await this.claimCleanup(userId, firebaseUidHint);
+    if (!claimed) return { pending: Boolean(firebaseUidHint) };
+    try {
+      if (claimed.mediaKeys.length) {
+        if (!this.mediaDeleter) throw new Error('Media storage cleanup is not configured');
+        const result = await this.mediaDeleter.deleteObjects(claimed.mediaKeys);
+        if (result.requested !== claimed.mediaKeys.length || result.deleted !== claimed.mediaKeys.length) {
+          throw new Error('Media storage cleanup returned an incomplete deletion result');
+        }
+        await this.pool.query(
+          `UPDATE account_deletion_media SET status = 'deleted', last_error = NULL, updated_at = now()
+           WHERE user_id = $1 AND storage_key = ANY($2::text[]) AND status <> 'deleted'`,
+          [userId, claimed.mediaKeys]
+        );
+      }
+      if (!claimed.identityDeleted) {
+        if (!this.identityRemover) throw new Error('Firebase identity cleanup is not configured');
+        await this.identityRemover.deleteIdentity(claimed.firebaseUid);
+        await this.pool.query(`UPDATE account_deletion_jobs SET identity_deleted = true, status = 'complete', last_error = NULL, updated_at = now() WHERE user_id = $1`, [userId]);
+      } else {
+        await this.pool.query(`UPDATE account_deletion_jobs SET status = 'complete', last_error = NULL, updated_at = now() WHERE user_id = $1`, [userId]);
+      }
+      return { pending: false };
+    } catch (error) {
+      const message = error instanceof Error ? error.message.slice(0, 500) : 'External deletion failed';
+      await this.pool.query(`UPDATE account_deletion_media SET status = 'failed', last_error = $2, updated_at = now() WHERE user_id = $1 AND status <> 'deleted'`, [userId, message]);
+      await this.pool.query(`UPDATE account_deletion_jobs SET status = 'failed', last_error = $2, updated_at = now() WHERE user_id = $1`, [userId, message]);
+      return { pending: true };
+    }
+  }
+
+  private async claimCleanup(userId: string, firebaseUidHint?: string): Promise<{ firebaseUid: string; identityDeleted: boolean; mediaKeys: string[] } | null> {
+    return withTransaction(this.pool, async client => {
+      const result = await client.query<{ firebase_uid: string; identity_deleted: boolean; status: string; updated_at: string }>(
+        `SELECT firebase_uid, identity_deleted, status, updated_at FROM account_deletion_jobs WHERE user_id = $1 FOR UPDATE`, [userId]
+      );
+      const job = result.rows[0];
+      if (!job) return null;
+      if (job.status === 'running' && Date.now() - Date.parse(job.updated_at) < 10 * 60 * 1000) return null;
+      const media = await client.query<{ storage_key: string }>(
+        `SELECT storage_key FROM account_deletion_media WHERE user_id = $1 AND status <> 'deleted' ORDER BY id`, [userId]
+      );
+      await client.query(`UPDATE account_deletion_jobs SET status = 'running', attempts = attempts + 1, updated_at = now() WHERE user_id = $1`, [userId]);
+      await client.query(`UPDATE account_deletion_media SET status = 'pending', attempts = attempts + 1, updated_at = now() WHERE user_id = $1 AND status <> 'deleted'`, [userId]);
+      return { firebaseUid: job.firebase_uid || firebaseUidHint || '', identityDeleted: job.identity_deleted, mediaKeys: media.rows.map(row => row.storage_key) };
+    });
   }
 
   private async findBlockers(db: Queryable, userId: string): Promise<DeletionBlocker[]> {

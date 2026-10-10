@@ -180,7 +180,6 @@ class _AuthPageState extends State<AuthPage> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxHeight < 700;
-              final veryCompact = constraints.maxHeight < 570;
               return Padding(
                 padding: EdgeInsets.fromLTRB(
                   18,
@@ -484,50 +483,6 @@ class _AuthPageState extends State<AuthPage> {
       if (mounted) setState(() => error = e.message);
     }
   }
-}
-
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 78,
-    height: 78,
-    decoration: const BoxDecoration(
-      shape: BoxShape.circle,
-      color: Color(0xFF082117),
-    ),
-    child: const Center(
-      child: Icon(
-        Icons.auto_awesome_rounded,
-        color: Color(0xFF48F59A),
-        size: 40,
-      ),
-    ),
-  );
-}
-
-class _BrandWordmark extends StatelessWidget {
-  const _BrandWordmark({this.dark = false});
-  final bool dark;
-  @override
-  Widget build(BuildContext context) => Text.rich(
-    TextSpan(
-      children: [
-        TextSpan(
-          text: 'ea',
-          style: TextStyle(
-            color: dark ? const Color(0xFF062116) : Colors.white,
-          ),
-        ),
-        const TextSpan(text: 'zy', style: TextStyle(color: Color(0xFF0A7B4B))),
-      ],
-    ),
-    style: const TextStyle(
-      fontSize: 25,
-      fontWeight: FontWeight.w900,
-      letterSpacing: -2,
-    ),
-  );
 }
 
 class _ToggleRow extends StatelessWidget {

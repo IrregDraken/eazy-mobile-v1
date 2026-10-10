@@ -22,7 +22,7 @@ function fakePool(handler: (sql: string, values?: unknown[]) => { rows?: unknown
 }
 
 test('deleting an account that is already deleted is a harmless no-op', async () => {
-  const { pool, log } = fakePool(sql => sql.includes('FOR UPDATE') ? { rows: [{ firebase_uid: 'f1', email: null, status: 'deleted' }] } : {});
+  const { pool, log } = fakePool(sql => sql.includes('FOR UPDATE') && !sql.includes('account_deletion_jobs') ? { rows: [{ firebase_uid: 'f1', email: null, status: 'deleted' }] } : {});
   let removed = 0;
   const service = new AccountDeletionService(pool, { deleteIdentity: async () => { removed += 1; } });
   assert.deepEqual(await service.deleteAccount(U), { deleted: true });
@@ -40,14 +40,15 @@ test('a wallet balance blocks deletion with a clear message and nothing is chang
   assert.ok(!log.some(entry => entry.startsWith('DELETE') || entry.startsWith('UPDATE')));
 });
 
-test('if the sign-in identity cannot be removed the whole deletion is rolled back', async () => {
-  const { pool, log } = fakePool(sql => sql.includes('FOR UPDATE')
+test('if the sign-in identity cannot be removed the deleted account remains blocked and cleanup is retryable', async () => {
+  const { pool, log } = fakePool(sql => sql.includes('account_deletion_jobs')
+    ? { rows: [{ firebase_uid: 'f1', identity_deleted: false, status: 'pending' }] }
+    : sql.includes('FOR UPDATE')
     ? { rows: [{ firebase_uid: 'f1', email: 'a@b.co', status: 'active' }] }
     : sql.includes('AS balance') ? { rows: [{ balance: '0', pending: '0', orders: '0', sales: '0' }] } : {});
   const service = new AccountDeletionService(pool, { deleteIdentity: async () => { throw new AppError('SERVICE_UNAVAILABLE', 'Firebase unavailable'); } });
-  await assert.rejects(() => service.deleteAccount(U), (error: unknown) => error instanceof AppError && error.code === 'SERVICE_UNAVAILABLE');
-  assert.ok(log.includes('ROLLBACK'), `expected ROLLBACK in ${log.join(' | ')}`);
-  assert.ok(!log.includes('COMMIT'));
+  assert.deepEqual(await service.deleteAccount(U), { deleted: true, cleanupPending: true });
+  assert.ok(log.includes('COMMIT'), `expected committed database tombstone in ${log.join(' | ')}`);
 });
 
 // ---------- integration test against a real, fully migrated PostgreSQL (opt-in) ----------
