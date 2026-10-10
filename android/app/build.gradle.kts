@@ -32,6 +32,9 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions { jvmTarget = JavaVersion.VERSION_17.toString() }
+    val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
+        taskName.substringAfterLast(':').contains("release", ignoreCase = true)
+    }
     defaultConfig {
         applicationId = "com.eazy.app"
         minSdk = flutter.minSdkVersion
@@ -41,10 +44,12 @@ android {
     }
     buildTypes {
         release {
-            if (!keystorePropertiesFile.exists()) {
+            if (!keystorePropertiesFile.exists() && releaseTaskRequested) {
                 throw GradleException("Release signing is not configured. Add android/key.properties; refusing to use debug signing.")
             }
-            signingConfig = signingConfigs.getByName("release")
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }
