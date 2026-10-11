@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>370546190167-61u39skv6bseus60nmf1029p1rs73a8n.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.370546190167-61u39skv6bseus60nmf1029p1rs73a8n</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>370546190167-1e1653dk09c829o5omq6bojaje049b3i.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyApiyHJiToDkjPnbXEXM8Vtli-auCv3wkE</string>
+	<key>GCM_SENDER_ID</key>
+	<string>370546190167</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.eazy.app</string>
+	<key>PROJECT_ID</key>
+	<string>eazy-24e6a</string>
+	<key>STORAGE_BUCKET</key>
+	<string>eazy-24e6a.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:370546190167:ios:858322b07a69b2eff74012</string>
+</dict>
+</plist>
