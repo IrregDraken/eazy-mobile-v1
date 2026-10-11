@@ -16,6 +16,19 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>eazy_mobile_v1</string>
+	<key>GIDClientID</key>
+	<string>370546190167-61u39skv6bseus60nmf1029p1rs73a8n.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.370546190167-61u39skv6bseus60nmf1029p1rs73a8n</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -26,6 +39,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Eazy uses the camera when you choose to scan a QR code.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Eazy uses your location when you choose location-based features, such as finding nearby content and services.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Eazy accesses your photo library when you choose a photo for your profile or content you share.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
