@@ -62,6 +62,22 @@ const server = http.createServer((req, res) => {
     return res.end('Bad request');
   }
 
+  const routeAliases = new Map([
+    ['/privacy-policy', '/privacy/'],
+    ['/terms-of-service', '/terms/'],
+    ['/account-deletion', '/delete-account/'],
+    ['/payments-and-refunds', '/payments-refunds/'],
+  ]);
+  const canonicalRoutes = new Set([
+    '/privacy', '/terms', '/cookies', '/support', '/delete-account',
+    '/community-guidelines', '/payments-refunds', '/security',
+  ]);
+  const redirectTarget = routeAliases.get(requested) || (canonicalRoutes.has(requested) ? requested + '/' : null);
+  if (redirectTarget) {
+    res.writeHead(308, { Location: redirectTarget, 'Cache-Control': 'public, max-age=300' });
+    return res.end();
+  }
+
   if (requested === '/' || requested.endsWith('/')) {
     const pagePath = requested === '/' ? '/' : requested;
     try {
