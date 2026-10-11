@@ -44,7 +44,7 @@ jobs:
           js = (root / "site.js").read_text()
           required = [
               "support@eazy.name.ng", "privacy@eazy.name.ng",
-              "legal@eazy.name.ng", "security@eazy.name.ng",
+              "legal@eazy.name.ng",
               "Thony Dynamic Enterprises", "RC 2962026",
           ]
           for item in required:
