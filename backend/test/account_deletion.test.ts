@@ -51,10 +51,13 @@ test('if the sign-in identity cannot be removed the deleted account remains bloc
   assert.ok(log.includes('COMMIT'), `expected committed database tombstone in ${log.join(' | ')}`);
 });
 
-// ---------- integration test against a real, fully migrated PostgreSQL (opt-in) ----------
-// TEST_DATABASE_URL=postgres://... npm test   (the schema from backend/migrations must already be applied)
+// ---------- integration test against a real, fully migrated PostgreSQL (explicitly opt-in) ----------
+// The test is intentionally limited to a disposable local PostgreSQL instance. The CI job sets all
+// three safety variables and applies backend/migrations before running the suite.
 const url = process.env.TEST_DATABASE_URL;
-test('account deletion against a real database', { skip: url ? false : 'set TEST_DATABASE_URL to run' }, async () => {
+const runRealDatabaseTest = process.env.EAZY_RUN_INTEGRATION_TEST === 'true' || Boolean(url);
+test('account deletion against a real database', { skip: runRealDatabaseTest ? false : 'set TEST_DATABASE_URL to run' }, async () => {
+  assertSafeIntegrationDatabase(url);
   const pool = new pg.Pool({ connectionString: url });
   const q = (sql: string, values?: unknown[]) => pool.query(sql, values);
   // Use a THROWAWAY database. The ledger is append-only (a trigger rejects deletes) and a deleted account keeps a
@@ -128,3 +131,22 @@ test('account deletion against a real database', { skip: url ? false : 'set TEST
     await pool.end();
   }
 });
+
+function assertSafeIntegrationDatabase(rawUrl: string | undefined): asserts rawUrl is string {
+  if (!rawUrl) throw new Error('TEST_DATABASE_URL is required when the real integration test is enabled');
+  if (process.env.EAZY_TEST_DATABASE_CONFIRMED !== 'true') {
+    throw new Error('EAZY_TEST_DATABASE_CONFIRMED=true is required for the destructive integration test');
+  }
+  const parsed = new URL(rawUrl);
+  if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
+    throw new Error('TEST_DATABASE_URL must use the PostgreSQL protocol');
+  }
+  if (!['127.0.0.1', 'localhost', '::1'].includes(parsed.hostname.toLowerCase())) {
+    throw new Error('TEST_DATABASE_URL must point to a local disposable PostgreSQL instance');
+  }
+  const expectedDatabase = process.env.EAZY_TEST_DATABASE_NAME;
+  const actualDatabase = decodeURIComponent(parsed.pathname.replace(/^\//, ''));
+  if (!expectedDatabase || actualDatabase !== expectedDatabase) {
+    throw new Error('TEST_DATABASE_URL does not match the explicitly configured isolated test database');
+  }
+}
