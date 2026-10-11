@@ -1,119 +1,135 @@
-const DRAFT = '<div class="draft-banner" role="note"><strong>Internal working draft — not approved for publication.</strong> Business identity is confirmed as Thony Dynamic Enterprises (RC 2962026), but Anthony\'s approval, professional review, mailbox receipt, hosting/DNS and technical provider verification remain outstanding.</div>';
 const contacts = {
   support: 'support@eazy.name.ng',
   privacy: 'privacy@eazy.name.ng',
   legal: 'legal@eazy.name.ng',
   security: 'security@eazy.name.ng'
 };
+const operator = 'Thony Dynamic Enterprises';
+const registration = 'RC 2962026';
+const address = '125/130 Nnamdi Azikiwe Street, Idumota, Lagos Island, Lagos State, Nigeria';
+const updated = '11 October 2026';
 const routes = {
-  '/': { title: 'Eazy — Your world, made easier.', render: home },
-  '/privacy': { title: 'Privacy notice — Eazy', render: privacy },
-  '/terms': { title: 'Terms of use — Eazy', render: terms },
-  '/cookies': { title: 'Cookies — Eazy', render: cookies },
-  '/support': { title: 'Support — Eazy', render: support },
-  '/delete-account': { title: 'Delete your account — Eazy', render: deletion },
-  '/community-guidelines': { title: 'Community guidelines — Eazy', render: community },
-  '/payments-refunds': { title: 'Payments and refunds — Eazy', render: payments },
-  '/security': { title: 'Security — Eazy', render: security }
+  '/': { title: 'Eazy | Your world, made easier', render: home },
+  '/privacy': { title: 'Privacy Policy | Eazy', render: privacy },
+  '/terms': { title: 'Terms of Service | Eazy', render: terms },
+  '/cookies': { title: 'Cookies and Similar Technologies | Eazy', render: cookies },
+  '/support': { title: 'Support | Eazy', render: support },
+  '/delete-account': { title: 'Delete Your Eazy Account', render: deletion },
+  '/community-guidelines': { title: 'Community Guidelines | Eazy', render: community },
+  '/payments-refunds': { title: 'Payments and Refunds | Eazy', render: payments },
+  '/security': { title: 'Security | Eazy', render: security }
 };
-
 function page(eyebrow, heading, lede, body) {
-  return `<section class="prose"><div class="eyebrow">${eyebrow}</div><h1>${heading}</h1><p class="lede">${lede}</p>${DRAFT}${body}</section>`;
+  return `<section class="prose"><div class="eyebrow">${eyebrow}</div><h1>${heading}</h1><p class="lede">${lede}</p><p class="meta">Last updated: ${updated}</p>${body}</section>`;
 }
 function linkCards() {
   return `<div class="grid">
-    <a class="card card-link" href="/support"><h3>Help & support ↗</h3><p>Safe guidance for accounts, verification, payments, orders and privacy.</p></a>
-    <a class="card card-link" href="/privacy"><h3>Privacy ↗</h3><p>What Eazy may process, why it is needed and how to make a request.</p></a>
-    <a class="card card-link" href="/delete-account"><h3>Delete account ↗</h3><p>Understand the authenticated in-app path and the unauthenticated request process.</p></a>
+    <a class="card card-link" href="/support/"><h3>Help & support ↗</h3><p>Account, verification, orders, payments and safety.</p></a>
+    <a class="card card-link" href="/privacy/"><h3>Privacy ↗</h3><p>Understand data handling and exercise your privacy rights.</p></a>
+    <a class="card card-link" href="/delete-account/"><h3>Delete account ↗</h3><p>Find the in-app deletion path and request help if locked out.</p></a>
   </div>`;
 }
 function home() {
-  return `<section class="hero"><div class="eyebrow">Eazy Mobile V1</div><h1>Your world,<br><span style="color:var(--green)">made easier.</span></h1><p class="lede">Public support, privacy and account information for Eazy. This local preparation site mirrors the routes intended for <strong>eazy.name.ng</strong>.</p>${DRAFT}${linkCards()}<div class="callout warning"><strong>Publication gate.</strong> The operator identity, approved policy text, mailbox routing and public hosting/DNS configuration are still awaiting owner action. Nothing here is represented as legally approved or publicly live.</div><h2>All information routes</h2><div class="route-list">${Object.keys(routes).filter(x => x !== '/').map(x => `<a href="${x}">${x}</a>`).join('')}</div></section>`;
+  return `<section class="hero"><div class="eyebrow">Eazy Mobile</div><h1>Your world,<br><span style="color:var(--green)">made easier.</span></h1><p class="lede">Eazy brings social connection, messaging, marketplace tools and helpful everyday services into one place.</p>${linkCards()}<h2>Helpful information</h2><div class="route-list">${Object.keys(routes).filter(x => x !== '/').map(x => `<a href="${x}/">${x.replace(/^\//,'').replaceAll('-',' ')}</a>`).join('')}</div><p class="meta">Operated by ${operator} (${registration}), Nigeria.</p></section>`;
 }
 function privacy() {
-  return page('Privacy', 'A clear view of your data.', 'This working draft explains the categories of personal data Eazy may process and the choices and requests that must be available to users.', `
-    <h2>Controller and contact</h2><p><strong>Controller:</strong> Thony Dynamic Enterprises, RC 2962026, 125/130 Nnamdi Azikiwe Street, Idumota, Lagos Island, Lagos State, Nigeria.<br><strong>Initial privacy oversight:</strong> Anthony; no DPO/DPCO has been designated.<br><strong>Privacy contact:</strong> <a href="mailto:${contacts.privacy}">${contacts.privacy}</a> (proposed; inbound receipt unverified).</p>
-    <h2>Data Eazy may process</h2><p>Depending on the features you use, Eazy may process account and authentication data, profile data such as name, username, date of birth, biography and avatar, social content and activity, messages and attachments, marketplace and order data, wallet and payment records, notifications and device tokens, location queries, translation requests, Assist sessions, and security/support metadata such as IP address, user-agent, request IDs and rate-limit events.</p>
-    <p>The final notice must identify the exact enabled providers and data flows. Possible providers identified from the current source include Firebase Authentication, Resend, Supabase PostgreSQL and Storage, Railway, Paystack if enabled, FCM/APNs if enabled, HERE if enabled, a translation provider if enabled and an AI provider if enabled.</p>
-    <h2>Purposes and lawful bases</h2><p>Candidate purposes include providing the requested service, authentication and security, social and messaging features, marketplace and payment execution, abuse prevention, support, reliability and legal obligations. [LEGAL REVIEW REQUIRED: map each purpose to the approved lawful basis for each operating jurisdiction.]</p>
-    <h2>Your requests</h2><p>Subject to applicable law and legitimate exceptions, you may request access, correction, deletion, restriction, objection, portability or withdrawal of consent. Contact <a href="mailto:${contacts.privacy}">${contacts.privacy}</a> only after inbound mailbox routing has been configured and verified by the operator.</p>
-    <h2>Retention and deletion</h2><p>Eazy’s implemented deletion service removes or anonymises many account-linked records, revokes sessions and push-device records, removes selected content and preserves a deleted-user tombstone plus certain financial or security records where the current service requires it. Exact retention periods, backup expiry, provider propagation and legal-hold exceptions remain [OWNER/COUNSEL REQUIRED].</p>
-    <div class="callout warning"><strong>Complaint route pending approval.</strong> For Nigeria, the final policy should explain the applicable Nigeria Data Protection Commission complaint route after the operator/controller status and legal notice are approved.</div>`);
+  return page('Privacy policy', 'Your data. Your choices.', 'This policy explains how Eazy handles personal information when you use the Eazy mobile application and related services.', `
+    <h2>1. Who operates Eazy</h2><p>Eazy is operated by <strong>${operator}</strong> (${registration}), at ${address} (“Eazy”, “we”, “us” or “our”). For privacy requests, contact <a href="mailto:${contacts.privacy}">${contacts.privacy}</a>. For general support, contact <a href="mailto:${contacts.support}">${contacts.support}</a>.</p>
+    <h2>2. Information we process</h2><p>Depending on which features you use and which services are enabled, we may process:</p><ul><li><strong>Account and profile:</strong> email address, authentication identifiers, username, display name, profile details, avatar and account preferences.</li><li><strong>Content and communications:</strong> posts, comments, reactions, messages, media you upload, reports, and information needed to deliver and moderate content.</li><li><strong>Marketplace and transactions:</strong> listings, cart and order details, transaction references, amounts, currency, status and payment-provider responses. Payment card or bank credentials should be entered only into the authorised provider flow, not sent to Eazy by email or chat.</li><li><strong>Device and service data:</strong> device tokens for notifications, app version, diagnostic events, request identifiers, IP address and security signals needed to protect accounts and operate the service.</li><li><strong>Optional feature data:</strong> location when you use a location-dependent feature; content submitted for translation or Eazy Assist when those features are enabled; and information you choose to include in support requests.</li></ul>
+    <h2>3. How we use information</h2><p>We use information to create and secure accounts; provide social, chat, marketplace and other requested features; process and reconcile orders or payments where enabled; deliver notifications; respond to support and privacy requests; prevent fraud, spam, abuse and security incidents; troubleshoot and improve reliability; enforce our terms; and comply with legal obligations.</p>
+    <h2>4. Legal grounds</h2><p>Where applicable data-protection law requires a legal basis, processing may be based on performing our agreement with you, our legitimate interests in operating and securing Eazy, your consent for optional processing, and compliance with legal obligations. We will request consent where required and you may withdraw consent without affecting processing that was lawful before withdrawal.</p>
+    <h2>5. Sharing and service providers</h2><p>We do not sell personal information. We may share information with service providers that help us host and secure Eazy, authenticate users, store data and media, send email or notifications, process payments, provide location or translation functions, or power an AI feature you choose to use. Depending on feature availability and configuration, providers may include Firebase/Google, Railway, Supabase, Resend, Paystack, Apple, and other providers expressly used by the feature. We share only information reasonably needed for the relevant purpose, subject to applicable agreements and law. We may also disclose information when legally required or necessary to protect users, the service or others.</p>
+    <h2>6. International processing</h2><p>Our service providers may process information in countries other than the country where you live. Where required, we will use appropriate safeguards for international transfers and provide further information on request.</p>
+    <h2>7. Retention</h2><p>We retain information for as long as needed to provide the service, maintain account and transaction records, address disputes, protect security, enforce our terms and meet legal obligations. Retention varies by data type and purpose. When an account is deleted, we remove or de-identify associated information where feasible, subject to records that must be retained for legal, financial, security or fraud-prevention reasons and to backup systems completing their normal rotation. We do not promise immediate removal from every backup or independent provider system.</p>
+    <h2>8. Your choices and rights</h2><p>Depending on your location and applicable law, you may request access to, correction of, deletion of, restriction of or objection to certain processing; request a portable copy; or withdraw consent. You can manage available account preferences in Eazy and request account deletion using <a href="/delete-account/">this page</a>. Contact <a href="mailto:${contacts.privacy}">${contacts.privacy}</a> for privacy requests. We may need to verify your identity before responding.</p>
+    <h2>9. Children</h2><p>Eazy is not designed for children under 13, and users must meet the minimum age required by applicable law to use the service. If a parent or guardian believes a child has provided personal information contrary to this policy, contact our privacy team so we can assess and address the request.</p>
+    <h2>10. Security</h2><p>We use technical and organisational measures intended to protect information, including access controls and secure transmission where supported. No service can guarantee absolute security. Report suspected vulnerabilities or account compromise through <a href="/security/">our security page</a>.</p>
+    <h2>11. Changes and complaints</h2><p>We may update this policy as Eazy changes. The updated date above identifies the latest published version. If you have a concern, contact us first at <a href="mailto:${contacts.privacy}">${contacts.privacy}</a>. You may also contact the relevant data-protection authority, including the Nigeria Data Protection Commission where applicable.</p>
+    <h2>12. Contact</h2><p><strong>${operator}</strong><br>${address}<br>Privacy: <a href="mailto:${contacts.privacy}">${contacts.privacy}</a><br>Legal: <a href="mailto:${contacts.legal}">${contacts.legal}</a></p>`);
 }
 function terms() {
-  return page('Terms', 'Terms of use for Eazy.', 'These working terms define the sections that must be approved before Eazy is offered to the public.', `
-    <p><strong>Operator:</strong> Thony Dynamic Enterprises (RC 2962026).<br><strong>Governing law and venue:</strong> [JURISDICTION — COUNSEL TO APPROVE].<br><strong>Effective date:</strong> [EFFECTIVE DATE].</p>
-    <h2>Account and acceptable use</h2><p>Users must provide accurate information, protect account credentials and use Eazy lawfully. The final version must define eligibility, age requirements, account security, suspension, termination and account deletion.</p>
-    <h2>Content and community</h2><p>Users retain rights they have in their content but must give Eazy the limited permissions needed to host and display it. Users must follow the <a href="/community-guidelines">Community Guidelines</a>. The final licence, moderation, appeals and dispute language requires approval.</p>
-    <h2>Marketplace and financial features</h2><p>Marketplace, wallet, payment, transfer and bank features are subject to availability, provider terms and approved financial disclosures. Eazy must not promise a refund, balance, transfer or order outcome beyond the server and provider records.</p>
-    <h2>Availability and responsibility</h2><p>The service may change or be unavailable. The final document must include approved disclaimers, liability limits, dispute handling, third-party-provider terms and contact details.</p>
-    <div class="callout warning"><strong>Not approved.</strong> Do not publish these terms until the operator identity, jurisdiction, age threshold, user-content licence, financial terms and refund/cancellation interactions are approved.</div>`);
+  return page('Terms of service', 'The rules for using Eazy.', 'By accessing or using Eazy, you agree to these Terms. If you do not agree, do not use the service.', `
+    <h2>1. Operator and eligibility</h2><p>Eazy is operated by ${operator} (${registration}), ${address}. You must be at least 13 years old and meet any higher minimum age required by local law. If you are not legally able to agree to these Terms, do not use Eazy.</p>
+    <h2>2. Your account</h2><p>Provide accurate information, keep your sign-in credentials and verification codes private, and promptly secure an account you believe has been compromised. You are responsible for activity authorised through your account, except where applicable law provides otherwise. We may suspend or restrict access to protect users, investigate abuse or comply with law.</p>
+    <h2>3. Your content and permission to operate</h2><p>You retain rights you hold in content you create or upload. You grant Eazy a non-exclusive, worldwide, royalty-free licence to host, store, reproduce, adapt for technical compatibility, display and distribute that content only as reasonably necessary to operate, secure and provide the features you choose, including showing posts to your selected audience. This licence ends when the content is removed from active service, except for temporary backup copies, content already shared by others where removal is not technically possible, or records retained for legal or security reasons.</p>
+    <h2>4. Acceptable use</h2><p>You must follow our <a href="/community-guidelines/">Community Guidelines</a>. Do not use Eazy for unlawful activity, fraud, harassment, threats, impersonation, privacy invasion, malware, spam, exploitation, infringement, manipulation of payment flows or interference with service security. Do not attempt to access another person's account or data without permission.</p>
+    <h2>5. Marketplace, payments and wallet-related features</h2><p>Features related to listings, orders, payments, transfers or balances may depend on eligibility, region and provider availability. Displayed statuses can change while a provider confirms an operation. Do not repeat a payment or transfer if its status is uncertain. The applicable provider may impose separate terms. Eazy does not promise that every feature is available in every location, and a wallet interface must not be treated as a bank account unless expressly stated in a separate approved agreement. See <a href="/payments-refunds/">Payments and Refunds</a>.</p>
+    <h2>6. Safety, reports and moderation</h2><p>You can report content or users through available in-app controls. We may remove content, limit features, suspend or terminate accounts when reasonably necessary to enforce these Terms, protect users or comply with law. Where appropriate and feasible, we may provide a route to appeal a moderation decision.</p>
+    <h2>7. Third-party services</h2><p>Some features rely on third-party services. Their availability and processing are subject to their own terms and privacy practices. We are not responsible for independent third-party services to the extent permitted by law, but this does not remove rights you have under mandatory law.</p>
+    <h2>8. Availability and changes</h2><p>We may update, suspend or discontinue features for maintenance, security, legal or operational reasons. We will provide notice where required by law. We do not guarantee uninterrupted or error-free service.</p>
+    <h2>9. Account deletion</h2><p>You can initiate account deletion in the app settings or follow the process at <a href="/delete-account/">Delete Account</a>. Deletion is subject to identity verification and lawful retention requirements. Outstanding balances, unsettled orders or legal obligations may need to be resolved before some records can be removed.</p>
+    <h2>10. Disclaimers and liability</h2><p>To the extent permitted by applicable law, Eazy is provided on an “as available” basis. Nothing in these Terms excludes or limits liability or consumer rights that cannot lawfully be excluded or limited. Any liability limitation will apply only to the extent permitted by law.</p>
+    <h2>11. Governing law and contact</h2><p>These Terms are governed by the laws of the Federal Republic of Nigeria, subject to mandatory consumer-protection rules that apply to you. Courts with competent jurisdiction in Nigeria may hear disputes, without depriving consumers of any mandatory rights. Questions: <a href="mailto:${contacts.legal}">${contacts.legal}</a>. Support: <a href="mailto:${contacts.support}">${contacts.support}</a>.</p>
+    <p class="meta">Operator: ${operator}, ${registration}. ${address}</p>`);
 }
 function cookies() {
-  return page('Cookies', 'Cookies and similar technologies.', 'This working draft records what must be checked before Eazy makes a public cookie or tracking statement.', `
-    <h2>What must be inventoried</h2><p>The final page must identify strictly necessary cookies, analytics, advertising, session, fraud-prevention tools, embedded support widgets, CDN behavior and any third-party scripts used by the deployed website.</p>
-    <p>The current Flutter/mobile repository does not prove the cookie set for <strong>eazy.name.ng</strong>. This draft therefore does not claim that Eazy uses cookies or that it uses none.</p>
-    <h2>Your choices</h2><p>[OWNER/COUNSEL REQUIRED: confirm consent tooling, withdrawal method, retention and jurisdiction-specific rules before publication.]</p>`);
+  return page('Cookies', 'Cookies and similar technologies.', 'This website is designed to provide policy and support information without advertising trackers.', `
+    <h2>Website storage</h2><p>The public information pages do not intentionally set advertising or analytics cookies. The site may use essential technical mechanisms required by its hosting provider to deliver pages securely. Hosting and security infrastructure may process request metadata such as IP address, requested path, user agent and timestamps in server logs.</p>
+    <h2>Mobile application</h2><p>The Eazy mobile application may use device storage, secure local storage, notification tokens and similar technologies to maintain sessions, protect credentials and provide features you enable. Mobile-platform permissions are handled by the operating system and app settings.</p>
+    <h2>Third-party links</h2><p>Links to external providers open services governed by their own privacy and cookie policies. We do not control their storage technologies.</p>
+    <h2>Questions</h2><p>Contact <a href="mailto:${contacts.privacy}">${contacts.privacy}</a> for questions about this notice.</p>`);
 }
 function support() {
   const faq = [
-    ['I cannot sign in', 'Check your email and use password reset. If the account is disabled, contact support with the account email. Never send a password, code or session token.'],
-    ['My verification code did not arrive', 'Check spam, confirm the address and request a new code through the app. Codes expire and are rate-limited. Do not share them.'],
-    ['A payment or transfer is wrong', 'Do not repeat an ambiguous operation. Contact support with the Eazy transaction or order reference, time and currency. Never send a PIN, password, full card number, bank login or code.'],
-    ['My marketplace order is missing or incorrect', 'Keep the order reference and contact support with the issue and relevant time. Do not send unrelated personal documents or full payment credentials.'],
-    ['I want my data deleted', 'Use Settings → Delete account when signed in. If you cannot sign in, use the privacy channel after the operator has configured and verified inbound routing.']
+    ['I cannot sign in', 'Check that you entered the correct email address and use the password-reset or sign-in recovery option available in the app. Never share your password or verification code.'],
+    ['My verification email did not arrive', 'Check your spam folder, confirm that your email address is correct, wait briefly and request a new message from the app. Never share one-time codes.'],
+    ['A payment or transfer looks wrong', 'Do not repeat an operation whose status is unclear. Keep the Eazy transaction or order reference, amount, currency and approximate time. Never email a PIN, password, full card number or bank login.'],
+    ['My order is missing', 'Keep the order reference and describe what happened and when. Include only information needed to investigate the order.'],
+    ['I want to delete my account', 'When signed in, open Settings and choose Delete account. If you cannot sign in, contact privacy@eazy.name.ng for identity-verified assistance.']
   ];
-  return page('Support', 'Help without the guesswork.', 'Start with the safe answers below. Escalate only the information needed to identify the account, order or transaction.', `
-    <div class="card"><h3>Live Chat Coming Soon</h3><p>Live agent chat is not available yet. This page does not create a ticket or claim that a support request has been received.</p></div>
-    <h2>Frequently asked questions</h2>${faq.map(([q, a]) => `<details class="faq"><summary>${q}</summary><p>${a}</p></details>`).join('')}
-    <h2>Escalation channels</h2><p>These are proposed routing addresses only. The operator must configure and test inbound mailboxes or forwarding before publication.</p>
+  return page('Support', 'How can we help?', 'For account, marketplace, payment, privacy and safety questions, contact the appropriate Eazy team.', `
     <div class="contact-grid">
       <div class="card contact"><span class="contact-icon">✦</span><div><strong>General support</strong><br><a href="mailto:${contacts.support}">${contacts.support}</a></div></div>
-      <div class="card contact"><span class="contact-icon">↗</span><div><strong>Payment or transfer dispute</strong><br><a href="mailto:${contacts.support}">${contacts.support}</a></div></div>
-      <div class="card contact"><span class="contact-icon">◌</span><div><strong>Privacy or deletion</strong><br><a href="mailto:${contacts.privacy}">${contacts.privacy}</a></div></div>
-      <div class="card contact"><span class="contact-icon">◇</span><div><strong>Security report</strong><br><a href="mailto:${contacts.security}">${contacts.security}</a></div></div>
+      <div class="card contact"><span class="contact-icon">◌</span><div><strong>Privacy and account deletion</strong><br><a href="mailto:${contacts.privacy}">${contacts.privacy}</a></div></div>
+      <div class="card contact"><span class="contact-icon">◇</span><div><strong>Legal enquiries</strong><br><a href="mailto:${contacts.legal}">${contacts.legal}</a></div></div>
+      <div class="card contact"><span class="contact-icon">↗</span><div><strong>Security reports</strong><br><a href="mailto:${contacts.security}">${contacts.security}</a></div></div>
     </div>
-    <div class="callout security"><strong>Never send:</strong> passwords, Firebase tokens, one-time codes, payment PINs, private keys, bank logins or full card data.</div>`);
+    <h2>Frequently asked questions</h2>${faq.map(([q, a]) => `<details class="faq"><summary>${q}</summary><p>${a}</p></details>`).join('')}
+    <div class="callout security"><strong>Keep your account safe.</strong> Eazy support will never need your password, one-time code, payment PIN, private key or bank login.</div>
+    <p>If you contact us, include the account email or relevant order reference and a concise description. Do not include unnecessary identity documents or full payment credentials.</p>`);
 }
 function deletion() {
-  return page('Account deletion', 'Delete your Eazy account.', 'Eazy provides an authenticated in-app deletion path and a separate privacy request route for people who cannot sign in.', `
-    <div class="callout"><strong>In the app:</strong> Open <strong>Settings → Delete account</strong>, review the confirmation, and confirm. The app sends the authenticated request to the existing account-deletion service and clears the local session after success.</div>
-    <h2>If you cannot sign in</h2><p>Email <a href="mailto:${contacts.privacy}?subject=Eazy%20privacy%20or%20deletion%20request">${contacts.privacy}</a> with a short request. This address is proposed and must not be described as receiving mail until the operator configures and tests the mailbox or forwarding route.</p>
-    <h2>Identity verification</h2><p>The privacy owner must verify that the requester controls the account before acting. Do not send passwords, verification codes, Firebase tokens, payment PINs or full payment credentials by email.</p>
-    <h2>What happens</h2><p>The current service removes or anonymises many account-linked relationships and content, deletes push-device and selected service records, anonymises the profile as a deleted-user tombstone, marks the user deleted, records a security event and attempts to remove the Firebase identity. It can block deletion when a wallet balance requires resolution.</p>
-    <h2>Processing time and exceptions</h2><p>[OWNER/COUNSEL REQUIRED: approve the response timeframe, backup propagation statement, provider deletion process and retention exceptions.] Some financial, security, fraud-investigation, legal-hold or backup records may need to be retained where required.</p>
-    <div class="callout warning"><strong>No email-only deletion claim:</strong> this page does not collect an email and pretend to delete an account. Unauthenticated requests require an approved identity-verification process and an assigned privacy owner.</div>`);
+  return page('Account deletion', 'Delete your Eazy account.', 'You can request deletion even if you no longer have access to the app.', `
+    <h2>Option 1: In the Eazy app</h2><ol><li>Sign in to the account you want to delete.</li><li>Open Settings and choose <strong>Delete account</strong>.</li><li>Read the confirmation and submit the request.</li><li>Keep the confirmation shown by the app for your records.</li></ol>
+    <h2>Option 2: If you cannot sign in</h2><p>Email <a href="mailto:${contacts.privacy}?subject=Eazy%20account%20deletion%20request">${contacts.privacy}</a> from the email address associated with your Eazy account, if possible. Write “Account deletion request” in the subject and provide your username or other non-secret account identifier. Do not send passwords, verification codes, tokens, payment PINs or full card details.</p>
+    <h2>Identity verification</h2><p>To protect your account, we may ask for proportionate information to verify that you control it. We will not ask for your password or one-time authentication code by email.</p>
+    <h2>What is deleted</h2><p>After a valid request is verified, we delete or de-identify account information and associated content where feasible, revoke active sessions and remove related device registrations, subject to technical limitations and applicable law. Some records may be retained when required for legal, accounting, fraud-prevention, security or dispute purposes. Backup copies may persist until normal backup rotation. Some transactions, open orders or unresolved balances may need to be settled or reviewed before all associated records can be deleted.</p>
+    <h2>Timing and confirmation</h2><p>We will assess a verified request and process it within the period required by applicable law. If additional time or information is needed, we will explain why and what happens next. Contact <a href="mailto:${contacts.privacy}">${contacts.privacy}</a> for questions or to follow up.</p>
+    <p><strong>Operator:</strong> ${operator} (${registration}), ${address}.</p>`);
 }
 function community() {
-  return page('Community', 'Make Eazy safer for everyone.', 'These working guidelines define prohibited content and the moderation controls that must be operational before UGC launch.', `
-    <h2>Not allowed</h2><p>Eazy prohibits illegal content, child sexual abuse or exploitation, threats, harassment, bullying, doxxing, impersonation, targeted hate, fraud, manipulation of financial features, non-consensual intimate imagery, spam, malware, copyright infringement and content that creates an unsafe environment.</p>
-    <h2>Moderation and reporting</h2><p>Users must accept the Terms and Community Guidelines before creating or uploading content. The final release must provide filtering, in-app reporting, user blocking, timely moderation response, removal, repeat-abuse handling, appeals and evidence preservation.</p>
-    <h2>Age and mature content</h2><p>[OWNER/COUNSEL REQUIRED: approve minimum age, rating, mature-content policy and filtering defaults. The safest V1 launch decision may be to prohibit sexual or explicit content.]</p>
-    <h2>Contact</h2><p>Report safety issues through <a href="/support">Support</a>. Published contact information and response SLA must be configured before store submission.</p>`);
+  return page('Community guidelines', 'Help keep Eazy safe.', 'These guidelines apply to posts, comments, profiles, messages, marketplace activity and other user-generated content on Eazy.', `
+    <h2>Prohibited behaviour</h2><ul><li>Threats, targeted harassment, bullying, stalking or incitement to violence.</li><li>Hate or dehumanising abuse targeting protected characteristics.</li><li>Sexual exploitation, child sexual abuse material, grooming or non-consensual intimate imagery.</li><li>Doxxing, impersonation, identity theft, scams, deceptive listings or payment manipulation.</li><li>Malware, phishing, spam, coordinated inauthentic activity or attempts to bypass security controls.</li><li>Content that unlawfully infringes another person's intellectual-property or privacy rights.</li><li>Illegal goods, services or activity, and attempts to use Eazy to facilitate harm.</li></ul>
+    <h2>Respect and consent</h2><p>Share only content you have the right to share. Respect privacy, consent and other people's boundaries. Do not publish another person's personal information without a lawful basis or permission.</p>
+    <h2>Marketplace integrity</h2><p>Listings and offers must be accurate and lawful. Do not misrepresent items, manipulate prices or orders, impersonate buyers or sellers, or request sensitive payment credentials outside an authorised provider flow.</p>
+    <h2>Reporting and enforcement</h2><p>Use in-app reporting and blocking controls where available, or contact <a href="mailto:${contacts.support}">${contacts.support}</a>. We may remove content, restrict functionality or suspend accounts based on severity, evidence, repeated behaviour, safety risk and applicable law. Where feasible, users may request review of an enforcement decision.</p>
+    <h2>Urgent danger</h2><p>If someone is in immediate danger, contact local emergency services. Do not rely on an app report as an emergency-response channel.</p>
+    <h2>Contact</h2><p>Questions about these guidelines: <a href="mailto:${contacts.legal}">${contacts.legal}</a>.</p>`);
 }
 function payments() {
-  return page('Payments', 'Payments, transfers and refunds.', 'This working page describes the information that must be approved for each enabled financial product; it does not claim that live payments are enabled.', `
-    <div class="callout warning"><strong>Provider status:</strong> the source contains Paystack integration boundaries and server-side safeguards, but source code is not proof that a provider account is activated or that live money features are enabled.</div>
-    <h2>Before a payment dispute</h2><p>Do not repeat an ambiguous charge or transfer. Keep the Eazy order or transaction reference, exact currency, amount and time. Contact <a href="mailto:${contacts.support}">${contacts.support}</a> after inbound routing is configured. Never send a PIN, password, full card number or bank login.</p>
-    <h2>Required final disclosures</h2><p>The approved page must state the contracting merchant/operator, enabled countries and currencies, product scope, charges and fees, authorization flow, pending/failed/reversed states, refund eligibility, cancellation, chargebacks, dispute timing and provider responsibilities.</p>
-    <h2>Reconciliation and exceptions</h2><p>The server must remain authoritative for order totals and ledger state. Pending or ambiguous provider outcomes must not be presented as successful from a client assertion. [FINANCE/COUNSEL REQUIRED: approve refund and dispute policy.]</p>`);
+  return page('Payments and refunds', 'Understand a payment before you repeat it.', 'This page explains how to raise a payment or order issue. The exact options depend on the feature, provider, transaction status and applicable law.', `
+    <h2>Before retrying</h2><p>If a payment, transfer or order is pending or unclear, do not immediately repeat it. Check the transaction status in Eazy and retain the order or transaction reference, amount, currency and time. A provider confirmation may take time to reconcile.</p>
+    <h2>Report an issue</h2><p>Contact <a href="mailto:${contacts.support}">${contacts.support}</a> with the reference and a concise description. Never send your password, payment PIN, one-time code, full card number, bank login or private key.</p>
+    <h2>Refunds and cancellations</h2><p>Eligibility and timing depend on the product or order, whether the payment was completed, the merchant or seller involved, the payment provider's process and applicable consumer law. If a refund is approved, the return path and timing may depend on the original payment method and provider. We will not represent a refund as completed until the relevant transaction state supports that status.</p>
+    <h2>Errors, disputes and unauthorised activity</h2><p>Report suspected unauthorised activity promptly. We may ask for non-secret details needed to investigate and may coordinate with the relevant provider. You should also contact your bank or payment provider where appropriate. Do not send sensitive credentials by email.</p>
+    <h2>Service availability</h2><p>Payment, wallet, transfer and marketplace features may not be available in all regions or at all times. A feature shown in the app does not guarantee that a provider has activated live processing for your account or location.</p>
+    <h2>Contact</h2><p>Support: <a href="mailto:${contacts.support}">${contacts.support}</a><br>Legal: <a href="mailto:${contacts.legal}">${contacts.legal}</a></p>`);
 }
 function security() {
-  return page('Security', 'Report a security concern responsibly.', 'Use the proposed security route for vulnerabilities or account-safety concerns, without sending secrets or live credentials.', `
-    <h2>Security contact</h2><p><a href="mailto:${contacts.security}">${contacts.security}</a></p><p>This address is proposed only. The operator must configure and test inbound routing before publication.</p>
-    <h2>What to include</h2><p>Provide a concise description, affected feature, safe reproduction steps, timestamps and non-sensitive evidence. Do not include passwords, tokens, private keys, payment credentials or personal data that is not necessary.</p>
-    <h2>What happens next</h2><p>[OWNER-APPROVED PROCESS REQUIRED: assign security owner, acknowledgement target, severity handling, evidence retention, coordinated disclosure and incident-notification procedure.]</p>
-    <div class="callout security"><strong>Do not probe production destructively.</strong> Testing must be authorized, bounded and non-destructive.</div>`);
+  return page('Security', 'Report a security concern.', 'We welcome responsible reports that help protect Eazy users and service integrity.', `
+    <h2>Contact</h2><p>Email <a href="mailto:${contacts.security}?subject=Eazy%20security%20report">${contacts.security}</a> with a concise description, affected feature, safe reproduction steps and timestamps. Do not include passwords, one-time codes, private keys, payment credentials or unnecessary personal data.</p>
+    <h2>Responsible testing</h2><p>Do not access another person's data, disrupt service, run destructive tests, use social engineering or perform testing beyond your authorisation. Stop if you encounter real user data and report what happened without copying more information than necessary.</p>
+    <h2>Response</h2><p>We will assess reports based on severity, reproducibility, impact and available information. Please allow reasonable time for investigation and remediation before public disclosure. Do not use the security address for general support, account recovery or urgent emergencies.</p>
+    <h2>Account compromise</h2><p>If you believe your account is compromised, secure your email account, use the available recovery flow and contact <a href="mailto:${contacts.support}">${contacts.support}</a>. Never share a password or verification code with anyone.</p>`);
 }
-
 function render() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
-  const route = routes[path] || { title: 'Page not found — Eazy', render: () => page('404', 'That route is not ready.', 'Use the navigation below to return to a prepared Eazy route.', '<p><a class="button" href="/">Return home</a></p>') };
+  const route = routes[path] || { title: 'Page not found | Eazy', render: () => page('404', 'Page not found', 'The page you requested does not exist.', '<p><a class="button" href="/">Return home</a></p>') };
   document.title = route.title;
   document.querySelector('#app').innerHTML = route.render();
-  document.querySelector('#app').focus();
 }
-document.querySelector('.menu-toggle').addEventListener('click', (event) => {
+const menu = document.querySelector('.menu-toggle');
+if (menu) menu.addEventListener('click', (event) => {
   const button = event.currentTarget;
   const nav = document.querySelector('#site-nav');
   const open = nav.classList.toggle('open');
