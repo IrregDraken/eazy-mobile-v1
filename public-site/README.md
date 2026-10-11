@@ -21,7 +21,7 @@ Operator: **Thony Dynamic Enterprises**, RC 2962026, Lagos State, Nigeria.
 - Support: support@eazy.name.ng
 - Privacy and deletion: privacy@eazy.name.ng
 - Legal: legal@eazy.name.ng
-- Security: security@eazy.name.ng
+- Security reports: support@eazy.name.ng (use subject “Security report”)
 
 ## Hosting
 
