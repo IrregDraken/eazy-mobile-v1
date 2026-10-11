@@ -7,6 +7,46 @@ on:
     branches: [main]
 
 jobs:
+  ios-config-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate iOS Firebase and CocoaPods configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+
+          plist_path = Path("ios/Runner/GoogleService-Info.plist")
+          project_path = Path("ios/Runner.xcodeproj/project.pbxproj")
+          podfile_path = Path("ios/Podfile")
+
+          for path in (plist_path, project_path, podfile_path):
+              if not path.is_file():
+                  raise SystemExit(f"Required iOS configuration file is missing: {path}")
+
+          with plist_path.open("rb") as source:
+              config = plistlib.load(source)
+
+          if config.get("PROJECT_ID") != "eazy-24e6a":
+              raise SystemExit("Firebase iOS plist PROJECT_ID does not match the expected Eazy project")
+          if config.get("BUNDLE_ID") != "com.eazy.app":
+              raise SystemExit("Firebase iOS plist BUNDLE_ID does not match com.eazy.app")
+
+          project = project_path.read_text()
+          if "PRODUCT_BUNDLE_IDENTIFIER = com.eazy.app;" not in project:
+              raise SystemExit("Xcode Runner bundle identifier is not configured as com.eazy.app")
+          if "GoogleService-Info.plist in Resources" not in project:
+              raise SystemExit("Firebase plist is not referenced by the Runner Resources build phase")
+
+          podfile = podfile_path.read_text()
+          if "platform :ios, '15.0'" not in podfile or "flutter_install_all_ios_pods" not in podfile:
+              raise SystemExit("Flutter iOS Podfile is missing expected platform or plugin setup")
+
+          print("iOS configuration preflight passed (Firebase identifiers, Runner resource, Podfile).")
+          PY
   flutter-analyze-test:
     runs-on: ubuntu-latest
     steps:
