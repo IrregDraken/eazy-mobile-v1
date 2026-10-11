@@ -14,11 +14,11 @@
 These are implementation statements, not confirmation that every third-party provider has been enabled or tested in production.
 
 ## Verified CI baseline
-The previously inspected CI run passed Flutter analysis/tests, an Android **debug** build smoke test, backend build/lint/tests, and migrations/integration tests against disposable PostgreSQL. The optional real Supabase Storage job was skipped. Documentation-only commits made after that run still require a fresh CI result.
+The GitHub Actions run [38110972234](https://github.com/IrregDraken/eazy-mobile-v1/actions/runs/38110972234) completed successfully for the Firebase configuration commit: Flutter analysis/tests, Android **debug** build smoke test, and backend build/lint/tests passed. The optional real Supabase Storage job was skipped. This workflow does not build or archive iOS, and Android release signing is only attempted when signing secrets are configured.
 
 ## Current native configuration findings
 - Android includes `android/app/google-services.json` for Firebase project `eazy-24e6a` and package `com.eazy.app`.
-- The inspected validation branch does **not** contain `ios/Runner/GoogleService-Info.plist`. Firebase's default `Firebase.initializeApp()` path therefore cannot be assumed to work on iOS until the correct iOS Firebase app configuration is added.
+- `ios/Runner/GoogleService-Info.plist` is now present on the validation branch. Its Firebase project (`eazy-24e6a`) and bundle ID (`com.eazy.app`) were checked, and `ios/Runner.xcodeproj/project.pbxproj` includes it in the Runner Resources build phase. This verifies repository wiring, not a successful native iOS build.
 - iOS archive/signing, Apple Sign-In capabilities, and APNs have not been verified by the Linux Android CI workflow.
 - Android release signing is conditional on repository signing secrets. The previously passed build was an unsigned debug smoke build, not a signed release APK.
 - The client defaults to `https://eazy-mobile-v1-production.up.railway.app/v1`; verify that this is the intended V1 production backend before a store build.
@@ -33,7 +33,7 @@ Dart build definitions:
 - `APPLE_REDIRECT_URI`
 
 Native Firebase and identity:
-- Add the Firebase iOS app configuration at `ios/Runner/GoogleService-Info.plist` for the intended bundle identifier.
+- Run a native iOS build on macOS to verify CocoaPods resolution, Firebase initialization, Apple signing/provisioning, and archive generation. A repository search did not find a tracked `ios/Podfile`; verify whether it is generated in the build environment or restore the correct Flutter-generated Podfile before attempting the archive.
 - Confirm Android Firebase app configuration and signing-certificate fingerprints for the release key.
 - Configure Google OAuth client IDs for Android and iOS.
 - Configure Apple Sign-In Service ID, Team ID, key, redirect URL, Firebase provider, and iOS capability.
