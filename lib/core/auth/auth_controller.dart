@@ -79,7 +79,7 @@ class AuthController extends ChangeNotifier {
         if (user == null)
           throw const ApiException('Unable to create your Eazy account.');
         await _syncFirebaseUser(user, forceRefresh: true);
-        return requestEmailVerificationCode(email);
+        return await requestEmailVerificationCode(email);
       } on FirebaseAuthException catch (e) {
         throw ApiException(_firebaseMessage(e));
       }
@@ -344,6 +344,17 @@ class AuthController extends ChangeNotifier {
     _firebaseUser = null;
     _profile = null;
     notifyListeners();
+  }
+
+  Future<void> deleteAccount() async {
+    await _run(() async {
+      await api.post(
+        'auth/delete-account',
+        auth: true,
+        body: {'confirmation': 'DELETE'},
+      );
+      await signOut();
+    });
   }
 
   Future<void> _syncFirebaseUser(User user, {bool forceRefresh = false}) async {

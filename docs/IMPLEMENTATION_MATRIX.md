@@ -1,6 +1,6 @@
 # Eazy Mobile V1 Implementation Matrix
 
-This matrix records the local audit against `Eazy_Manus_UI_Context_Engineering.txt` and the current repository architecture. The supplied logo and welcome/auth artwork already exist under `assets/images/`, so no additional reference-image upload is required for this implementation pass.
+This matrix records the implementation and release-readiness status of the V1 app. The V1 logo and welcome/auth artwork are versioned under `assets/images/`.
 
 | Area | Current implementation | Backend/provider support | Remaining production configuration |
 | --- | --- | --- | --- |
@@ -22,8 +22,8 @@ This matrix records the local audit against `Eazy_Manus_UI_Context_Engineering.t
 | Notifications | Real in-app notifications, read/read-all, device token registration | Notifications + Firebase Messaging | Firebase Admin credentials and native push capabilities |
 | Profile/settings/security | Real profile stats/settings, session revocation, blocks, sign-out | Profiles, Settings, Security, Blocks | Final native privacy/permission copy |
 | Native permissions | Location/media/push boundaries present in feature modules | Platform APIs and backend provider boundaries | Android/iOS manifest, Info.plist, entitlements, runtime permission review |
-| Backend | Existing Railway TypeScript backend with migrations, validation, RLS/security, provider adapters and tests | Supabase PostgreSQL project `Eazy V2` is active and schema-aligned | Verify Railway deployment points to the intended active Supabase project |
-| Validation | Existing backend test suite passes baseline; Flutter tests pass; analysis has informational lint findings plus missing asset directory warning | CI scripts and build docs | Resolve lints, add widget/integration coverage, run Android release build with native credentials |
+| Backend | Railway TypeScript backend with migrations, validation, RLS/security, provider adapters and tests | PostgreSQL/Supabase connection configured through environment | Confirm Railway `DATABASE_URL`, media bucket, and provider settings against the intended production environment; never infer production from a test project |
+| Validation | CI passed Flutter analysis/tests, Android debug build smoke, backend build/lint/tests, and migrations plus integration tests against disposable PostgreSQL | Optional real Supabase Storage integration job is currently skipped | Signed Android release build, iOS archive on macOS, physical-device/provider verification, and successful real Storage integration before claiming that integration is validated |
 
 ## Required sequence
 
@@ -34,3 +34,7 @@ Sign in remains `Email + Password -> Remember Me / Forgot Password -> Sign In`, 
 ## Provider honesty rule
 
 A missing provider configuration must render a useful unavailable/error state and preserve the integration boundary. The client must not fabricate AI answers, translations, payment success, inventory, social relationships, or verification.
+
+## Release gate
+
+A successful CI run is not a signed store-ready build. Do not mark Android release signing, iOS archiving, production provider verification, or the optional real Supabase Storage integration complete until each has actually been run and checked.

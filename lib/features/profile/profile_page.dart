@@ -35,7 +35,7 @@ class _ProfilePageState extends State<ProfilePage>{
       _Menu(Icons.auto_awesome_rounded,'Eazy Assist',onTap:()=>context.push('/assist')),
       _Menu(Icons.translate_rounded,'Translation',onTap:()=>context.push('/translation')),
       _Menu(Icons.location_on_outlined,'Location tools',onTap:()=>context.push('/location')),
-      _Menu(Icons.edit_outlined,'Edit profile',onTap:(){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Profile editing is handled by the onboarding profile contract.')));}),
+      _Menu(Icons.edit_outlined,'Edit profile',onTap:()async{await context.push('/profile/edit');if(mounted)setState((){});}),
       _Menu(Icons.notifications_none_rounded,'Notifications',onTap:()=>context.push('/notifications')),
       _Menu(Icons.settings_outlined,'Settings',onTap:()=>context.push('/settings')),
       _Menu(Icons.shield_outlined,'Security & sessions',onTap:()=>context.push('/security')),

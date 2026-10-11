@@ -24,6 +24,14 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Eazy uses the camera to scan payment QR codes and capture media you choose to share.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Eazy uses your location only when you request location tools.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Eazy accesses photos only when you choose media to upload.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Eazy saves media only when you explicitly choose to do so.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

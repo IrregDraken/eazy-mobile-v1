@@ -9,6 +9,7 @@
     "dev": "tsx watch src/server.ts",
     "start": "node dist/src/server.js",
     "test": "tsx --test test/**/*.test.ts",
+    "test:storage-integration": "tsx test/supabase_storage.integration.ts",
     "lint": "tsc --noEmit -p tsconfig.json",
     "db:migrate": "tsx src/database/migrate.ts"
   },
