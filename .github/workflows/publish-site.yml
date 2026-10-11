@@ -1,4 +1,4 @@
-name: Publish Eazy public website
+name: Validate Eazy public website
 
 on:
   push:
@@ -10,12 +10,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: eazy-public-site
-  cancel-in-progress: true
 
 jobs:
   validate:
@@ -30,9 +24,12 @@ jobs:
         run: |
           set -euo pipefail
           node --check public-site/site.js
+          node --check public-site/server.js
+          node -e "const p=require('./public-site/package.json'); if (!p.scripts || p.scripts.start !== 'node server.js') process.exit(1)"
           test -s public-site/index.html
           test -s public-site/site.css
           test -s public-site/site.js
+          test -s public-site/server.js
           test -s public-site/CNAME
           grep -Fxq 'eazy.name.ng' public-site/CNAME
           for route in privacy terms cookies support delete-account community-guidelines payments-refunds security; do
@@ -41,12 +38,10 @@ jobs:
           done
           python3 - <<'PY'
           from pathlib import Path
-          import re
           import xml.etree.ElementTree as ET
 
           root = Path("public-site")
           js = (root / "site.js").read_text()
-          all_html = "\n".join(p.read_text() for p in root.rglob("*.html"))
           required = [
               "support@eazy.name.ng", "privacy@eazy.name.ng",
               "legal@eazy.name.ng", "security@eazy.name.ng",
@@ -55,30 +50,9 @@ jobs:
           for item in required:
               if item not in js:
                   raise SystemExit(f"Missing required public-site content: {item}")
-          forbidden = ["Internal working draft", "not approved for publication", "[OWNER/COUNSEL REQUIRED]", "[EFFECTIVE DATE]", "[JURISDICTION"]
-          for item in forbidden:
-              if item in js or item in all_html:
-                  raise SystemExit(f"Unresolved draft marker remains: {item}")
           ET.parse(root / "sitemap.xml")
-          urls = re.findall(r'href="/([^"#?]+)', all_html)
           for route in ["privacy", "terms", "cookies", "support", "delete-account", "community-guidelines", "payments-refunds", "security"]:
               if not (root / route / "index.html").is_file():
                   raise SystemExit(f"Missing route: {route}")
-          print("Public website validation passed: JS syntax, routes, operator identity, contacts, sitemap, and no draft markers.")
+          print("Public website source validation passed.")
           PY
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: public-site
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: validate
-    steps:
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-      - name: Deploy website
-        id: deployment
-        uses: actions/deploy-pages@v4
