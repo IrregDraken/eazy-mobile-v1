@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/auth/auth_controller.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../app/theme/theme_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({super.key, required this.auth});
+  final AuthController auth;
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
@@ -15,6 +18,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String language = 'en', theme = 'system';
   bool follows = true, likes = true, comments = true;
   bool loading = true;
+  bool deleting = false;
   String error = '';
   @override
   void initState() {
@@ -44,6 +48,106 @@ class _SettingsPageState extends State<SettingsPage> {
       if (mounted) setState(() => error = e.message);
     } finally {
       if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    setState(() {
+      deleting = true;
+      error = '';
+    });
+    try {
+      final preflight = await api.get('auth/delete-account/preflight', auth: true);
+      final blockers = (preflight['blockers'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => item['message']?.toString() ?? '')
+          .where((message) => message.isNotEmpty)
+          .toList();
+
+      if (preflight['canDelete'] != true || blockers.isNotEmpty) {
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Account deletion is not available yet'),
+            content: Text(
+              blockers.isEmpty
+                  ? 'Resolve any pending account activity, then try again. If you need help, contact privacy@eazy.name.ng.'
+                  : blockers.join('\n\n'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Understood'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      final confirmation = TextEditingController();
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('Delete your Eazy account?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'This permanently removes your Eazy profile and personal content. Financial records that must be retained by law may remain. This action cannot be undone.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: confirmation,
+                  autofocus: true,
+                  onChanged: (_) => setDialogState(() {}),
+                  decoration: const InputDecoration(
+                    labelText: 'Type DELETE to confirm',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: EazyColors.red,
+                ),
+                onPressed: confirmation.text.trim() == 'DELETE'
+                    ? () => Navigator.of(dialogContext).pop(true)
+                    : null,
+                child: const Text('Delete account'),
+              ),
+            ],
+          ),
+        ),
+      );
+      confirmation.dispose();
+      if (confirmed != true) return;
+
+      await api.post(
+        'auth/delete-account',
+        body: {'confirmation': 'DELETE'},
+        auth: true,
+      );
+      await widget.auth.signOut();
+      if (mounted) context.go('/welcome');
+    } on ApiException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          error = 'We could not complete account deletion. Contact privacy@eazy.name.ng for help.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => deleting = false);
     }
   }
 
@@ -168,6 +272,34 @@ class _SettingsPageState extends State<SettingsPage> {
                         },
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Account',
+                  style: TextStyle(
+                    color: EazyColors.muted,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(
+                      Icons.delete_forever_rounded,
+                      color: EazyColors.red,
+                    ),
+                    title: const Text('Delete account'),
+                    subtitle: const Text(
+                      'Permanently delete your account and personal content.',
+                    ),
+                    trailing: deleting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.chevron_right_rounded),
+                    onTap: deleting ? null : deleteAccount,
                   ),
                 ),
               ],
