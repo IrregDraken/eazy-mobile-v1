@@ -1,23 +1,24 @@
 # Eazy Mobile V1 Architecture
 
-Eazy V1 is a new Flutter application. It does not import or reuse visual assets from the legacy Flutter repository.
+Eazy V1 is a Flutter application with its own visual system and app-specific assets. It does not import or reuse visual assets from the legacy Flutter repository.
 
-The implementation combines proven product workflows and feature scope from the original Eazy Flutter app with the stronger product direction and backend contracts established during Eazy V2.
+The app uses the established Eazy product workflows and backend contracts while keeping V1's mobile client, deployment configuration, and release process explicit.
 
 ## Boundaries
 
 - Flutter is the only mobile UI stack.
-- The V2 Railway backend is the initial API target.
+- The app calls the Eazy V1 Railway API by default; `EAZY_API_URL` can override the base URL at build time.
 - Firebase is the native identity layer.
 - Secure storage holds Eazy access credentials.
 - Feature modules own UI and feature orchestration.
-- core owns networking, auth, persistence, permissions and provider boundaries.
-- No production screen may depend on fake/demo records.
+- Core owns networking, auth, persistence, permissions, and provider boundaries.
+- Production screens must not depend on fake or demo records.
+- Provider-dependent features must show honest unavailable/error states when credentials or providers are not configured.
 
-## Planned modules
+## Modules
 
-Auth, onboarding, social feed, profiles, follows, marketplace, cart, orders, wallet, payments, utilities, chat, notifications, search, QR, location, translation, Eazy Assist, settings and support.
+Auth, onboarding, social feed, profiles, follows, marketplace, cart, orders, wallet, payments, utilities, chat, notifications, search, QR, location, translation, Eazy Assist, settings, and support.
 
-## Visual rule
+## Visual assets
 
-There is deliberately no assets dependency in the initial app. Visual identity is rendered from Flutter primitives, typography, iconography, gradients and custom-painted geometry. New image assets may be introduced later only if they are created specifically for Eazy V1.
+The V1 app includes purpose-built assets under `assets/images/`, declared in `pubspec.yaml`. These include the logo mark, app icon, auth hero, and onboarding hero. Keep these assets versioned with the app and export store-specific icon sizes as part of release preparation.
