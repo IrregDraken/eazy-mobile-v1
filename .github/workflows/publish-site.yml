@@ -2,10 +2,17 @@ name: Validate Eazy public website
 
 on:
   push:
-    branches: [eazy/ci-validation]
+    branches: [eazy/public-site]
     paths:
       - "public-site/**"
       - ".github/workflows/publish-site.yml"
+      - "railway.json"
+  pull_request:
+    branches: [main]
+    paths:
+      - "public-site/**"
+      - ".github/workflows/publish-site.yml"
+      - "railway.json"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +26,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate public site and policy routes
+      - name: Validate source, routes, and contact details
         shell: bash
         run: |
           set -euo pipefail
@@ -30,8 +37,9 @@ jobs:
           test -s public-site/site.css
           test -s public-site/site.js
           test -s public-site/server.js
-          test -s public-site/CNAME
-          grep -Fxq 'eazy.name.ng' public-site/CNAME
+          test -s public-site/Dockerfile
+          grep -q 'public-site/Dockerfile' railway.json
+          grep -q '"startCommand": "npm start"' railway.json
           for route in privacy terms cookies support delete-account community-guidelines payments-refunds security; do
             test -s "public-site/$route/index.html"
             grep -q 'id="app"' "public-site/$route/index.html"
@@ -51,8 +59,33 @@ jobs:
               if item not in js:
                   raise SystemExit(f"Missing required public-site content: {item}")
           ET.parse(root / "sitemap.xml")
-          for route in ["privacy", "terms", "cookies", "support", "delete-account", "community-guidelines", "payments-refunds", "security"]:
-              if not (root / route / "index.html").is_file():
-                  raise SystemExit(f"Missing route: {route}")
           print("Public website source validation passed.")
           PY
+      - name: Smoke-test rendered policy routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          PORT=38765 node public-site/server.js > /tmp/eazy-public-site.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:38765/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:38765/health | grep -q '"status":"ok"'
+          while IFS='|' read -r route expected; do
+            [ -n "$route" ] || continue
+            response="$(curl --fail --silent "http://127.0.0.1:38765$route")"
+            printf '%s' "$response" | grep -Fq "$expected"
+            printf 'PASS %s\n' "$route"
+          done <<'ROUTES'
+          /|Your world,
+          /privacy/|Your data. Your choices.
+          /terms/|The rules for using Eazy.
+          /cookies/|Cookies and similar technologies.
+          /support/|How can we help?
+          /delete-account/|Delete your Eazy account.
+          /community-guidelines/|Help keep Eazy safe.
+          /payments-refunds/|Understand a payment before you repeat it.
+          /security/|Report a security concern.
+          ROUTES
