@@ -79,7 +79,7 @@ const envSchema = z.object({
   if (value.AI_PROVIDER_BASE_URL) {
     validateHttpsEndpoint(value.AI_PROVIDER_BASE_URL, 'AI_PROVIDER_BASE_URL', context);
   }
-  const resendPresent = Boolean(value.RESEND_API_KEY || value.RESEND_FROM_EMAIL);
+  const resendPresent = Boolean(value.RESEND_API_KEY || value.RESEND_FROM_EMAIL || value.RESEND_REPLY_TO_EMAIL);
   if (resendPresent && (!value.RESEND_API_KEY || !value.RESEND_FROM_EMAIL)) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['RESEND_API_KEY'], message: 'Email verification requires both RESEND_API_KEY and RESEND_FROM_EMAIL.' });
   }
