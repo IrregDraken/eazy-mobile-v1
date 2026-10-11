@@ -33,7 +33,7 @@ Dart build definitions:
 - `APPLE_REDIRECT_URI`
 
 Native Firebase and identity:
-- Run a native iOS build on macOS to verify CocoaPods resolution, Firebase initialization, Apple signing/provisioning, and archive generation. A repository search did not find a tracked `ios/Podfile`; verify whether it is generated in the build environment or restore the correct Flutter-generated Podfile before attempting the archive.
+- Run a native iOS build on macOS to verify CocoaPods resolution, Firebase initialization, Apple signing/provisioning, and archive generation. A Flutter-compatible `ios/Podfile` has now been added to the validation branch with iOS 15.0 deployment settings. It has not yet been executed by CocoaPods or validated by an Xcode build, so the macOS build remains the proof point.
 - Confirm Android Firebase app configuration and signing-certificate fingerprints for the release key.
 - Configure Google OAuth client IDs for Android and iOS.
 - Configure Apple Sign-In Service ID, Team ID, key, redirect URL, Firebase provider, and iOS capability.
