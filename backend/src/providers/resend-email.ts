@@ -29,6 +29,7 @@ export class ResendEmailProvider implements EmailProvider {
         body: JSON.stringify({
           from: this.config.RESEND_FROM_EMAIL,
           to: [message.to],
+          ...(this.config.RESEND_REPLY_TO_EMAIL ? { reply_to: [this.config.RESEND_REPLY_TO_EMAIL] } : {}),
           subject: message.subject,
           text: message.text,
           html: message.html
