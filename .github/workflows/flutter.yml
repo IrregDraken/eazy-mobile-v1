@@ -7,6 +7,60 @@ on:
     branches: [main]
 
 jobs:
+  ios-config-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate iOS Firebase, Google Sign-In, Apple Sign-In, and permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+
+          firebase_path = Path("ios/Runner/GoogleService-Info.plist")
+          info_path = Path("ios/Runner/Info.plist")
+          entitlements_path = Path("ios/Runner/Runner.entitlements")
+          project_path = Path("ios/Runner.xcodeproj/project.pbxproj")
+          podfile_path = Path("ios/Podfile")
+          for path in (firebase_path, info_path, entitlements_path, project_path, podfile_path):
+              if not path.is_file():
+                  raise SystemExit(f"Missing required iOS configuration: {path}")
+
+          def read_plist(path):
+              with path.open("rb") as handle:
+                  return plistlib.load(handle)
+
+          firebase = read_plist(firebase_path)
+          info = read_plist(info_path)
+          entitlements = read_plist(entitlements_path)
+          if firebase.get("PROJECT_ID") != "eazy-24e6a":
+              raise SystemExit("Firebase iOS project ID mismatch")
+          if firebase.get("BUNDLE_ID") != "com.eazy.app":
+              raise SystemExit("Firebase iOS bundle ID mismatch")
+          if info.get("GIDClientID") != firebase.get("CLIENT_ID"):
+              raise SystemExit("Google Sign-In client ID in Info.plist does not match Firebase iOS config")
+          if firebase.get("REVERSED_CLIENT_ID") not in [
+              scheme for entry in info.get("CFBundleURLTypes", [])
+              for scheme in entry.get("CFBundleURLSchemes", [])
+          ]:
+              raise SystemExit("Google Sign-In reversed client ID URL scheme is missing")
+          for key in ("NSCameraUsageDescription", "NSLocationWhenInUseUsageDescription", "NSPhotoLibraryUsageDescription"):
+              if not info.get(key):
+                  raise SystemExit(f"Missing iOS permission description: {key}")
+          if "Default" not in entitlements.get("com.apple.developer.applesignin", []):
+              raise SystemExit("Sign in with Apple entitlement is missing")
+          project = project_path.read_text()
+          if "GoogleService-Info.plist in Resources" not in project:
+              raise SystemExit("Firebase plist is not included in the Runner Resources build phase")
+          if project.count("CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;") != 3:
+              raise SystemExit("Apple sign-in entitlement must be applied to Debug, Profile, and Release Runner builds")
+          podfile = podfile_path.read_text()
+          if "platform :ios, '15.0'" not in podfile or "flutter_install_all_ios_pods" not in podfile:
+              raise SystemExit("Flutter CocoaPods setup is incomplete")
+          print("iOS configuration preflight passed.")
+          PY
   flutter-analyze-test:
     runs-on: ubuntu-latest
     steps:
