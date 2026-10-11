@@ -2,7 +2,7 @@ const contacts = {
   support: 'support@eazy.name.ng',
   privacy: 'privacy@eazy.name.ng',
   legal: 'legal@eazy.name.ng',
-  security: 'security@eazy.name.ng'
+  security: 'support@eazy.name.ng'
 };
 const operator = 'Thony Dynamic Enterprises';
 const registration = 'RC 2962026';
@@ -82,7 +82,7 @@ function support() {
       <div class="card contact"><span class="contact-icon">✦</span><div><strong>General support</strong><br><a href="mailto:${contacts.support}">${contacts.support}</a></div></div>
       <div class="card contact"><span class="contact-icon">◌</span><div><strong>Privacy and account deletion</strong><br><a href="mailto:${contacts.privacy}">${contacts.privacy}</a></div></div>
       <div class="card contact"><span class="contact-icon">◇</span><div><strong>Legal enquiries</strong><br><a href="mailto:${contacts.legal}">${contacts.legal}</a></div></div>
-      <div class="card contact"><span class="contact-icon">↗</span><div><strong>Security reports</strong><br><a href="mailto:${contacts.security}">${contacts.security}</a></div></div>
+      <div class="card contact"><span class="contact-icon">↗</span><div><strong>Security reports (handled by Support)</strong><br><a href="mailto:${contacts.security}">${contacts.security}</a></div></div>
     </div>
     <h2>Frequently asked questions</h2>${faq.map(([q, a]) => `<details class="faq"><summary>${q}</summary><p>${a}</p></details>`).join('')}
     <div class="callout security"><strong>Keep your account safe.</strong> Eazy support will never need your password, one-time code, payment PIN, private key or bank login.</div>
@@ -117,7 +117,7 @@ function payments() {
 }
 function security() {
   return page('Security', 'Report a security concern.', 'We welcome responsible reports that help protect Eazy users and service integrity.', `
-    <h2>Contact</h2><p>Email <a href="mailto:${contacts.security}?subject=Eazy%20security%20report">${contacts.security}</a> with a concise description, affected feature, safe reproduction steps and timestamps. Do not include passwords, one-time codes, private keys, payment credentials or unnecessary personal data.</p>
+    <h2>Contact</h2><p>Email <a href="mailto:${contacts.security}?subject=Eazy%20security%20report">${contacts.security}</a> with the subject “Security report” and a concise description, affected feature, safe reproduction steps and timestamps. Do not include passwords, one-time codes, private keys, payment credentials or unnecessary personal data.</p>
     <h2>Responsible testing</h2><p>Do not access another person's data, disrupt service, run destructive tests, use social engineering or perform testing beyond your authorisation. Stop if you encounter real user data and report what happened without copying more information than necessary.</p>
     <h2>Response</h2><p>We will assess reports based on severity, reproducibility, impact and available information. Please allow reasonable time for investigation and remediation before public disclosure. Do not use the security address for general support, account recovery or urgent emergencies.</p>
     <h2>Account compromise</h2><p>If you believe your account is compromised, secure your email account, use the available recovery flow and contact <a href="mailto:${contacts.support}">${contacts.support}</a>. Never share a password or verification code with anyone.</p>`);
