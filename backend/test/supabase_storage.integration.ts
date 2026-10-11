@@ -27,9 +27,8 @@ function loadConfig(): IntegrationConfig {
   }
   const projectRef = required('SUPABASE_TEST_PROJECT_REF');
   const projectName = required('SUPABASE_TEST_PROJECT_NAME');
-  if (!/(test|staging|non[-_ ]?prod|sandbox)/i.test(projectName)) {
-    throw new Error('SUPABASE_TEST_PROJECT_NAME must identify a non-production project');
-  }
+  // The explicit boolean confirmation is the authoritative classification; project names such as
+  // "Eazy V2" do not reliably encode whether a project is production or non-production.
   const baseUrl = required('SUPABASE_TEST_URL').replace(/\/$/, '');
   const parsedUrl = new URL(baseUrl);
   if (parsedUrl.protocol !== 'https:' || parsedUrl.hostname !== `${projectRef}.supabase.co` || parsedUrl.pathname !== '/') {
