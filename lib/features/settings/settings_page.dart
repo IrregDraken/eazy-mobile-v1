@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../app/theme/theme_controller.dart';
+import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({super.key, required this.auth});
+  final AuthController auth;
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
@@ -50,6 +53,36 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> save(Map<String, dynamic> patch) async {
     try {
       await api.patch('settings', body: patch, auth: true);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    final confirmation = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This permanently deletes your Eazy account and associated personal data. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: EazyColors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete account'),
+          ),
+        ],
+      ),
+    );
+    if (confirmation != true || !mounted) return;
+    try {
+      await widget.auth.deleteAccount();
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     }
@@ -168,6 +201,44 @@ class _SettingsPageState extends State<SettingsPage> {
                         },
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Help',
+                  style: TextStyle(
+                    color: EazyColors.muted,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.support_agent_outlined, color: EazyColors.green),
+                    title: const Text('Help & support'),
+                    subtitle: const Text('FAQs, safe automated answers and escalation channels.'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => context.push('/support'),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Account',
+                  style: TextStyle(
+                    color: EazyColors.muted,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(
+                      Icons.delete_forever_outlined,
+                      color: EazyColors.red,
+                    ),
+                    title: const Text('Delete account'),
+                    subtitle: const Text(
+                      'Permanently remove your account and personal data.',
+                    ),
+                    onTap: deleteAccount,
                   ),
                 ),
               ],

@@ -7,6 +7,46 @@ on:
     branches: [main]
 
 jobs:
+  ios-config-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate iOS Firebase and CocoaPods configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+
+          plist_path = Path("ios/Runner/GoogleService-Info.plist")
+          project_path = Path("ios/Runner.xcodeproj/project.pbxproj")
+          podfile_path = Path("ios/Podfile")
+
+          for path in (plist_path, project_path, podfile_path):
+              if not path.is_file():
+                  raise SystemExit(f"Required iOS configuration file is missing: {path}")
+
+          with plist_path.open("rb") as source:
+              config = plistlib.load(source)
+
+          if config.get("PROJECT_ID") != "eazy-24e6a":
+              raise SystemExit("Firebase iOS plist PROJECT_ID does not match the expected Eazy project")
+          if config.get("BUNDLE_ID") != "com.eazy.app":
+              raise SystemExit("Firebase iOS plist BUNDLE_ID does not match com.eazy.app")
+
+          project = project_path.read_text()
+          if "PRODUCT_BUNDLE_IDENTIFIER = com.eazy.app;" not in project:
+              raise SystemExit("Xcode Runner bundle identifier is not configured as com.eazy.app")
+          if "GoogleService-Info.plist in Resources" not in project:
+              raise SystemExit("Firebase plist is not referenced by the Runner Resources build phase")
+
+          podfile = podfile_path.read_text()
+          if "platform :ios, '15.0'" not in podfile or "flutter_install_all_ios_pods" not in podfile:
+              raise SystemExit("Flutter iOS Podfile is missing expected platform or plugin setup")
+
+          print("iOS configuration preflight passed (Firebase identifiers, Runner resource, Podfile).")
+          PY
   flutter-analyze-test:
     runs-on: ubuntu-latest
     steps:
@@ -19,8 +59,13 @@ jobs:
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
 
-  flutter-android-release-smoke:
+  flutter-android-build-smoke:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -28,10 +73,54 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build apk --release --no-tree-shake-icons --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
+      - name: Build signed release APK when signing secrets are configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_STORE_PASSWORD" || -z "$ANDROID_KEY_ALIAS" || -z "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "Android signing secrets are not configured; skipping signed release build."
+            exit 0
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/android/release.keystore"
+          cat > "$GITHUB_WORKSPACE/android/key.properties" <<EOF
+          storeFile=$GITHUB_WORKSPACE/android/release.keystore
+          storePassword=$ANDROID_STORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
+          flutter build apk --release --no-tree-shake-icons --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
+      - name: Build unsigned debug APK when release signing is unavailable
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f "$GITHUB_WORKSPACE/android/key.properties" ]]; then
+            echo "Signed release build was attempted; no debug fallback is needed."
+            exit 0
+          fi
+          flutter build apk --debug --no-tree-shake-icons
 
   backend-build-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: eazy-ci-only-password
+          POSTGRES_DB: eazy_ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d eazy_ci_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DATABASE_URL: postgresql://postgres:eazy-ci-only-password@127.0.0.1:5432/eazy_ci_test
+      TEST_DATABASE_URL: postgresql://postgres:eazy-ci-only-password@127.0.0.1:5432/eazy_ci_test
+      EAZY_RUN_INTEGRATION_TEST: 'true'
+      EAZY_TEST_DATABASE_CONFIRMED: 'true'
+      EAZY_TEST_DATABASE_NAME: eazy_ci_test
     defaults:
       run:
         working-directory: backend
@@ -43,5 +132,71 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - name: Wait for isolated PostgreSQL
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres -d eazy_ci_test >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'PostgreSQL did not become ready' >&2
+          exit 1
+      - name: Prepare CI-only PostgreSQL compatibility objects
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            CREATE ROLE anon NOLOGIN;
+          EXCEPTION WHEN duplicate_object THEN NULL;
+          END $$;
+          DO $$
+          BEGIN
+            CREATE ROLE authenticated NOLOGIN;
+          EXCEPTION WHEN duplicate_object THEN NULL;
+          END $$;
+          CREATE SCHEMA IF NOT EXISTS storage;
+          CREATE TABLE IF NOT EXISTS storage.buckets (
+            id text PRIMARY KEY,
+            name text NOT NULL,
+            public boolean NOT NULL DEFAULT false,
+            file_size_limit bigint,
+            allowed_mime_types text[]
+          );
+          SQL
+      - name: Apply all backend migrations
+        run: npm run db:migrate
       - run: npm run build
+      - run: npm run lint
       - run: npm test
+
+  supabase-storage-integration:
+    if: ${{ vars.SUPABASE_STORAGE_INTEGRATION_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DATABASE_URL: ${{ secrets.SUPABASE_TEST_DATABASE_URL }}
+      SUPABASE_TEST_NON_PRODUCTION: ${{ secrets.SUPABASE_TEST_NON_PRODUCTION }}
+      SUPABASE_TEST_PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
+      SUPABASE_TEST_PROJECT_NAME: ${{ secrets.SUPABASE_TEST_PROJECT_NAME }}
+      SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+      SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+      SUPABASE_TEST_BUCKET: ${{ secrets.SUPABASE_TEST_BUCKET }}
+      SUPABASE_TEST_DATABASE_URL: ${{ secrets.SUPABASE_TEST_DATABASE_URL }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Apply migrations to the dedicated non-production project
+        run: npm run db:migrate
+      - name: Run real Supabase Storage integration harness
+        run: npm run test:storage-integration

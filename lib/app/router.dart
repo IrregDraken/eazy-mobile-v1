@@ -9,6 +9,8 @@ import '../features/notifications/notifications_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/security/security_page.dart';
 import '../features/security/blocks_page.dart';
+import '../features/profile/edit_profile_page.dart';
+import '../features/support/support_page.dart';
 import '../features/home/home_shell.dart';
 import '../features/marketplace/cart_page.dart';
 import '../features/onboarding/profile_setup_page.dart';
@@ -70,7 +72,9 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
       path: '/notifications',
       builder: (_, __) => const NotificationsPage(),
     ),
-    GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
+    GoRoute(path: '/settings', builder: (_, __) => SettingsPage(auth: auth)),
+    GoRoute(path: '/profile/edit', builder: (_, __) => EditProfilePage(auth: auth)),
+    GoRoute(path: '/support', builder: (_, __) => const SupportPage()),
     GoRoute(path: '/security', builder: (_, __) => SecurityPage(auth: auth)),
     GoRoute(path: '/blocks', builder: (_, __) => const BlocksPage()),
   ],

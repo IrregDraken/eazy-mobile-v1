@@ -125,11 +125,16 @@ export class AuthService {
          phone = COALESCE(EXCLUDED.phone, users.phone),
          email_verified_at = COALESCE(users.email_verified_at, EXCLUDED.email_verified_at),
          updated_at = now()
+       WHERE users.status = 'active'
        RETURNING id, firebase_uid, email, phone, status`,
       [identity.firebaseUid, stringClaim(identity.claims, 'email'), stringClaim(identity.claims, 'phone_number'), emailVerified]
     );
     const user = result.rows[0];
-    if (!user) throw new AppError('SERVICE_UNAVAILABLE', 'Unable to provision user');
+    if (!user) {
+      const existing = await client.query<{ status: string }>('SELECT status FROM users WHERE firebase_uid = $1 LIMIT 1', [identity.firebaseUid]);
+      if (existing.rows[0]?.status === 'deleted') throw new AppError('FORBIDDEN', 'Account is not active');
+      throw new AppError('SERVICE_UNAVAILABLE', 'Unable to provision user');
+    }
     return user;
   }
 

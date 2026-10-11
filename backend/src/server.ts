@@ -188,7 +188,7 @@ if (pool && firebaseProvider) {
   authOptions = {
     ...authOptions,
     authMiddleware: createFirebaseAuthenticationMiddleware(firebaseProvider, authService),
-    authRouter: createAuthRouter(authService, new AccountDeletionService(pool, firebaseProvider, realtimeService))
+    authRouter: createAuthRouter(authService, new AccountDeletionService(pool, firebaseProvider, realtimeService, storageProvider))
   };
 } else {
   logger.warn('Firebase authentication is unavailable until DATABASE_URL and Firebase Admin settings are configured');

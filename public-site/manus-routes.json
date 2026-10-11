@@ -1,0 +1,13 @@
+{
+  "routes": [
+    {"path": "/", "title": "Eazy — Home"},
+    {"path": "/privacy", "title": "Eazy — Privacy"},
+    {"path": "/terms", "title": "Eazy — Terms"},
+    {"path": "/cookies", "title": "Eazy — Cookies"},
+    {"path": "/support", "title": "Eazy — Support"},
+    {"path": "/delete-account", "title": "Eazy — Delete account"},
+    {"path": "/community-guidelines", "title": "Eazy — Community guidelines"},
+    {"path": "/payments-refunds", "title": "Eazy — Payments and refunds"},
+    {"path": "/security", "title": "Eazy — Security"}
+  ]
+}
