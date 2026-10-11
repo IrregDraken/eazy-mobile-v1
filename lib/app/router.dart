@@ -70,7 +70,7 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
       path: '/notifications',
       builder: (_, __) => const NotificationsPage(),
     ),
-    GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
+    GoRoute(path: '/settings', builder: (_, __) => SettingsPage(auth: auth)),
     GoRoute(path: '/security', builder: (_, __) => SecurityPage(auth: auth)),
     GoRoute(path: '/blocks', builder: (_, __) => const BlocksPage()),
   ],
