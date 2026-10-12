@@ -122,7 +122,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final stories = (highlight['stories'] as List? ?? const []).whereType<Map>().map((item) {
       final story = Map<String, dynamic>.from(item);
       story['username'] = profile['username']?.toString() ?? 'Eazy user';
-      story['isMine'] = false;
+      story['isMine'] = isOwnProfile;
       return story;
     }).toList();
     if (stories.isEmpty) {
