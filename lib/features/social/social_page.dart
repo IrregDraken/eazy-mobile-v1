@@ -941,7 +941,6 @@ class _SuggestedAccounts extends StatelessWidget {
             itemBuilder: (context, index) {
               final person = people[index];
               final username = person['username']?.toString() ?? '';
-              final id = person['id']?.toString() ?? username;
               final name = person['displayName']?.toString() ?? person['display_name']?.toString() ?? username;
               final avatar = person['avatarUrl']?.toString() ?? person['avatar_url']?.toString();
               final isFollowed = followed.contains(username.toLowerCase());
