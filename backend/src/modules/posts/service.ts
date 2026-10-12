@@ -42,6 +42,12 @@ export class PostService {
     return { items, meta: paginationMeta(pagination, result.total) };
   }
 
+  async byUsername(viewerId: string | undefined, username: string, pagination: Pagination) {
+    const result = await this.repository.byUsername(viewerId, username, pagination.page, pagination.limit);
+    const items = await Promise.all(result.items.map(post => this.attachMediaUrls(post)));
+    return { items, meta: paginationMeta(pagination, result.total) };
+  }
+
   async feed(viewerId: string, pagination: Pagination) {
     const result = await this.repository.feed(viewerId, pagination.page, pagination.limit, (pagination as any).mode ?? 'for_you');
     const items = await Promise.all(result.items.map(post => this.attachMediaUrls(post)));
