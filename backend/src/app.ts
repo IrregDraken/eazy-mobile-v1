@@ -115,6 +115,7 @@ export function createApp(config: AppConfig, logger: Logger, options: AppOptions
   if (options.settingsRouter) app.use('/v1/settings', options.settingsRouter);
   if (options.blockRouter) app.use('/v1/blocks', options.blockRouter);
   if (options.mediaRouter) app.use('/v1/media', options.mediaRouter);
+  if (options.storiesRouter) app.use('/v1/stories', options.storiesRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler(logger));
