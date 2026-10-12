@@ -71,6 +71,7 @@ class EazyMediaService {
     }
 
     final Uint8List bytes = await file.readAsBytes();
+    if (bytes.length > 25 * 1024 * 1024) throw const ApiException('Choose a file smaller than 25 MB.', kind: ApiErrorKind.validation);
     await api.uploadBytes(signedUrl, bytes, contentType);
     return MediaUpload(path: path, contentType: contentType, kind: kind, byteSize: bytes.length, fileName: file.name);
   }
