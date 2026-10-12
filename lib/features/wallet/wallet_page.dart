@@ -317,7 +317,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             const Divider(),
             _Info('Amount', '$_currency $amount'),
             _Info('Available balance', '$_currency $_balance'),
-            _Info('Held balance', '$_currency $_heldBalance'),
             const SizedBox(height: 10),
             const Text('Your device will ask you to authenticate before this transfer is submitted.', style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.4)),
           ],
@@ -728,7 +727,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   String get _username =>
       username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
-  String get _heldBalance => wallet?['heldBalance']?.toString() ?? '0.00';
   bool _validMoney(String value) =>
       RegExp(r'^(?:0|[1-9][0-9]{0,17})\.[0-9]{2}$').hasMatch(value);
   bool _validUsername(String value) =>
@@ -1061,7 +1059,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  balanceVisible ? 'Held balance  $_currency $_heldBalance' : 'Held balance  $_currency ••••••',
+                  'Available for transfers and payments',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
