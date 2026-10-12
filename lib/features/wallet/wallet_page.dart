@@ -20,11 +20,13 @@ class WalletPage extends StatefulWidget {
   State<WalletPage> createState() => _WalletPageState();
 }
 
-class _WalletPageState extends State<WalletPage> {
+class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   final api = ApiClient();
   final storage = const FlutterSecureStorage();
   bool loading = true;
   bool busy = false;
+  bool balanceVisible = true;
+  bool reconcilingPayment = false;
   String? error;
   Map<String, dynamic>? wallet;
   Map<String, dynamic>? virtualAccount;
@@ -35,7 +37,34 @@ class _WalletPageState extends State<WalletPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _restorePrivacyPreference();
     load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _reconcilePendingPayment(silent: true);
+      load();
+    }
+  }
+
+  Future<void> _restorePrivacyPreference() async {
+    final saved = await storage.read(key: 'eazy.wallet.balanceVisible');
+    if (mounted && saved != null) setState(() => balanceVisible = saved != 'false');
+  }
+
+  Future<void> _toggleBalanceVisibility() async {
+    final next = !balanceVisible;
+    setState(() => balanceVisible = next);
+    await storage.write(key: 'eazy.wallet.balanceVisible', value: next.toString());
   }
 
   String idempotency(String prefix) =>
@@ -144,25 +173,32 @@ class _WalletPageState extends State<WalletPage> {
     }
   }
 
-  Future<void> verifyPending() async {
+  Future<void> verifyPending() => _reconcilePendingPayment(silent: false);
+
+  Future<void> _reconcilePendingPayment({required bool silent}) async {
+    if (reconcilingPayment || busy) return;
     final id = await storage.read(key: 'eazy.pendingPayment');
     if (id == null || id.isEmpty) {
-      _showError('No pending payment found.');
+      if (!silent) _showError('No pending payment found.');
       return;
     }
-    setState(() => busy = true);
+    reconcilingPayment = true;
+    if (mounted) setState(() => busy = true);
     try {
-      await api.post('payments/$id/verify', auth: true);
+      final result = await api.post('payments/$id/verify', auth: true);
+      final transaction = _map(result['transaction']);
+      final status = transaction['status']?.toString().toLowerCase();
+      if (status != 'succeeded') {
+        if (!silent) _showMessage('Payment is not confirmed yet. Your wallet has not been credited.');
+        return;
+      }
       await storage.delete(key: 'eazy.pendingPayment');
       await load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment verified and wallet updated.')),
-        );
-      }
+      if (!silent && mounted) _showMessage('Payment verified and wallet updated.');
     } on ApiException catch (e) {
-      _showError(e.message);
+      if (!silent) _showError(e.message);
     } finally {
+      reconcilingPayment = false;
       if (mounted) setState(() => busy = false);
     }
   }
@@ -838,9 +874,10 @@ class _WalletPageState extends State<WalletPage> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.visibility_outlined,
+                      tooltip: balanceVisible ? 'Hide balance' : 'Show balance',
+                      onPressed: _toggleBalanceVisibility,
+                      icon: Icon(
+                        balanceVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                         color: Colors.white70,
                       ),
                     ),
@@ -848,7 +885,7 @@ class _WalletPageState extends State<WalletPage> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  loading ? '••••••' : '$_currency $_balance',
+                  loading || !balanceVisible ? '$_currency ••••••' : '$_currency $_balance',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 38,
@@ -858,7 +895,7 @@ class _WalletPageState extends State<WalletPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Held balance  $_currency $_heldBalance',
+                  balanceVisible ? 'Held balance  $_currency $_heldBalance' : 'Held balance  $_currency ••••••',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
@@ -889,6 +926,14 @@ class _WalletPageState extends State<WalletPage> {
                         icon: Icons.qr_code_scanner_rounded,
                         label: 'Scan QR',
                         onTap: busy ? null : scanQr,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _WalletAction(
+                        icon: Icons.grid_view_rounded,
+                        label: 'More',
+                        onTap: busy ? null : _showMoreOptions,
                       ),
                     ),
                   ],
@@ -990,9 +1035,10 @@ class _WalletPageState extends State<WalletPage> {
                     style: const TextStyle(color: EazyColors.muted),
                   ),
                   trailing: Text(
-                    '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}',
+                    balanceVisible ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}' : '••••••',
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
+                  onTap: () => _showTransactionDetails(entry),
                 ),
               ),
             ),
