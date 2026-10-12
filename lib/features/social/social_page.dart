@@ -514,7 +514,7 @@ class _PostState extends State<_Post> {
                                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                                 itemCount: comments.length,
                                 separatorBuilder: (_, __) => const SizedBox(height: 16),
-                                itemBuilder: (_, index) => _CommentTile(comment: comments[index], api: widget.api, onReply: (comment) { setSheetState(() { replyToId = comment['id']?.toString(); final author = comment['author'] is Map ? Map<String, dynamic>.from(comment['author'] as Map) : <String, dynamic>{}; replyToName = author['username']?.toString() ?? author['displayName']?.toString() ?? 'user'; }); }),
+                                itemBuilder: (_, index) => _CommentTile(comment: comments[index], api: widget.api, currentUsername: widget.currentUsername, onChanged: () async { if (ctx.mounted) { commentsLoading = true; await refreshComments(setSheetState); } }, onReply: (comment) { setSheetState(() { replyToId = comment['id']?.toString(); final author = comment['author'] is Map ? Map<String, dynamic>.from(comment['author'] as Map) : <String, dynamic>{}; replyToName = author['username']?.toString() ?? author['displayName']?.toString() ?? 'user'; }); }),
                               )),
                 const Divider(height: 1),
                 if (replyToId != null) Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Row(children: [Expanded(child: Text('Replying to @$replyToName', style: const TextStyle(color: EazyColors.muted, fontSize: 12))), IconButton(visualDensity: VisualDensity.compact, onPressed: () => setSheetState(() { replyToId = null; replyToName = null; }), icon: const Icon(Icons.close_rounded, size: 18))])),
@@ -766,9 +766,11 @@ class _PostState extends State<_Post> {
 }
 
 class _CommentTile extends StatefulWidget {
-  const _CommentTile({required this.comment, required this.api, required this.onReply});
+  const _CommentTile({required this.comment, required this.api, required this.currentUsername, required this.onChanged, required this.onReply});
   final Map<String, dynamic> comment;
   final ApiClient api;
+  final String currentUsername;
+  final Future<void> Function() onChanged;
   final ValueChanged<Map<String, dynamic>> onReply;
   @override
   State<_CommentTile> createState() => _CommentTileState();
@@ -804,6 +806,45 @@ class _CommentTileState extends State<_CommentTile> {
     } finally { if (mounted) setState(() => busy = false); }
   }
 
+  Future<void> showOptions() async {
+    if (busy) return;
+    final author = widget.comment['author'] is Map ? Map<String, dynamic>.from(widget.comment['author'] as Map) : <String, dynamic>{};
+    final isMine = author['username']?.toString().toLowerCase() == widget.currentUsername.toLowerCase();
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        if (isMine) ListTile(leading: const Icon(Icons.delete_outline_rounded, color: EazyColors.red), title: const Text('Delete comment'), onTap: () => Navigator.pop(ctx, 'delete')),
+        ListTile(leading: const Icon(Icons.flag_outlined), title: const Text('Report comment'), onTap: () => Navigator.pop(ctx, 'report')),
+        const SizedBox(height: 8),
+      ])),
+    );
+    if (action == null || !mounted) return;
+    try {
+      if (action == 'delete') {
+        await widget.api.delete('comments/${widget.comment['id']}', auth: true);
+      } else {
+        final reason = await showDialog<String>(context: context, builder: (ctx) {
+          final controller = TextEditingController();
+          return AlertDialog(
+            title: const Text('Report comment'),
+            content: TextField(controller: controller, maxLines: 3, decoration: const InputDecoration(hintText: 'Tell us what happened')),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Submit')),
+            ],
+          );
+        });
+        if (reason == null || reason.length < 3) return;
+        await widget.api.post('comments/${widget.comment['id']}/report', auth: true, body: {'reason': reason});
+      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(action == 'delete' ? 'Comment deleted' : 'Report sent to Eazy')));
+      await widget.onChanged();
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final author = widget.comment['author'] is Map ? Map<String, dynamic>.from(widget.comment['author'] as Map) : <String, dynamic>{};
@@ -812,9 +853,11 @@ class _CommentTileState extends State<_CommentTile> {
     final avatar = author['avatarUrl']?.toString();
     final created = widget.comment['createdAt']?.toString() ?? '';
     final isReply = widget.comment['parentId'] != null;
-    return Padding(
-      padding: EdgeInsets.only(left: isReply ? 28 : 0),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return GestureDetector(
+      onLongPress: showOptions,
+      child: Padding(
+        padding: EdgeInsets.only(left: isReply ? 28 : 0),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         CircleAvatar(
           radius: 17,
           backgroundColor: EazyColors.surfaceRaised,
@@ -835,7 +878,8 @@ class _CommentTileState extends State<_CommentTile> {
           IconButton(visualDensity: VisualDensity.compact, onPressed: busy ? null : toggleLike, icon: Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: liked ? EazyColors.red : EazyColors.muted, size: 18)),
           if (likes > 0) Text('$likes', style: const TextStyle(fontSize: 10, color: EazyColors.muted)),
         ]),
-      ]),
+        ]),
+      ),
     );
   }
 }
