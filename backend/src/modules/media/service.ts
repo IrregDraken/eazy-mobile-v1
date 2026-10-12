@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { AppError } from '../../middleware/errors.js';
 import type { SupabaseStorageProvider } from '../../providers/supabase-storage.js';
 
-const allowedTypes = new Set(['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','audio/mpeg','audio/mp4','audio/wav']);
+const allowedTypes = new Set(['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','audio/mpeg','audio/mp4','audio/wav','application/pdf','text/plain','text/csv','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document']);
 
 export class MediaService {
   constructor(private readonly storage: SupabaseStorageProvider) {}
