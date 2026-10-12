@@ -185,6 +185,30 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Future<void> _deleteHighlight(Map<String, dynamic> highlight) async {
+    final id = highlight['id']?.toString();
+    if (id == null || id.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete highlight?'),
+        content: Text('“${highlight['title'] ?? 'Highlight'}” will be removed from your profile.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await api.delete('stories/highlights/$id', auth: true);
+      await load();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Highlight deleted')));
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> _createHighlight() async {
     try {
       final result = await api.get('stories/feed', auth: true);
@@ -465,6 +489,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ownProfile: isOwnProfile,
             onNew: _createHighlight,
             onOpen: _openHighlight,
+            onDelete: _deleteHighlight,
           )),
         SliverToBoxAdapter(child: Container(
           decoration: const BoxDecoration(border: Border(top: BorderSide(color: EazyColors.border))),
@@ -569,11 +594,12 @@ class _ProfilePageState extends State<ProfilePage> {
 }
 
 class _HighlightsRow extends StatelessWidget {
-  const _HighlightsRow({required this.highlights, required this.ownProfile, required this.onNew, required this.onOpen});
+  const _HighlightsRow({required this.highlights, required this.ownProfile, required this.onNew, required this.onOpen, required this.onDelete});
   final List<Map<String, dynamic>> highlights;
   final bool ownProfile;
   final VoidCallback onNew;
   final ValueChanged<Map<String, dynamic>> onOpen;
+  final ValueChanged<Map<String, dynamic>> onDelete;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -599,6 +625,7 @@ class _HighlightsRow extends StatelessWidget {
           final cover = highlight['coverUrl']?.toString();
           return SizedBox(width: 78, child: InkWell(
             onTap: () => onOpen(highlight),
+            onLongPress: ownProfile ? () => onDelete(highlight) : null,
             borderRadius: BorderRadius.circular(16),
             child: Column(children: [
               Container(
