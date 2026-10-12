@@ -389,7 +389,7 @@ class _Skeletons extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView.builder(
     itemCount: 8,
-    itemBuilder: (_, index) => const SizedBox(
+    itemBuilder: (_, index) => SizedBox(
       height: 76,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
