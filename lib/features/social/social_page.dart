@@ -597,11 +597,14 @@ class _PostState extends State<_Post> {
                 widget.post['content']?.toString() ?? '',
                 style: const TextStyle(height: 1.45, fontSize: 15),
               ),
-              final taggedUsers = widget.post['taggedUsers'] is List ? widget.post['taggedUsers'] as List : const [];
-              if (taggedUsers.isNotEmpty) Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Wrap(spacing: 6, children: taggedUsers.whereType<Map>().map((person) => Text('@${person['username']}', style: const TextStyle(color: EazyColors.green, fontSize: 12, fontWeight: FontWeight.w700))).toList()),
-              ),
+              if (widget.post['taggedUsers'] is List && (widget.post['taggedUsers'] as List).isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Wrap(
+                    spacing: 6,
+                    children: (widget.post['taggedUsers'] as List).whereType<Map>().map((person) => Text('@${person['username']}', style: const TextStyle(color: EazyColors.green, fontSize: 12, fontWeight: FontWeight.w700))).toList(),
+                  ),
+                ),
               if (media.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 SizedBox(
