@@ -373,8 +373,7 @@ class _SocialPageState extends State<SocialPage> {
                   return _SuggestedAccounts(
                     people: suggestions.where((person) {
                       final username = person['username']?.toString().toLowerCase() ?? '';
-                      final id = person['id']?.toString() ?? username;
-                      return !dismissedSuggestions.contains(id);
+                              return !dismissedSuggestions.contains(id);
                     }).toList(),
                     followed: followedSuggestions,
                     onFollow: followSuggestion,
