@@ -74,7 +74,6 @@ class EazyMediaService {
     await api.uploadBytes(signedUrl, bytes, contentType);
     return MediaUpload(path: path, contentType: contentType, kind: kind, byteSize: bytes.length, fileName: file.name);
   }
-}
 
   Future<MediaUpload?> pickAndUploadDocument({required String kind}) async {
     const group = XTypeGroup(
