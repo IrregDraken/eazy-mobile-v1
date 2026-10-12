@@ -55,7 +55,7 @@ class _EazyVideoMediaState extends State<EazyVideoMedia> {
 
   @override
   Widget build(BuildContext context) {
-    if (error != null) return const ColoredBox(color: Colors.black, child: Center(child: Icon(Icons.broken_video_outlined, color: Colors.white70, size: 34)));
+    if (error != null) return const ColoredBox(color: Colors.black, child: Center(child: Icon(Icons.videocam_off_rounded, color: Colors.white70, size: 34)));
     if (!controller.value.isInitialized) return const ColoredBox(color: Colors.black, child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70)));
     final size = controller.value.size;
     return GestureDetector(
