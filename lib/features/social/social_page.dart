@@ -20,6 +20,9 @@ class _SocialPageState extends State<SocialPage> {
   String? error;
   String mode = 'for_you';
   List<Map<String, dynamic>> posts = [];
+  List<Map<String, dynamic>> suggestions = [];
+  final dismissedSuggestions = <String>{};
+  final followedSuggestions = <String>{};
 
   @override
   void initState() {
@@ -35,25 +38,41 @@ class _SocialPageState extends State<SocialPage> {
   }
 
   Future<void> load() async {
-    setState(() {
+    if (mounted) setState(() {
       loading = true;
       error = null;
     });
     try {
       final result = await api.get(
-        'home/feed?page=1&limit=20&mode=$mode',
+        'home/feed?page=1&limit=50&mode=$mode',
         auth: true,
       );
       final raw = result['items'] as List? ?? const [];
-      posts =
-          raw
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
+      posts = raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      try {
+        final people = await api.get('discover?type=people&page=1&limit=8', auth: true);
+        suggestions = (people['items'] as List? ?? const [])
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      } catch (_) {
+        suggestions = [];
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
       if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> followSuggestion(Map<String, dynamic> person) async {
+    final username = person['username']?.toString().replaceFirst('@', '').toLowerCase() ?? '';
+    if (username.isEmpty || followedSuggestions.contains(username)) return;
+    try {
+      await api.post('social/follow/$username', auth: true);
+      if (mounted) setState(() => followedSuggestions.add(username));
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
@@ -280,9 +299,26 @@ class _SocialPageState extends State<SocialPage> {
             ),
           if (!loading && posts.isNotEmpty)
             SliverList.builder(
-              itemCount: posts.length,
-              itemBuilder:
-                  (c, i) => _Post(post: posts[i], api: api, onChanged: load),
+              itemCount: posts.length + (posts.length ~/ 10),
+              itemBuilder: (c, i) {
+                if ((i + 1) % 11 == 0 && suggestions.isNotEmpty) {
+                  return _SuggestedAccounts(
+                    people: suggestions.where((person) {
+                      final username = person['username']?.toString().toLowerCase() ?? '';
+                      final id = person['id']?.toString() ?? username;
+                      return !dismissedSuggestions.contains(id);
+                    }).toList(),
+                    followed: followedSuggestions,
+                    onFollow: followSuggestion,
+                    onDismiss: (person) => setState(() {
+                      dismissedSuggestions.add(person['id']?.toString() ?? person['username']?.toString() ?? '');
+                    }),
+                  );
+                }
+                final postIndex = i - ((i + 1) ~/ 11);
+                if (postIndex < 0 || postIndex >= posts.length) return const SizedBox.shrink();
+                return _Post(post: posts[postIndex], api: api, onChanged: load);
+              },
             ),
         ],
       ),
@@ -516,6 +552,80 @@ class _PostState extends State<_Post> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SuggestedAccounts extends StatelessWidget {
+  const _SuggestedAccounts({required this.people, required this.followed, required this.onFollow, required this.onDismiss});
+  final List<Map<String, dynamic>> people;
+  final Set<String> followed;
+  final Future<void> Function(Map<String, dynamic>) onFollow;
+  final ValueChanged<Map<String, dynamic>> onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    if (people.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 2, 0, 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 20, bottom: 10),
+          child: Row(children: [
+            const Expanded(child: Text('People to know on Eazy', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16))),
+            const Icon(Icons.auto_awesome_rounded, color: EazyColors.green, size: 18),
+          ]),
+        ),
+        SizedBox(
+          height: 166,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: people.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final person = people[index];
+              final username = person['username']?.toString() ?? '';
+              final id = person['id']?.toString() ?? username;
+              final name = person['displayName']?.toString() ?? person['display_name']?.toString() ?? username;
+              final avatar = person['avatarUrl']?.toString() ?? person['avatar_url']?.toString();
+              final isFollowed = followed.contains(username.toLowerCase());
+              return Container(
+                width: 142,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: EazyColors.surface,
+                  borderRadius: BorderRadius.circular(EazyRadius.md),
+                  border: Border.all(color: EazyColors.border),
+                ),
+                child: Column(children: [
+                  Align(alignment: Alignment.topRight, heightFactor: .5, child: IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    icon: const Icon(Icons.close_rounded, size: 16, color: EazyColors.muted),
+                    onPressed: () => onDismiss(person),
+                  )),
+                  CircleAvatar(
+                    radius: 27,
+                    backgroundColor: EazyColors.surfaceRaised,
+                    backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
+                    child: avatar == null || !avatar.startsWith('http') ? Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase(), style: const TextStyle(color: EazyColors.green, fontWeight: FontWeight.w900)) : null,
+                  ),
+                  const SizedBox(height: 7),
+                  Text(name.isEmpty ? 'Eazy member' : name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                  Text(username.isEmpty ? 'On Eazy' : '@$username', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: EazyColors.muted, fontSize: 10)),
+                  const Spacer(),
+                  SizedBox(width: double.infinity, height: 30, child: FilledButton(
+                    onPressed: isFollowed ? null : () => onFollow(person),
+                    style: FilledButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 30)),
+                    child: Text(isFollowed ? 'Following' : 'Follow', style: const TextStyle(fontSize: 11)),
+                  )),
+                ]),
+              );
+            },
+          ),
+        ),
+      ]),
     );
   }
 }
