@@ -179,19 +179,36 @@ class _SocialPageState extends State<SocialPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Home',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -1,
+                        Row(children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [EazyColors.green, EazyColors.greenDeep],
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text('E', style: TextStyle(color: EazyColors.canvas, fontSize: 23, fontWeight: FontWeight.w900, height: 1)),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Eazy',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.2,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          const Icon(Icons.keyboard_arrow_down_rounded, color: EazyColors.muted, size: 19),
+                        ]),
                         const SizedBox(height: 3),
-                        Text(
-                          'Welcome back, ${widget.auth.profile?['firstName'] ?? 'there'}',
-                          style: const TextStyle(color: EazyColors.muted),
+                        const Text(
+                          'Your world, made easier',
+                          style: TextStyle(color: EazyColors.muted, fontSize: 12),
                         ),
                       ],
                     ),
@@ -394,7 +411,25 @@ class _PostState extends State<_Post> {
                       ],
                     ),
                   ),
-                  const Icon(Icons.more_horiz_rounded, color: EazyColors.muted),
+                  PopupMenuButton<String>(
+                    tooltip: 'Post options',
+                    icon: const Icon(Icons.more_horiz_rounded, color: EazyColors.muted),
+                    onSelected: (value) async {
+                      if (value == 'save') {
+                        await mutate(saved ? 'delete' : 'post', 'posts/$id/save');
+                      } else if (value == 'report') {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report options will be available with Eazy moderation controls.')));
+                      } else if (value == 'copy') {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('A shareable post link is not available for this post yet.')));
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: 'save', child: Text(saved ? 'Remove from saved' : 'Save post')),
+                      const PopupMenuItem(value: 'copy', child: Text('Copy link')),
+                      const PopupMenuItem(value: 'report', child: Text('Report post')),
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
