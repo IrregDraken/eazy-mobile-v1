@@ -25,7 +25,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
   List<Map<String, dynamic>> _items = [];
   bool _loading = true, _connecting = true, _fabVisible = true;
   String _filter = 'All';
-  String? _error, _myUsername;
+  String? _error, _myUsername, _myUserId;
   WebSocket? _socket;
   StreamSubscription<dynamic>? _subscription;
 
@@ -58,7 +58,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     try {
       final result = await widget.api.get('profiles/me', auth: true);
       if (mounted && result['profile'] is Map) {
-        setState(() => _myUsername = result['profile']['username']?.toString());
+        setState(() { _myUsername = result['profile']['username']?.toString(); _myUserId = result['profile']['id']?.toString(); });
       }
     } catch (_) {}
   }
@@ -87,7 +87,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
   Future<void> _connectRealtime() async {
     try {
       final token = await widget.api.readToken();
-      if (token == null || token.isEmpty) return;
+      if (token == null || token.isEmpty || _myUserId == null || _myUserId!.isEmpty) return;
       final base = Uri.parse(widget.api.baseUrl);
       final uri = Uri(scheme: base.scheme == 'https' ? 'wss' : 'ws',
           host: base.host, port: base.hasPort ? base.port : null, path: '/v1/realtime');
@@ -95,7 +95,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
           headers: {'Authorization': 'Bearer $token'}).timeout(const Duration(seconds: 10));
       _socket = socket;
       // Server scopes this subscription to the authenticated user's own channel.
-      socket.add(jsonEncode({'type': 'subscribe', 'channel': 'user', 'id': 'self'}));
+      socket.add(jsonEncode({'type': 'subscribe', 'channel': 'user', 'id': _myUserId}));
       _subscription = socket.listen((raw) {
         try {
           final frame = jsonDecode(raw.toString());
