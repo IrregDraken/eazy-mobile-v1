@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/theme/eazy_theme.dart';
@@ -190,7 +191,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
             IconButton(onPressed: _newChat, tooltip: 'New chat', icon: const Icon(Icons.add_comment_outlined, color: Color(0xFF25D366))),
             IconButton(onPressed: _menu, tooltip: 'More options', icon: const Icon(Icons.more_vert_rounded, color: Colors.white)),
           ])),
-        if (_connecting) const Container(width: double.infinity, color: Color(0xFF17262D),
+        if (_connecting) Container(width: double.infinity, color: Color(0xFF17262D),
           padding: EdgeInsets.symmetric(horizontal: 20, vertical: 7),
           child: Row(children: [SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5)),
             SizedBox(width: 9), Text('Connecting…', style: TextStyle(color: Color(0xFF8696A0), fontSize: 12))])),
@@ -216,7 +217,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
         ])),
         const SizedBox(height: 5),
         Expanded(child: _loading ? const _Skeletons() : _error != null
-          ? _Empty(icon: Icons.cloud_off_outlined, title: 'Could not load chats', detail: _error, action: _load, actionText: 'Try again')
+          ? _Empty(icon: Icons.cloud_off_outlined, title: 'Could not load chats', detail: _error ?? 'Please try again.', action: _load, actionText: 'Try again')
           : chats.isEmpty
             ? _Empty(icon: Icons.forum_outlined,
                 title: _filter == 'Groups' ? 'Groups are not available yet' : 'Start chatting with your contacts',
@@ -386,13 +387,34 @@ class _Avatar extends StatelessWidget {
 
 class _Skeletons extends StatelessWidget {
   const _Skeletons();
+
   @override
-  Widget build(BuildContext context) => ListView.builder(itemCount: 8, itemBuilder: (_, __) =>
-    const SizedBox(height: 76, child: Padding(padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(children: [CircleAvatar(radius: 26, backgroundColor: Color(0xFF1F2C34)), SizedBox(width: 13),
-        Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start,
-          children: [SizedBox(height: 13, width: 150, child: DecoratedBox(decoration: BoxDecoration(color: Color(0xFF1F2C34), borderRadius: BorderRadius.all(Radius.circular(8)))),
-            ), SizedBox(height: 9), SizedBox(height: 10, width: 220, child: DecoratedBox(decoration: BoxDecoration(color: Color(0xFF17262D), borderRadius: BorderRadius.all(Radius.circular(8)))))]))])));
+  Widget build(BuildContext context) => ListView.builder(
+    itemCount: 8,
+    itemBuilder: (_, index) => const SizedBox(
+      height: 76,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(children: [
+          CircleAvatar(radius: 26, backgroundColor: Color(0xFF1F2C34)),
+          SizedBox(width: 13),
+          Expanded(child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 13, width: 150, child: DecoratedBox(
+                decoration: BoxDecoration(color: Color(0xFF1F2C34),
+                  borderRadius: BorderRadius.all(Radius.circular(8))))),
+              SizedBox(height: 9),
+              SizedBox(height: 10, width: 220, child: DecoratedBox(
+                decoration: BoxDecoration(color: Color(0xFF17262D),
+                  borderRadius: BorderRadius.all(Radius.circular(8))))),
+            ],
+          )),
+        ]),
+      ),
+    ),
+  );
 }
 
 class _Empty extends StatelessWidget {
