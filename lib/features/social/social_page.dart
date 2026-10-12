@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/media/media_service.dart';
+import 'stories_tray.dart';
 
 class SocialPage extends StatefulWidget {
   const SocialPage({super.key, required this.auth});
@@ -278,6 +280,8 @@ class _SocialPageState extends State<SocialPage> {
               ),
             ),
           ),
+          SliverToBoxAdapter(child: StoriesTray(api: api, media: media)),
+          const SliverToBoxAdapter(child: Divider(height: 1, color: EazyColors.border)),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           if (loading)
             const SliverFillRemaining(
