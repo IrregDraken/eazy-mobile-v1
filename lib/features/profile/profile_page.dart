@@ -22,6 +22,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic> stats = {};
   late Map<String, dynamic> profile;
   List<Map<String, dynamic>> ownPosts = [];
+  List<Map<String, dynamic>> highlights = [];
   String? error;
   int contentTab = 0;
   bool isFollowing = false;
@@ -76,11 +77,17 @@ class _ProfilePageState extends State<ProfilePage> {
         newStats['followers'] = (results[1]['meta'] is Map ? (results[1]['meta'] as Map)['total'] : 0) ?? 0;
         newStats['following'] = (results[2]['meta'] is Map ? (results[2]['meta'] as Map)['total'] : 0) ?? 0;
       }
+      List<Map<String, dynamic>> loadedHighlights = [];
+      try {
+        final highlightResult = await api.get('stories/highlights/$actualUsername', auth: true);
+        loadedHighlights = (highlightResult['items'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      } catch (_) {}
       if (mounted) setState(() {
         profile = nextProfile;
         stats = newStats;
         ownPosts = rawPosts.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
         isFollowing = followState;
+        highlights = loadedHighlights;
       });
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
@@ -107,6 +114,60 @@ class _ProfilePageState extends State<ProfilePage> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } finally { if (mounted) setState(() => followBusy = false); }
+  }
+
+  Future<void> _createHighlight() async {
+    try {
+      final result = await api.get('stories/feed', auth: true);
+      final mine = (result['items'] as List? ?? const []).whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e)).where((story) => story['isMine'] == true).toList();
+      if (!mounted) return;
+      if (mine.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Share a story first, then save it to a highlight.')));
+        return;
+      }
+      final selected = <String>{};
+      final storyIds = await showModalBottomSheet<List<String>>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (ctx) => StatefulBuilder(builder: (ctx, setSheetState) => SafeArea(child: SizedBox(
+          height: MediaQuery.of(ctx).size.height * .65,
+          child: Column(children: [
+            const Padding(padding: EdgeInsets.all(16), child: Text('Choose stories', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
+            Expanded(child: ListView(children: mine.map((story) {
+              final id = story['id']?.toString() ?? '';
+              return CheckboxListTile(
+                value: selected.contains(id),
+                onChanged: (value) => setSheetState(() { if (value == true) { selected.add(id); } else { selected.remove(id); } }),
+                title: Text(story['caption']?.toString().isNotEmpty == true ? story['caption'].toString() : 'Story from ${(story['createdAt']?.toString() ?? '').split('T').first}'),
+                subtitle: Text('@${story['username'] ?? ''}'),
+              );
+            }).toList())),
+            Padding(padding: const EdgeInsets.all(16), child: SizedBox(width: double.infinity, child: FilledButton(
+              onPressed: selected.isEmpty ? null : () => Navigator.pop(ctx, selected.toList()),
+              child: Text('Continue (${selected.length})'),
+            ))),
+          ]),
+        ))),
+      );
+      if (storyIds == null || storyIds.isEmpty || !mounted) return;
+      final titleController = TextEditingController();
+      final title = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
+        title: const Text('Name your highlight'),
+        content: TextField(controller: titleController, maxLength: 40, autofocus: true, decoration: const InputDecoration(hintText: 'e.g. Moments')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, titleController.text.trim()), child: const Text('Create')),
+        ],
+      ));
+      titleController.dispose();
+      if (title == null || title.trim().isEmpty) return;
+      await api.post('stories/highlights', auth: true, body: {'title': title.trim(), 'storyIds': storyIds});
+      await load();
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   Future<void> _selectContentTab(int tab) async {
