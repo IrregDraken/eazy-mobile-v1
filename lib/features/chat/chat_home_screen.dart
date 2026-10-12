@@ -316,7 +316,7 @@ class _NewChatScreenState extends State<_NewChatScreen> {
         : _error != null ? Center(child: Text(_error!, textAlign: TextAlign.center))
         : _contacts.isEmpty ? Center(child: Padding(padding: const EdgeInsets.all(24),
             child: Text(_query.text.trim().length < 2 ? 'Search by name or Eazy username to find people.' : 'No matching Eazy users found.',
-              textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted)))))
+              textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted))))
         : ListView.builder(itemCount: _contacts.length, itemBuilder: (_, i) {
           final c = _contacts[i]; final name = (c['displayName'] ?? c['fullName'] ?? c['username'] ?? 'Eazy user').toString();
           final avatar = c['avatarUrl']?.toString();
