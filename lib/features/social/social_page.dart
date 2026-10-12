@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -404,7 +405,19 @@ class _Post extends StatefulWidget {
 }
 
 class _PostState extends State<_Post> {
-  bool busy = false;
+  bool busy = false, showHeart = false;
+  Timer? heartTimer;
+
+  @override
+  void dispose() { heartTimer?.cancel(); super.dispose(); }
+
+  Future<void> doubleLike() async {
+    HapticFeedback.lightImpact();
+    heartTimer?.cancel();
+    setState(() => showHeart = true);
+    if (widget.post['likedByViewer'] != true) await mutate('post', 'posts/${widget.post['id']}/like');
+    heartTimer = Timer(const Duration(milliseconds: 650), () { if (mounted) setState(() => showHeart = false); });
+  }
   Future<void> mutate(
     String action,
     String path, {
@@ -690,35 +703,42 @@ class _PostState extends State<_Post> {
                 ),
               if (media.isNotEmpty) ...[
                 const SizedBox(height: 14),
-                SizedBox(
-                  height: 220,
-                  child: PageView.builder(
-                    itemCount: media.length,
-                    itemBuilder: (c, i) {
-                      final m =
-                          media[i] is Map
-                              ? Map<String, dynamic>.from(media[i] as Map)
-                              : {};
-                      final url = m['url']?.toString();
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: url != null
-                            ? (m['mediaType']?.toString() == 'video'
-                                ? EazyVideoMedia(url: url, fit: BoxFit.cover)
-                                : Image.network(
-                                    url,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const ColoredBox(
-                                      color: EazyColors.surfaceRaised,
-                                      child: Center(child: Icon(Icons.broken_image_outlined)),
-                                    ),
-                                  ))
-                            : const ColoredBox(
-                                color: EazyColors.surfaceRaised,
-                                child: Center(child: Icon(Icons.image_outlined)),
-                              ),
-                      );
-                    },
+                GestureDetector(
+                  onDoubleTap: doubleLike,
+                  child: SizedBox(
+                    height: 220,
+                    child: Stack(children: [
+                      PageView.builder(
+                        itemCount: media.length,
+                        itemBuilder: (c, i) {
+                          final m = media[i] is Map ? Map<String, dynamic>.from(media[i] as Map) : <String, dynamic>{};
+                          final url = m['url']?.toString();
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: url != null
+                                ? (m['mediaType']?.toString() == 'video'
+                                    ? EazyVideoMedia(url: url, fit: BoxFit.cover)
+                                    : Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(
+                                        color: EazyColors.surfaceRaised,
+                                        child: Center(child: Icon(Icons.broken_image_outlined)),
+                                      )))
+                                : const ColoredBox(color: EazyColors.surfaceRaised, child: Center(child: Icon(Icons.image_outlined))),
+                          );
+                        },
+                      ),
+                      Positioned.fill(child: IgnorePointer(child: Center(
+                        child: AnimatedScale(
+                          scale: showHeart ? 1 : .35,
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.elasticOut,
+                          child: AnimatedOpacity(
+                            opacity: showHeart ? 1 : 0,
+                            duration: const Duration(milliseconds: 180),
+                            child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 86, shadows: [Shadow(color: Colors.black38, blurRadius: 12)]),
+                          ),
+                        ),
+                      ))),
+                    ]),
                   ),
                 ),
               ],
@@ -743,6 +763,14 @@ class _PostState extends State<_Post> {
                     onPressed: busy ? null : comment,
                     icon: const Icon(Icons.chat_bubble_outline_rounded),
                     label: Text('${widget.post['commentCount'] ?? 0}'),
+                  ),
+                  IconButton(
+                    tooltip: 'Share post',
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: 'https://eazy.app/p/$id'));
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
+                    },
+                    icon: const Icon(Icons.send_outlined),
                   ),
                   const Spacer(),
                   IconButton(
