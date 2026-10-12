@@ -1,0 +1,89 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import type { Pool } from 'pg';
+import { requireAuth, currentUserId } from '../../middleware/auth.js';
+import { validate } from '../../middleware/validate.js';
+import { AppError } from '../../middleware/errors.js';
+import { sendSuccess } from '../../utils/http.js';
+import type { SupabaseStorageProvider } from '../../providers/supabase-storage.js';
+
+const createStorySchema = z.object({
+  storageKey: z.string().trim().min(1).max(1024),
+  mediaType: z.enum(['image', 'video']).default('image'),
+  caption: z.string().trim().max(500).default('')
+}).strict();
+const storyIdSchema = z.object({ storyId: z.string().uuid() });
+
+export class StoryService {
+  constructor(private readonly pool: Pool, private readonly storage?: SupabaseStorageProvider) {}
+
+  async feed(viewerId: string) {
+    const result = await this.pool.query<{
+      id: string; authorId: string; username: string; displayName: string;
+      avatarUrl: string | null; storageKey: string; mediaType: 'image' | 'video';
+      caption: string; createdAt: string; expiresAt: string; seenByMe: boolean;
+      isMine: boolean;
+    }>(`SELECT s.id, s.author_id AS "authorId", p.username, p.display_name AS "displayName",
+      p.avatar_url AS "avatarUrl", s.storage_key AS "storageKey", s.media_type AS "mediaType",
+      s.caption, s.created_at AS "createdAt", s.expires_at AS "expiresAt",
+      EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id=s.id AND sv.viewer_id=$1) AS "seenByMe",
+      (s.author_id=$1) AS "isMine"
+      FROM stories s JOIN profiles p ON p.user_id=s.author_id
+      WHERE s.expires_at > now()
+        AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=s.author_id) OR (b.blocker_id=s.author_id AND b.blocked_id=$1))
+        AND (s.author_id=$1 OR EXISTS(SELECT 1 FROM follows f WHERE f.follower_id=$1 AND f.followee_id=s.author_id))
+      ORDER BY (s.author_id=$1) DESC, s.created_at DESC
+      LIMIT 250`, [viewerId]);
+    return { items: await Promise.all(result.rows.map(row => this.present(row))) };
+  }
+
+  async create(authorId: string, input: z.infer<typeof createStorySchema>) {
+    if (!this.storage) throw new AppError('SERVICE_UNAVAILABLE', 'Media storage is not configured');
+    const ownsKey = await this.pool.query('SELECT 1 FROM media_objects WHERE storage_key=$1 AND owner_id=$2 LIMIT 1', [input.storageKey, authorId]).catch(() => ({ rows: [] }));
+    // Older media deployments do not track media_objects. Validate that the key is scoped to this authenticated user instead.
+    if (!ownsKey.rows.length && !input.storageKey.includes(authorId)) {
+      throw new AppError('VALIDATION_ERROR', 'Choose media uploaded to your Eazy account');
+    }
+    const inserted = await this.pool.query<{ id: string }>(
+      'INSERT INTO stories (author_id, storage_key, media_type, caption) VALUES ($1,$2,$3,$4) RETURNING id',
+      [authorId, input.storageKey, input.mediaType, input.caption]
+    );
+    const row = await this.pool.query('SELECT s.id, s.author_id AS "authorId", p.username, p.display_name AS "displayName", p.avatar_url AS "avatarUrl", s.storage_key AS "storageKey", s.media_type AS "mediaType", s.caption, s.created_at AS "createdAt", s.expires_at AS "expiresAt", false AS "seenByMe", true AS "isMine" FROM stories s JOIN profiles p ON p.user_id=s.author_id WHERE s.id=$1', [inserted.rows[0]!.id]);
+    return { story: await this.present(row.rows[0]) };
+  }
+
+  async markSeen(storyId: string, viewerId: string) {
+    const accessible = await this.pool.query(`SELECT s.id FROM stories s
+      WHERE s.id=$1 AND s.expires_at>now()
+      AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=s.author_id) OR (b.blocker_id=s.author_id AND b.blocked_id=$2))
+      AND (s.author_id=$2 OR EXISTS(SELECT 1 FROM follows f WHERE f.follower_id=$2 AND f.followee_id=s.author_id))`, [storyId, viewerId]);
+    if (!accessible.rowCount) throw new AppError('NOT_FOUND', 'Story not found');
+    await this.pool.query('INSERT INTO story_views (story_id, viewer_id) VALUES ($1,$2) ON CONFLICT (story_id,viewer_id) DO UPDATE SET viewed_at=now()', [storyId, viewerId]);
+    return { seen: true };
+  }
+
+  async delete(storyId: string, authorId: string) {
+    const result = await this.pool.query('DELETE FROM stories WHERE id=$1 AND author_id=$2 RETURNING id', [storyId, authorId]);
+    if (!result.rowCount) throw new AppError('NOT_FOUND', 'Story not found');
+    return { deleted: true };
+  }
+
+  private async present(row: any) {
+    let mediaUrl: string | null = null;
+    if (this.storage && row.storageKey) {
+      try { mediaUrl = (await this.storage.createSignedUrl(row.storageKey, 3600)).signedUrl; } catch { mediaUrl = null; }
+    }
+    return { ...row, mediaUrl };
+  }
+}
+
+export function createStoryRouter(service: StoryService): Router {
+  const router = Router();
+  router.get('/feed', requireAuth, async (request, response) => sendSuccess(response, await service.feed(currentUserId(request))));
+  router.post('/', requireAuth, validate('body', createStorySchema), async (request, response) => response.status(201).json({ success: true, data: await service.create(currentUserId(request), request.body), meta: {} }));
+  router.post('/:storyId/view', requireAuth, validate('params', storyIdSchema), async (request, response) => sendSuccess(response, await service.markSeen(param(request.params.storyId), currentUserId(request))));
+  router.delete('/:storyId', requireAuth, validate('params', storyIdSchema), async (request, response) => sendSuccess(response, await service.delete(param(request.params.storyId), currentUserId(request))));
+  return router;
+}
+
+function param(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
