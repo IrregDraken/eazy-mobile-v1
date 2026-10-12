@@ -40,6 +40,7 @@ export interface AppOptions {
   settingsRouter?: Router;
   blockRouter?: Router;
   mediaRouter?: Router;
+  storiesRouter?: Router;
   readinessCheck?: () => Promise<boolean>;
 }
 
