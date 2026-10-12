@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import express, { type Request, type Router } from 'express';
-import type { AppConfig } from '../config/env.js';
+import type { AppConfig } from '../../config/env.js';
 import type { Logger } from 'pino';
 
 const SUPPORT_INBOX = 'official.eazy.ind@gmail.com';
