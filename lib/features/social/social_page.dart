@@ -27,7 +27,7 @@ class _SocialPageState extends State<SocialPage> {
   List<Map<String, dynamic>> suggestions = [];
   final ScrollController scrollController = ScrollController();
   int page = 1;
-  bool hasMore = true, loadingMore = false;
+  bool hasMore = true, loadingMore = false, newPostsAvailable = false;
   final dismissedSuggestions = <String>{};
   final followedSuggestions = <String>{};
 
@@ -54,6 +54,8 @@ class _SocialPageState extends State<SocialPage> {
   }
 
   Future<void> load() async {
+    final previousFirst = posts.isNotEmpty ? posts.first['id']?.toString() : null;
+    final wasScrolled = scrollController.hasClients && scrollController.offset > 180;
     if (mounted) setState(() {
       loading = true;
       error = null;
@@ -70,6 +72,7 @@ class _SocialPageState extends State<SocialPage> {
         suggestions = (people['items'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
       } catch (_) { suggestions = []; }
       if (mounted) setState(() {
+        if (wasScrolled && previousFirst != null && loaded.isNotEmpty && loaded.first['id']?.toString() != previousFirst) newPostsAvailable = true;
         posts = loaded;
         hasMore = total == null ? loaded.length == 20 : loaded.length < total;
       });
@@ -282,6 +285,18 @@ class _SocialPageState extends State<SocialPage> {
               ),
             ),
           ),
+          if (newPostsAvailable)
+            SliverToBoxAdapter(child: Center(child: Padding(
+              padding: const EdgeInsets.only(top: 2, bottom: 8),
+              child: FilledButton.tonalIcon(
+                onPressed: () async {
+                  setState(() => newPostsAvailable = false);
+                  if (scrollController.hasClients) await scrollController.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+                },
+                icon: const Icon(Icons.arrow_upward_rounded, size: 16),
+                label: const Text('New posts'),
+              ),
+            ))),
           SliverToBoxAdapter(
             child: SizedBox(
               height: 44,
