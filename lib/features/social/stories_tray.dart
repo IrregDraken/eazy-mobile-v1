@@ -186,7 +186,8 @@ class StoryViewer extends StatefulWidget {
 class _StoryViewerState extends State<StoryViewer> {
   int index = 0;
   Timer? timer;
-  bool paused = false;
+  final TextEditingController replyController = TextEditingController();
+  bool paused = false, sendingReply = false;
   String? failure;
 
   Map<String, dynamic> get current => widget.stories[index];
@@ -194,7 +195,7 @@ class _StoryViewerState extends State<StoryViewer> {
   @override
   void initState() { super.initState(); _markSeen(); _startTimer(); }
   @override
-  void dispose() { timer?.cancel(); super.dispose(); }
+  void dispose() { timer?.cancel(); replyController.dispose(); super.dispose(); }
 
   Future<void> _markSeen() async {
     if (!widget.markSeen) return;
@@ -213,6 +214,23 @@ class _StoryViewerState extends State<StoryViewer> {
     _markSeen();
     _startTimer();
   }
+  Future<void> _sendReply(String text) async {
+    final username = current['username']?.toString() ?? '';
+    if (text.trim().isEmpty || username.isEmpty || current['isMine'] == true || sendingReply) return;
+    setState(() => sendingReply = true);
+    try {
+      final created = await widget.api.post('chat/conversations', auth: true, body: {'username': username});
+      final conversation = created['conversation'] is Map ? Map<String, dynamic>.from(created['conversation'] as Map) : <String, dynamic>{};
+      final conversationId = (conversation['id'] ?? conversation['conversationId'])?.toString();
+      if (conversationId == null || conversationId.isEmpty) throw const ApiException('Could not open this conversation.');
+      await widget.api.post('chat/conversations/$conversationId/messages', auth: true, body: {'body': text.trim()});
+      replyController.clear();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reply sent in Eazy Chat')));
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally { if (mounted) setState(() => sendingReply = false); }
+  }
+
   void _previous() {
     if (index == 0) return;
     setState(() { index--; failure = null; });
@@ -269,8 +287,29 @@ class _StoryViewerState extends State<StoryViewer> {
               IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close_rounded, color: Colors.white)),
             ])),
             if (current['caption']?.toString().isNotEmpty == true)
-              Positioned(left: 24, right: 24, bottom: 64, child: Text(current['caption'].toString(), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))),
-            if (paused) const Positioned(bottom: 24, left: 0, right: 0, child: Center(child: Icon(Icons.pause_circle_outline_rounded, color: Colors.white, size: 36))),
+              Positioned(left: 24, right: 24, bottom: 108, child: Text(current['caption'].toString(), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))),
+            if (!mine)
+              Positioned(left: 12, right: 12, bottom: 8, child: SafeArea(top: false, child: Row(children: [
+                for (final emoji in ['❤️', '😂', '🔥'])
+                  IconButton(onPressed: sendingReply ? null : () => _sendReply(emoji), icon: Text(emoji, style: const TextStyle(fontSize: 21))),
+                Expanded(child: TextField(
+                  controller: replyController,
+                  style: const TextStyle(color: Colors.white),
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: _sendReply,
+                  decoration: InputDecoration(
+                    hintText: 'Reply to @${current['username'] ?? 'user'}…',
+                    hintStyle: const TextStyle(color: Colors.white70, fontSize: 12),
+                    filled: true,
+                    fillColor: Colors.white12,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: Colors.white38)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: Colors.white38)),
+                  ),
+                )),
+                IconButton(onPressed: sendingReply ? null : () => _sendReply(replyController.text), icon: sendingReply ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded, color: Colors.white)),
+              ]))),
+            if (paused) const Positioned(bottom: 72, left: 0, right: 0, child: Center(child: Icon(Icons.pause_circle_outline_rounded, color: Colors.white, size: 36))),
             if (failure != null) Positioned(bottom: 16, left: 16, right: 16, child: Text(failure!, style: const TextStyle(color: Colors.white70), textAlign: TextAlign.center)),
           ]),
         ),
