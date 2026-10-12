@@ -498,7 +498,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             const Divider(),
             _Info('Amount', '$_currency $amount'),
             _Info('Available balance', '$_currency $_balance'),
-            _Info('Held balance', '$_currency $_heldBalance'),
             const SizedBox(height: 10),
             const Text('Authenticate on this device before submitting the transfer.', style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.4)),
           ],
