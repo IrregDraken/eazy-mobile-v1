@@ -298,105 +298,64 @@ class _WalletPageState extends State<WalletPage> {
     final accountNumber = TextEditingController();
     final bankCode = TextEditingController();
     final bankName = TextEditingController();
-    final amount = TextEditingController();
-    final reason = TextEditingController();
-    final values = await showDialog<Map<String, String>>(
+    final details = await showDialog<Map<String, String>>(
       context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text('Send to an external bank'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: accountNumber,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Account number',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: bankCode,
-                    decoration: const InputDecoration(labelText: 'Bank code'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: bankName,
-                    decoration: const InputDecoration(
-                      labelText: 'Bank name (optional)',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: amount,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: 'Amount',
-                      prefixText: '$_currency ',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: reason,
-                    maxLength: 140,
-                    decoration: const InputDecoration(
-                      labelText: 'Reason (optional)',
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    'Account resolution and transfer status are controlled by the bank provider. Eazy will show an unavailable state if it is not configured.',
-                    style: TextStyle(
-                      color: EazyColors.muted,
-                      fontSize: 12,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Choose bank recipient'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: bankName,
+              decoration: const InputDecoration(labelText: 'Bank name'),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed:
-                    () => Navigator.pop(dialogContext, {
-                      'accountNumber': accountNumber.text.trim(),
-                      'bankCode': bankCode.text.trim(),
-                      'bankName': bankName.text.trim(),
-                      'amount': amount.text.trim(),
-                      'reason': reason.text.trim(),
-                    }),
-                child: const Text('Resolve account'),
-              ),
-            ],
+            const SizedBox(height: 10),
+            TextField(
+              controller: bankCode,
+              autocorrect: false,
+              decoration: const InputDecoration(labelText: 'Bank code'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: accountNumber,
+              keyboardType: TextInputType.number,
+              maxLength: 10,
+              decoration: const InputDecoration(labelText: '10-digit account number'),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Eazy will resolve the account name with the bank before you enter an amount.',
+              style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.35),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, {
+              'accountNumber': accountNumber.text.trim(),
+              'bankCode': bankCode.text.trim(),
+              'bankName': bankName.text.trim(),
+            }),
+            child: const Text('Resolve account'),
           ),
+        ],
+      ),
     );
-    for (final controller in [
-      accountNumber,
-      bankCode,
-      bankName,
-      amount,
-      reason,
-    ]) {
-      controller.dispose();
-    }
-    if (values == null) return;
-    final number = values['accountNumber'] ?? '';
-    final code = values['bankCode'] ?? '';
-    final value = values['amount'] ?? '';
-    if (!RegExp(r'^\d{10}$').hasMatch(number) ||
-        code.length < 2 ||
-        !_validMoney(value)) {
-      _showError('Enter a valid 10-digit account, bank code, and amount.');
+    accountNumber.dispose();
+    bankCode.dispose();
+    bankName.dispose();
+    if (details == null) return;
+
+    final number = details['accountNumber'] ?? '';
+    final code = details['bankCode'] ?? '';
+    final selectedBank = details['bankName'] ?? '';
+    if (!RegExp(r'^\d{10}$').hasMatch(number) || code.length < 2) {
+      _showError('Enter a valid 10-digit account number and bank code.');
       return;
     }
+
+    Map<String, dynamic> account;
     setState(() => busy = true);
     try {
       final resolved = await api.post(
@@ -404,35 +363,61 @@ class _WalletPageState extends State<WalletPage> {
         auth: true,
         body: {'accountNumber': number, 'bankCode': code},
       );
-      final account = _map(resolved['account']);
-      final resolvedName =
-          account['accountName']?.toString() ?? values['bankName'] ?? '';
-      if (resolvedName.isEmpty)
-        throw const ApiException('The bank did not return an account name.');
-      if (!mounted) return;
-      setState(() => busy = false);
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder:
-            (dialogContext) => AlertDialog(
-              title: const Text('Confirm bank recipient'),
-              content: Text(
-                'Send $_currency $value to $resolvedName at ${values['bankName']?.isEmpty == true ? 'the selected bank' : values['bankName']}?',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(dialogContext, true),
-                  child: const Text('Send securely'),
-                ),
-              ],
+      account = _map(resolved['account']);
+      if ((account['accountName']?.toString() ?? '').trim().isEmpty) {
+        throw const ApiException('The bank did not return a verified account name.');
+      }
+    } on ApiException catch (e) {
+      _showError(e.message);
+      return;
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+    if (!mounted) return;
+
+    final accountName = account['accountName'].toString();
+    final amount = await _amountDialog(
+      title: 'Send to $accountName',
+      action: 'Review transfer',
+    );
+    if (amount == null || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Review bank transfer'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Verified recipient'),
+            const SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const CircleAvatar(child: Icon(Icons.account_balance_rounded)),
+              title: Text(accountName, style: const TextStyle(fontWeight: FontWeight.w900)),
+              subtitle: Text('$selectedBank · $number'),
             ),
-      );
-      if (confirmed != true) return;
-      setState(() => busy = true);
+            const Divider(),
+            _Info('Amount', '$_currency $amount'),
+            _Info('Available balance', '$_currency $_balance'),
+            _Info('Held balance', '$_currency $_heldBalance'),
+            const SizedBox(height: 10),
+            const Text('Authenticate on this device before submitting the transfer.', style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.4)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Continue securely')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => busy = true);
+    try {
+      final authenticated = await _authenticateTransfer('Authorize sending $_currency $amount to $accountName');
+      if (!authenticated) return;
       await api.post(
         'bank-transfers',
         auth: true,
@@ -440,19 +425,18 @@ class _WalletPageState extends State<WalletPage> {
         body: {
           'accountNumber': number,
           'bankCode': code,
-          'accountName': resolvedName,
-          'bankName': values['bankName'],
-          'amount': value,
+          'accountName': accountName,
+          'bankName': selectedBank,
+          'amount': amount,
           'currency': _currency,
-          'reason': values['reason'],
         },
       );
       await load();
-      _showMessage(
-        'Bank transfer initiated. Check its status in wallet activity.',
-      );
+      _showMessage('Bank transfer submitted. Check wallet activity for its confirmed status.');
     } on ApiException catch (e) {
       _showError(e.message);
+    } catch (_) {
+      _showError('Authentication could not be completed. No transfer was submitted.');
     } finally {
       if (mounted) setState(() => busy = false);
     }
