@@ -384,7 +384,7 @@ class _MessageBubble extends StatelessWidget {
           if(!deleted)TextButton(onPressed:onTranslate,child:const Text('Translate',style:TextStyle(fontSize:10)))
         ])
       ])
-        )))));
+        ))));
   }
   String _time(dynamic value){
     final d=DateTime.tryParse(value?.toString() ?? '');if(d==null)return '';
