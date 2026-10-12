@@ -45,8 +45,8 @@ class _ProfilePageState extends State<ProfilePage> {
           ? fetchedProfile['username']
           : profile['username'])?.toString().toLowerCase();
       final profileId = (fetchedProfile is Map
-          ? fetchedProfile['id']
-          : profile['id'])?.toString();
+          ? (fetchedProfile['user_id'] ?? fetchedProfile['userId'] ?? fetchedProfile['id'])
+          : (profile['userId'] ?? profile['id']))?.toString();
       final posts = rawPosts.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).where((post) {
         final author = post['author'] is Map ? Map<String, dynamic>.from(post['author'] as Map) : <String, dynamic>{};
         return (profileId != null && profileId.isNotEmpty && author['id']?.toString() == profileId) ||
@@ -77,7 +77,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final last = TextEditingController(text: profile['lastName']?.toString() ?? '');
     final username = TextEditingController(text: profile['username']?.toString() ?? '');
     final bio = TextEditingController(text: profile['bio']?.toString() ?? '');
-    final website = TextEditingController(text: profile['website']?.toString() ?? '');
     final formKey = GlobalKey<FormState>();
     final values = await showModalBottomSheet<Map<String, String>>(
       context: context,
@@ -102,8 +101,6 @@ class _ProfilePageState extends State<ProfilePage> {
               TextFormField(controller: username, decoration: const InputDecoration(labelText: 'Username', prefixText: '@'), validator: (v) => RegExp(r'^[a-zA-Z0-9_]{3,32}$').hasMatch((v ?? '').trim()) ? null : 'Use 3–32 letters, numbers or underscores'),
               const SizedBox(height: 10),
               TextFormField(controller: bio, maxLength: 150, maxLines: 3, decoration: const InputDecoration(labelText: 'Bio', alignLabelWithHint: true)),
-              const SizedBox(height: 10),
-              TextFormField(controller: website, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Website')),
               const SizedBox(height: 16),
               SizedBox(width: double.infinity, child: FilledButton(
                 onPressed: () {
@@ -113,7 +110,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     'lastName': last.text.trim(),
                     'username': username.text.trim().toLowerCase(),
                     'bio': bio.text.trim(),
-                    'website': website.text.trim(),
                   });
                 },
                 child: const Text('Save changes'),
@@ -123,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
-    first.dispose(); last.dispose(); username.dispose(); bio.dispose(); website.dispose();
+    first.dispose(); last.dispose(); username.dispose(); bio.dispose();
     if (values == null) return;
     setState(() { saving = true; error = null; });
     try {
@@ -147,7 +143,6 @@ class _ProfilePageState extends State<ProfilePage> {
         : [profile['firstName'], profile['lastName']].where((e) => e != null && e.toString().trim().isNotEmpty).join(' ');
     final avatar = profile['avatarUrl']?.toString();
     final bio = profile['bio']?.toString() ?? '';
-    final website = profile['website']?.toString() ?? '';
     final postsCount = stats['posts'] ?? profile['postsCount'] ?? 0;
     final followers = stats['followers'] ?? profile['followersCount'] ?? 0;
     final following = stats['following'] ?? profile['followingCount'] ?? 0;
@@ -196,11 +191,6 @@ class _ProfilePageState extends State<ProfilePage> {
             Text(name.isEmpty ? 'Make Eazy yours' : name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
             if (profile['category']?.toString().isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 3), child: Text(profile['category'].toString(), style: const TextStyle(color: EazyColors.muted, fontSize: 12))),
             if (bio.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(bio, style: const TextStyle(height: 1.45))),
-            if (website.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 7), child: Row(children: [
-              const Icon(Icons.link_rounded, size: 16, color: EazyColors.green),
-              const SizedBox(width: 5),
-              Flexible(child: Text(website, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: EazyColors.green, fontWeight: FontWeight.w700))),
-            ])),
             const SizedBox(height: 16),
             Row(children: [
               Expanded(child: OutlinedButton(onPressed: saving ? null : editProfile, child: Text(saving ? 'Saving…' : 'Edit profile'))),
