@@ -14,6 +14,7 @@ export interface AppOptions {
   authMiddleware?: RequestHandler;
   authRouter?: Router;
   emailVerificationRouter?: Router;
+  inboundEmailRouter?: Router;
   profileRouter?: Router;
   socialRouter?: Router;
   postRouter?: Router;
@@ -82,6 +83,8 @@ export function createApp(config: AppConfig, logger: Logger, options: AppOptions
   if (options.authMiddleware) app.use(options.authMiddleware);
 
   app.get('/v1', (_request, response) => sendSuccess(response, { version: 'v1', status: 'available' }));
+
+  if (options.inboundEmailRouter) app.use('/webhooks/email', options.inboundEmailRouter);
 
   if (options.emailVerificationRouter) app.use('/v1/auth', options.emailVerificationRouter);
   if (options.authMiddleware && options.authRouter) app.use('/v1/auth', options.authRouter);
