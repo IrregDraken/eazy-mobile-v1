@@ -137,7 +137,7 @@ export function createStoryRouter(service: StoryService): Router {
   router.post('/', requireAuth, validate('body', createStorySchema), async (request, response) => response.status(201).json({ success: true, data: await service.create(currentUserId(request), request.body), meta: {} }));
   router.post('/:storyId/view', requireAuth, validate('params', storyIdSchema), async (request, response) => sendSuccess(response, await service.markSeen(param(request.params.storyId), currentUserId(request))));
   router.delete('/:storyId', requireAuth, validate('params', storyIdSchema), async (request, response) => sendSuccess(response, await service.delete(param(request.params.storyId), currentUserId(request))));
-  router.get('/highlights/:username', validate('params', usernameSchema), async (request, response) => sendSuccess(response, await service.listHighlights(param(request.params.username), request.auth?.userId)));
+  router.get('/highlights/:username', requireAuth, validate('params', usernameSchema), async (request, response) => sendSuccess(response, await service.listHighlights(param(request.params.username), currentUserId(request))));
   router.post('/highlights', requireAuth, validate('body', createHighlightSchema), async (request, response) => response.status(201).json({ success: true, data: await service.createHighlight(currentUserId(request), request.body), meta: {} }));
   router.delete('/highlights/:highlightId', requireAuth, validate('params', highlightIdSchema), async (request, response) => sendSuccess(response, await service.deleteHighlight(param(request.params.highlightId), currentUserId(request))));
   return router;
