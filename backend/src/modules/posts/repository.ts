@@ -100,6 +100,22 @@ export class PostRepository {
     return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
   }
 
+  async byUsername(viewerId: string | undefined, username: string, page: number, limit: number): Promise<{ items: PostProjection[]; total: number }> {
+    const profile = await this.pool.query<{ user_id: string }>('SELECT user_id FROM profiles WHERE username=$1 LIMIT 1', [username.toLowerCase()]);
+    const authorId = profile.rows[0]?.user_id;
+    if (!authorId) return { items: [], total: 0 };
+    const where = `p.author_id=$2 AND p.status='published'
+      AND NOT EXISTS (SELECT 1 FROM blocks b WHERE ($1::uuid IS NOT NULL AND ((b.blocker_id=$1 AND b.blocked_id=p.author_id) OR (b.blocker_id=p.author_id AND b.blocked_id=$1)))
+      AND ($1::uuid IS NOT NULL AND p.author_id=$1 OR p.visibility='public' OR ($1::uuid IS NOT NULL AND p.visibility='followers' AND EXISTS (SELECT 1 FROM follows f WHERE f.follower_id=$1 AND f.followee_id=p.author_id)))`;
+    const count = await this.pool.query<{ count: string }>(`SELECT count(*)::text AS count FROM posts p WHERE ${where}`, [viewerId ?? null, authorId]);
+    const result = await this.pool.query<PostProjection>(
+      `SELECT ${projection} FROM posts p JOIN profiles author ON author.user_id=p.author_id
+       WHERE ${where} ORDER BY p.created_at DESC, p.id DESC LIMIT $3 OFFSET $4`,
+      [viewerId ?? null, authorId, limit, (page - 1) * limit]
+    );
+    return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
   async softDelete(client: DbClient, postId: string, authorId: string): Promise<boolean> {
     const result = await client.query("UPDATE posts SET status = 'deleted', updated_at = now() WHERE id = $1 AND author_id = $2 AND status <> 'deleted' RETURNING id", [postId, authorId]);
     return Boolean(result.rowCount);
