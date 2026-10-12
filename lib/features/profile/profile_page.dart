@@ -5,46 +5,340 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 
-class ProfilePage extends StatefulWidget{
-  const ProfilePage({super.key,required this.auth});final AuthController auth;
-  @override State<ProfilePage> createState()=>_ProfilePageState();
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key, required this.auth});
+  final AuthController auth;
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
 }
-class _ProfilePageState extends State<ProfilePage>{
-  final api=ApiClient();bool loading=true;Map<String,dynamic> stats={};String? error;
-  @override void initState(){super.initState();load();}
-  Future<void> load()async{try{final r=await api.get('profiles/me/stats',auth:true);if(mounted)setState(()=>stats=Map<String,dynamic>.from(r['stats'] as Map? ?? {}));}on ApiException catch(e){if(mounted)setState(()=>error=e.message);}finally{if(mounted)setState(()=>loading=false);}}
-  @override Widget build(BuildContext context){
-    final p=widget.auth.profile??const<String,dynamic>{};
-    final name=p['displayName']?.toString().trim().isNotEmpty==true?p['displayName'].toString():'Eazy user';
-    final username=p['username']?.toString()??'';final avatar=p['avatarUrl']?.toString();
-    return SafeArea(child:RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.fromLTRB(20,20,20,110),children:[
-      Row(children:[const Expanded(child:Text('You',style:TextStyle(fontSize:28,fontWeight:FontWeight.w900))),IconButton(onPressed:load,icon:const Icon(Icons.refresh_rounded))]),
-      const SizedBox(height:14),
-      Card(child:Padding(padding:const EdgeInsets.all(20),child:Column(children:[
-        CircleAvatar(radius:46,backgroundImage:avatar!=null&&avatar.startsWith('http')?NetworkImage(avatar):null,child:const Icon(Icons.person_rounded,size:40)),
-        const SizedBox(height:12),Text(name,style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)),
-        if(username.isNotEmpty)Text('@'+username,style:const TextStyle(color:EazyColors.muted)),
-        if(p['bio']?.toString().isNotEmpty==true)...[const SizedBox(height:10),Text(p['bio'].toString(),textAlign:TextAlign.center,style:const TextStyle(color:EazyColors.muted,height:1.4))],
-        const SizedBox(height:18),Row(mainAxisAlignment:MainAxisAlignment.spaceEvenly,children:[
-          _Stat(loading?'—':(stats['posts']??0).toString(),'Posts'),
-          _Stat(loading?'—':(stats['followers']??0).toString(),'Followers'),
-          _Stat(loading?'—':(stats['following']??0).toString(),'Following'),
+
+class _ProfilePageState extends State<ProfilePage> {
+  final api = ApiClient();
+  bool loading = true;
+  bool saving = false;
+  Map<String, dynamic> stats = {};
+  late Map<String, dynamic> profile;
+  List<Map<String, dynamic>> ownPosts = [];
+  String? error;
+  int contentTab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    profile = Map<String, dynamic>.from(widget.auth.profile ?? const {});
+    load();
+  }
+
+  Future<void> load() async {
+    if (mounted) setState(() { loading = true; error = null; });
+    try {
+      final results = await Future.wait([
+        api.get('profiles/me', auth: true),
+        api.get('profiles/me/stats', auth: true),
+        api.get('home/feed?page=1&limit=50&mode=for_you', auth: true),
+      ]);
+      final fetchedProfile = results[0]['profile'];
+      final fetchedStats = results[1]['stats'];
+      final rawPosts = results[2]['items'] as List? ?? const [];
+      final username = (fetchedProfile is Map
+          ? fetchedProfile['username']
+          : profile['username'])?.toString().toLowerCase();
+      final profileId = (fetchedProfile is Map
+          ? fetchedProfile['id']
+          : profile['id'])?.toString();
+      final posts = rawPosts.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).where((post) {
+        final author = post['author'] is Map ? Map<String, dynamic>.from(post['author'] as Map) : <String, dynamic>{};
+        return (profileId != null && profileId.isNotEmpty && author['id']?.toString() == profileId) ||
+            (username != null && username.isNotEmpty && author['username']?.toString().toLowerCase() == username);
+      }).toList();
+      if (mounted) setState(() {
+        if (fetchedProfile is Map) profile = Map<String, dynamic>.from(fetchedProfile);
+        if (fetchedStats is Map) stats = Map<String, dynamic>.from(fetchedStats);
+        ownPosts = posts;
+      });
+    } on ApiException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  String _count(dynamic value) {
+    final n = int.tryParse(value?.toString() ?? '') ?? 0;
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(n % 1000000 < 100000 ? 0 : 1)}M';
+    if (n >= 10000) return '${(n / 1000).toStringAsFixed(n % 1000 < 100 ? 0 : 1)}K';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return n.toString();
+  }
+
+  Future<void> editProfile() async {
+    final first = TextEditingController(text: profile['firstName']?.toString() ?? '');
+    final last = TextEditingController(text: profile['lastName']?.toString() ?? '');
+    final username = TextEditingController(text: profile['username']?.toString() ?? '');
+    final bio = TextEditingController(text: profile['bio']?.toString() ?? '');
+    final website = TextEditingController(text: profile['website']?.toString() ?? '');
+    final formKey = GlobalKey<FormState>();
+    final values = await showModalBottomSheet<Map<String, String>>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 4, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: Form(
+          key: formKey,
+          child: SingleChildScrollView(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Edit your profile', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              const Text('Keep your Eazy identity up to date.', style: TextStyle(color: EazyColors.muted)),
+              const SizedBox(height: 18),
+              TextFormField(controller: first, decoration: const InputDecoration(labelText: 'First name'), validator: (v) => (v ?? '').trim().isEmpty ? 'Add your first name' : null),
+              const SizedBox(height: 10),
+              TextFormField(controller: last, decoration: const InputDecoration(labelText: 'Last name')),
+              const SizedBox(height: 10),
+              TextFormField(controller: username, decoration: const InputDecoration(labelText: 'Username', prefixText: '@'), validator: (v) => RegExp(r'^[a-zA-Z0-9_]{3,32}$').hasMatch((v ?? '').trim()) ? null : 'Use 3–32 letters, numbers or underscores'),
+              const SizedBox(height: 10),
+              TextFormField(controller: bio, maxLength: 150, maxLines: 3, decoration: const InputDecoration(labelText: 'Bio', alignLabelWithHint: true)),
+              const SizedBox(height: 10),
+              TextFormField(controller: website, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Website')),
+              const SizedBox(height: 16),
+              SizedBox(width: double.infinity, child: FilledButton(
+                onPressed: () {
+                  if (!(formKey.currentState?.validate() ?? false)) return;
+                  Navigator.pop(ctx, {
+                    'firstName': first.text.trim(),
+                    'lastName': last.text.trim(),
+                    'username': username.text.trim().toLowerCase(),
+                    'bio': bio.text.trim(),
+                    'website': website.text.trim(),
+                  });
+                },
+                child: const Text('Save changes'),
+              )),
+            ],
+          )),
+        ),
+      ),
+    );
+    first.dispose(); last.dispose(); username.dispose(); bio.dispose(); website.dispose();
+    if (values == null) return;
+    setState(() { saving = true; error = null; });
+    try {
+      final result = await api.patch('profiles/me', auth: true, body: values);
+      final updated = result['profile'];
+      if (mounted) setState(() => profile = Map<String, dynamic>.from(updated is Map ? updated : {...profile, ...values}));
+      await load();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
+    } on ApiException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final username = profile['username']?.toString() ?? '';
+    final name = profile['displayName']?.toString().trim().isNotEmpty == true
+        ? profile['displayName'].toString()
+        : [profile['firstName'], profile['lastName']].where((e) => e != null && e.toString().trim().isNotEmpty).join(' ');
+    final avatar = profile['avatarUrl']?.toString();
+    final bio = profile['bio']?.toString() ?? '';
+    final website = profile['website']?.toString() ?? '';
+    final postsCount = stats['posts'] ?? profile['postsCount'] ?? 0;
+    final followers = stats['followers'] ?? profile['followersCount'] ?? 0;
+    final following = stats['following'] ?? profile['followingCount'] ?? 0;
+
+    return SafeArea(child: RefreshIndicator(
+      onRefresh: load,
+      child: CustomScrollView(slivers: [
+        SliverToBoxAdapter(child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 16, 14),
+          child: Row(children: [
+            Expanded(child: Row(children: [
+              if (profile['isPrivate'] == true) const Padding(padding: EdgeInsets.only(right: 7), child: Icon(Icons.lock_outline_rounded, size: 18)),
+              Flexible(child: Text(username.isEmpty ? 'Your profile' : '@$username', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, letterSpacing: -.7))),
+              const SizedBox(width: 4),
+              const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
+            ])),
+            IconButton(tooltip: 'Create a post', onPressed: () => context.go('/home'), icon: const Icon(Icons.add_box_outlined)),
+            IconButton(tooltip: 'Settings', onPressed: () => context.push('/settings'), icon: const Icon(Icons.menu_rounded)),
+          ]),
+        )),
+        SliverToBoxAdapter(child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: EazyColors.green.withValues(alpha: .75), width: 2)),
+                child: CircleAvatar(
+                  radius: 43,
+                  backgroundColor: EazyColors.surfaceRaised,
+                  backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
+                  child: avatar == null || !avatar.startsWith('http') ? const Icon(Icons.person_rounded, size: 42, color: EazyColors.green) : null,
+                ),
+              ),
+              const SizedBox(width: 22),
+              Expanded(child: StatsRow(
+                posts: _count(postsCount),
+                followers: _count(followers),
+                following: _count(following),
+                loading: loading,
+                onFollowers: () => _showSocialList('Followers'),
+                onFollowing: () => _showSocialList('Following'),
+              )),
+            ]),
+            const SizedBox(height: 16),
+            Text(name.isEmpty ? 'Make Eazy yours' : name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            if (profile['category']?.toString().isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 3), child: Text(profile['category'].toString(), style: const TextStyle(color: EazyColors.muted, fontSize: 12))),
+            if (bio.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(bio, style: const TextStyle(height: 1.45))),
+            if (website.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 7), child: Row(children: [
+              const Icon(Icons.link_rounded, size: 16, color: EazyColors.green),
+              const SizedBox(width: 5),
+              Flexible(child: Text(website, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: EazyColors.green, fontWeight: FontWeight.w700))),
+            ])),
+            const SizedBox(height: 16),
+            Row(children: [
+              Expanded(child: OutlinedButton(onPressed: saving ? null : editProfile, child: Text(saving ? 'Saving…' : 'Edit profile'))),
+              const SizedBox(width: 8),
+              Expanded(child: OutlinedButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile sharing will be available when Eazy links are enabled.'))), icon: const Icon(Icons.ios_share_rounded, size: 17), label: const Text('Share profile'))),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(tooltip: 'Discover people', onPressed: () => context.push('/discovery'), icon: const Icon(Icons.person_add_alt_1_rounded)),
+            ]),
+            const SizedBox(height: 8),
+            if (error != null) Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: EazyColors.red.withValues(alpha: .10), borderRadius: BorderRadius.circular(EazyRadius.md)),
+              child: Text(error!, style: const TextStyle(color: EazyColors.red)),
+            ),
+          ]),
+        )),
+        SliverToBoxAdapter(child: Container(
+          decoration: const BoxDecoration(border: Border(top: BorderSide(color: EazyColors.border))),
+          child: Row(children: [
+            ProfileTab(icon: Icons.grid_on_rounded, selected: contentTab == 0, onTap: () => setState(() => contentTab = 0)),
+            ProfileTab(icon: Icons.play_circle_outline_rounded, selected: contentTab == 1, onTap: () => setState(() => contentTab = 1)),
+            ProfileTab(icon: Icons.person_pin_outlined, selected: contentTab == 2, onTap: () => setState(() => contentTab = 2)),
+          ]),
+        )),
+        if (loading && ownPosts.isEmpty)
+          const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(36), child: Center(child: CircularProgressIndicator()))),
+        if (!loading && contentTab == 0 && ownPosts.isNotEmpty)
+          SliverPadding(padding: const EdgeInsets.all(2), sliver: SliverGrid(
+            delegate: SliverChildBuilderDelegate((context, index) => ProfilePostTile(post: ownPosts[index]), childCount: ownPosts.length),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 2, mainAxisSpacing: 2, childAspectRatio: 1),
+          )),
+        if (!loading && (contentTab != 0 || ownPosts.isEmpty))
+          SliverToBoxAdapter(child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 42, 28, 100),
+            child: Column(children: [
+              Icon(contentTab == 0 ? Icons.add_a_photo_outlined : contentTab == 1 ? Icons.play_circle_outline_rounded : Icons.person_pin_outlined, size: 42, color: EazyColors.green),
+              const SizedBox(height: 12),
+              Text(contentTab == 0 ? ((int.tryParse(postsCount.toString()) ?? 0) > 0 ? 'Your posts are not in the current feed page yet' : 'Share your first moment') : contentTab == 1 ? 'Your Reels will live here' : 'Photos you are tagged in will appear here', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              const SizedBox(height: 6),
+              Text(contentTab == 0 ? 'Build your corner of Eazy, one post at a time.' : 'This view will fill with content when the matching Eazy feature is available.', textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted, height: 1.45)),
+              if (contentTab == 0) Padding(padding: const EdgeInsets.only(top: 14), child: FilledButton.icon(onPressed: () => context.go('/home'), icon: const Icon(Icons.add_rounded), label: const Text('Create a post'))),
+            ]),
+          )),
+        if (error != null && ownPosts.isEmpty && !loading)
+          SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(20), child: Text('Could not refresh all profile content. Pull down to retry.', style: const TextStyle(color: EazyColors.muted)))),
+        const SliverToBoxAdapter(child: SizedBox(height: 110)),
+      ]),
+    ));
+  }
+
+  void _showSocialList(String title) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 30),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          const Icon(Icons.people_outline_rounded, size: 38, color: EazyColors.green),
+          const SizedBox(height: 10),
+          const Text('Your social counts are synced. Searchable follower lists will appear here once the people-list API is enabled.', textAlign: TextAlign.center, style: TextStyle(color: EazyColors.muted, height: 1.45)),
         ]),
-      ]))),
-      const SizedBox(height:12),
-      _Menu(Icons.auto_awesome_rounded,'Eazy Assist',onTap:()=>context.push('/assist')),
-      _Menu(Icons.translate_rounded,'Translation',onTap:()=>context.push('/translation')),
-      _Menu(Icons.location_on_outlined,'Location tools',onTap:()=>context.push('/location')),
-      _Menu(Icons.edit_outlined,'Edit profile',onTap:(){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Profile editing is handled by the onboarding profile contract.')));}),
-      _Menu(Icons.notifications_none_rounded,'Notifications',onTap:()=>context.push('/notifications')),
-      _Menu(Icons.settings_outlined,'Settings',onTap:()=>context.push('/settings')),
-      _Menu(Icons.shield_outlined,'Security & sessions',onTap:()=>context.push('/security')),
-      _Menu(Icons.block_outlined,'Blocked accounts',onTap:()=>context.push('/blocks')),
-      const SizedBox(height:8),
-      OutlinedButton.icon(onPressed:()async{await widget.auth.signOut();if(context.mounted)context.go('/welcome');},icon:const Icon(Icons.logout_rounded),label:const Text('Sign out')),
-      if(error!=null)Padding(padding:const EdgeInsets.only(top:12),child:Text(error!,style:const TextStyle(color:EazyColors.red))),
-    ])));
+      )),
+    );
   }
 }
-class _Stat extends StatelessWidget{const _Stat(this.value,this.label);final String value,label;@override Widget build(BuildContext context)=>Column(children:[Text(value,style:const TextStyle(fontWeight:FontWeight.w900,fontSize:18)),const SizedBox(height:2),Text(label,style:const TextStyle(color:EazyColors.muted,fontSize:12))]);}
-class _Menu extends StatelessWidget{const _Menu(this.icon,this.title,{required this.onTap});final IconData icon;final String title;final VoidCallback onTap;@override Widget build(BuildContext context)=>Card(margin:const EdgeInsets.only(bottom:8),child:ListTile(onTap:onTap,leading:Icon(icon,color:EazyColors.green),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w700)),trailing:const Icon(Icons.chevron_right_rounded,color:EazyColors.muted)));}
+
+class StatsRow extends StatelessWidget {
+  const StatsRow({super.key, required this.posts, required this.followers, required this.following, required this.loading, required this.onFollowers, required this.onFollowing});
+  final String posts, followers, following;
+  final bool loading;
+  final VoidCallback onFollowers, onFollowing;
+  @override
+  Widget build(BuildContext context) => Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+    _Stat(posts, 'Posts', loading, () {}),
+    _Stat(followers, 'Followers', loading, onFollowers),
+    _Stat(following, 'Following', loading, onFollowing),
+  ]);
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat(this.value, this.label, this.loading, this.onTap);
+  final String value, label;
+  final bool loading;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Padding(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8), child: Column(children: [
+      Text(loading ? '—' : value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 3),
+      Text(label, style: const TextStyle(fontSize: 11, color: EazyColors.muted)),
+    ])),
+  );
+}
+
+class ProfileTab extends StatelessWidget {
+  const ProfileTab({super.key, required this.icon, required this.selected, required this.onTap});
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Expanded(child: InkWell(
+    onTap: onTap,
+    child: Container(height: 48, decoration: BoxDecoration(border: Border(bottom: BorderSide(color: selected ? EazyColors.green : Colors.transparent, width: 2))), child: Icon(icon, color: selected ? EazyColors.ink : EazyColors.muted, size: 22)),
+  ));
+}
+
+class ProfilePostTile extends StatelessWidget {
+  const ProfilePostTile({super.key, required this.post});
+  final Map<String, dynamic> post;
+  @override
+  Widget build(BuildContext context) {
+    final media = post['media'] is List ? post['media'] as List : const [];
+    String? url;
+    if (media.isNotEmpty && media.first is Map) {
+      final m = Map<String, dynamic>.from(media.first as Map);
+      url = m['url']?.toString();
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(3),
+      child: Stack(fit: StackFit.expand, children: [
+        if (url != null && url.startsWith('http'))
+          Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallback(post))
+        else
+          _fallback(post),
+        if (media.length > 1) const Positioned(right: 6, top: 6, child: Icon(Icons.collections_rounded, color: Colors.white, size: 18)),
+      ]),
+    );
+  }
+
+  Widget _fallback(Map<String, dynamic> post) => ColoredBox(
+    color: EazyColors.surfaceRaised,
+    child: Center(child: Padding(padding: const EdgeInsets.all(8), child: Text(post['content']?.toString() ?? '', maxLines: 4, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: EazyColors.ink)))),
+  );
+}
+
