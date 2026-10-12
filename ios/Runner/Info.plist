@@ -27,7 +27,9 @@
 			<array>
 				<string>com.googleusercontent.apps.370546190167-61u39skv6bseus60nmf1029p1rs73a8n</string>
 			</array>
-		</dict>
+			<key>NSFaceIDUsageDescription</key>
+	<string>Use Face ID to securely authorize wallet transfers.</string>
+</dict>
 	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
