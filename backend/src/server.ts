@@ -83,6 +83,7 @@ import { createEmailVerificationRouter } from './modules/auth/email-verification
 import { SupabaseStorageProvider } from './providers/supabase-storage.js';
 import { MediaService } from './modules/media/service.js';
 import { createMediaRouter } from './modules/media/routes.js';
+import { StoryService, createStoryRouter } from './modules/stories/routes.js';
 import { createResendInboundRouter } from './modules/email/resend-inbound-routes.js';
 
 const config = loadConfig();
