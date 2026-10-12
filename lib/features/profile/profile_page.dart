@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
@@ -236,13 +237,71 @@ class _ProfilePageState extends State<ProfilePage> {
             if (profile['category']?.toString().isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 3), child: Text(profile['category'].toString(), style: const TextStyle(color: EazyColors.muted, fontSize: 12))),
             if (bio.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(bio, style: const TextStyle(height: 1.45))),
             const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: OutlinedButton(onPressed: saving ? null : editProfile, child: Text(saving ? 'Saving…' : 'Edit profile'))),
-              const SizedBox(width: 8),
-              Expanded(child: OutlinedButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile sharing will be available when Eazy links are enabled.'))), icon: const Icon(Icons.ios_share_rounded, size: 17), label: const Text('Share profile'))),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(tooltip: 'Discover people', onPressed: () => context.push('/discovery'), icon: const Icon(Icons.person_add_alt_1_rounded)),
-            ]),
+            if (isOwnProfile)
+              Row(children: [
+                Expanded(child: OutlinedButton(onPressed: saving ? null : editProfile, child: Text(saving ? 'Saving…' : 'Edit profile'))),
+                const SizedBox(width: 8),
+                Expanded(child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final link = 'https://eazy.app/u/$username';
+                    await Clipboard.setData(ClipboardData(text: link));
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile link copied')));
+                  },
+                  icon: const Icon(Icons.ios_share_rounded, size: 17),
+                  label: const Text('Share profile'),
+                )),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(tooltip: 'Discover people', onPressed: () => context.push('/discovery'), icon: const Icon(Icons.person_add_alt_1_rounded)),
+              ])
+            else
+              Row(children: [
+                Expanded(child: FilledButton(
+                  onPressed: followBusy ? null : toggleFollow,
+                  child: Text(followBusy ? 'Please wait…' : isFollowing ? 'Following' : 'Follow'),
+                )),
+                const SizedBox(width: 8),
+                Expanded(child: OutlinedButton.icon(
+                  onPressed: () => context.go('/home?tab=chat'),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 17),
+                  label: const Text('Message'),
+                )),
+                const SizedBox(width: 4),
+                PopupMenuButton<String>(
+                  tooltip: 'Profile options',
+                  onSelected: (value) async {
+                    final targetId = (profile['userId'] ?? profile['user_id'])?.toString() ?? '';
+                    try {
+                      if (value == 'block' && targetId.isNotEmpty) {
+                        await api.post('blocks', auth: true, body: {'userId': targetId});
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account blocked')));
+                      } else if (value == 'report') {
+                        final reason = await showDialog<String>(context: context, builder: (ctx) {
+                          final controller = TextEditingController();
+                          return AlertDialog(
+                            title: const Text('Report profile'),
+                            content: TextField(controller: controller, maxLines: 3, decoration: const InputDecoration(hintText: 'Tell us what happened')),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                              FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Submit report')),
+                            ],
+                          );
+                        });
+                        if (reason != null && reason.length >= 3) {
+                          await api.post('social/report/$username', auth: true, body: {'reason': reason});
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report sent to Eazy for review')));
+                        }
+                      }
+                    } on ApiException catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'block', child: Text('Block account')),
+                    PopupMenuItem(value: 'report', child: Text('Report account')),
+                  ],
+                  icon: const Icon(Icons.more_horiz_rounded),
+                ),
+              ]),
             const SizedBox(height: 8),
             if (error != null) Container(
               width: double.infinity,
