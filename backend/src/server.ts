@@ -114,7 +114,7 @@ if (pool) {
   authOptions.settingsRouter = createSettingsRouter(new SettingsService(new SettingsRepository(pool)));
 
   if (storageProvider) {
-    authOptions.mediaRouter = createMediaRouter(new MediaService(storageProvider));
+    authOptions.mediaRouter = createMediaRouter(new MediaService(storageProvider, pool));
   }
   authOptions.storiesRouter = createStoryRouter(new StoryService(pool, storageProvider));
 
