@@ -83,6 +83,12 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter build apk --release --no-tree-shake-icons --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
+      - name: Upload release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eazy-v1-app-release-apk-${{ github.sha }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
 
   backend-build-test:
     runs-on: ubuntu-latest
