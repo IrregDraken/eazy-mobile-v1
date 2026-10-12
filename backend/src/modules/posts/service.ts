@@ -13,10 +13,13 @@ const mediaSchema = z.object({
 }).strict();
 
 export const createPostSchema = z.object({
-  content: z.string().trim().min(1).max(5000),
+  content: z.string().trim().max(5000),
   visibility: z.enum(['public', 'followers', 'private']).default('public'),
   media: z.array(mediaSchema).max(10).default([])
-}).strict();
+}).strict().refine(input => input.content.length > 0 || input.media.length > 0, {
+  message: 'Add a caption or media to publish',
+  path: ['content']
+});
 
 export const postIdSchema = z.object({ id: z.string().uuid() });
 
