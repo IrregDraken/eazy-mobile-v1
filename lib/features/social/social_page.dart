@@ -375,6 +375,8 @@ class _PostState extends State<_Post> {
     bool commentsLoading = true;
     bool sendingComment = false;
     String? commentError;
+    String? replyToId;
+    String? replyToName;
 
     Future<void> refreshComments(StateSetter setSheetState) async {
       try {
@@ -434,9 +436,10 @@ class _PostState extends State<_Post> {
                                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                                 itemCount: comments.length,
                                 separatorBuilder: (_, __) => const SizedBox(height: 16),
-                                itemBuilder: (_, index) => _CommentTile(comment: comments[index]),
+                                itemBuilder: (_, index) => _CommentTile(comment: comments[index], api: widget.api, onReply: (comment) { setSheetState(() { replyToId = comment['id']?.toString(); final author = comment['author'] is Map ? Map<String, dynamic>.from(comment['author'] as Map) : <String, dynamic>{}; replyToName = author['username']?.toString() ?? author['displayName']?.toString() ?? 'user'; }); }),
                               )),
                 const Divider(height: 1),
+                if (replyToId != null) Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Row(children: [Expanded(child: Text('Replying to @$replyToName', style: const TextStyle(color: EazyColors.muted, fontSize: 12))), IconButton(visualDensity: VisualDensity.compact, onPressed: () => setSheetState(() { replyToId = null; replyToName = null; }), icon: const Icon(Icons.close_rounded, size: 18))])),
                 SafeArea(top: false, child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -455,8 +458,10 @@ class _PostState extends State<_Post> {
                         if (text.isEmpty) return;
                         setSheetState(() => sendingComment = true);
                         try {
-                          await widget.api.post('posts/$id/comments', auth: true, body: {'content': text});
+                          await widget.api.post('posts/$id/comments', auth: true, body: {'content': text, if (replyToId != null) 'parentId': replyToId});
                           controller.clear();
+                          replyToId = null;
+                          replyToName = null;
                           await refreshComments(setSheetState);
                           await widget.onChanged();
                         } on ApiException catch (e) {
@@ -656,31 +661,78 @@ class _PostState extends State<_Post> {
   }
 }
 
-class _CommentTile extends StatelessWidget {
-  const _CommentTile({required this.comment});
+class _CommentTile extends StatefulWidget {
+  const _CommentTile({required this.comment, required this.api, required this.onReply});
   final Map<String, dynamic> comment;
+  final ApiClient api;
+  final ValueChanged<Map<String, dynamic>> onReply;
+  @override
+  State<_CommentTile> createState() => _CommentTileState();
+}
+
+class _CommentTileState extends State<_CommentTile> {
+  late bool liked;
+  late int likes;
+  bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    liked = widget.comment['likedByViewer'] == true;
+    likes = int.tryParse(widget.comment['likeCount']?.toString() ?? '') ?? 0;
+  }
+
+  Future<void> toggleLike() async {
+    if (busy) return;
+    final wasLiked = liked;
+    setState(() { liked = !wasLiked; likes += wasLiked ? -1 : 1; busy = true; });
+    try {
+      if (wasLiked) {
+        await widget.api.delete('comments/${widget.comment['id']}/like', auth: true);
+      } else {
+        await widget.api.post('comments/${widget.comment['id']}/like', auth: true);
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() { liked = wasLiked; likes += wasLiked ? 1 : -1; });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally { if (mounted) setState(() => busy = false); }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final author = comment['author'] is Map ? Map<String, dynamic>.from(comment['author'] as Map) : <String, dynamic>{};
+    final author = widget.comment['author'] is Map ? Map<String, dynamic>.from(widget.comment['author'] as Map) : <String, dynamic>{};
     final name = author['displayName']?.toString() ?? author['username']?.toString() ?? 'Eazy user';
     final username = author['username']?.toString();
     final avatar = author['avatarUrl']?.toString();
-    final created = comment['createdAt']?.toString() ?? '';
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      CircleAvatar(
-        radius: 17,
-        backgroundColor: EazyColors.surfaceRaised,
-        backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
-        child: avatar == null || !avatar.startsWith('http') ? Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase(), style: const TextStyle(color: EazyColors.green, fontSize: 12, fontWeight: FontWeight.w900)) : null,
-      ),
-      const SizedBox(width: 10),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(username == null || username.isEmpty ? name : '@$username', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
-        const SizedBox(height: 3),
-        Text(comment['content']?.toString() ?? '', style: const TextStyle(height: 1.4)),
-        if (created.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(created.length >= 10 ? created.substring(0, 10) : created, style: const TextStyle(color: EazyColors.muted, fontSize: 10))),
-      ])),
-    ]);
+    final created = widget.comment['createdAt']?.toString() ?? '';
+    final isReply = widget.comment['parentId'] != null;
+    return Padding(
+      padding: EdgeInsets.only(left: isReply ? 28 : 0),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        CircleAvatar(
+          radius: 17,
+          backgroundColor: EazyColors.surfaceRaised,
+          backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
+          child: avatar == null || !avatar.startsWith('http') ? Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase(), style: const TextStyle(color: EazyColors.green, fontSize: 12, fontWeight: FontWeight.w900)) : null,
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(username == null || username.isEmpty ? name : '@$username', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+          const SizedBox(height: 3),
+          Text(widget.comment['content']?.toString() ?? '', style: const TextStyle(height: 1.4)),
+          Row(children: [
+            if (created.isNotEmpty) Padding(padding: const EdgeInsets.only(right: 12), child: Text(created.length >= 10 ? created.substring(0, 10) : created, style: const TextStyle(color: EazyColors.muted, fontSize: 10))),
+            TextButton(onPressed: () => widget.onReply(widget.comment), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 28)), child: const Text('Reply', style: TextStyle(fontSize: 11))),
+          ]),
+        ])),
+        Column(mainAxisSize: MainAxisSize.min, children: [
+          IconButton(visualDensity: VisualDensity.compact, onPressed: busy ? null : toggleLike, icon: Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: liked ? EazyColors.red : EazyColors.muted, size: 18)),
+          if (likes > 0) Text('$likes', style: const TextStyle(fontSize: 10, color: EazyColors.muted)),
+        ]),
+      ]),
+    );
   }
 }
 
