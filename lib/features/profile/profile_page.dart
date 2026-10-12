@@ -6,6 +6,7 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../social/stories_tray.dart';
+import '../social/video_media.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.auth, this.username});
@@ -618,18 +619,25 @@ class ProfilePostTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = post['media'] is List ? post['media'] as List : const [];
     String? url;
+    String? mediaType;
     if (media.isNotEmpty && media.first is Map) {
       final m = Map<String, dynamic>.from(media.first as Map);
       url = m['url']?.toString();
+      mediaType = m['mediaType']?.toString();
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(3),
       child: Stack(fit: StackFit.expand, children: [
         if (url != null && url.startsWith('http'))
-          Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallback(post))
+          if (mediaType == 'video')
+            EazyVideoMedia(url: url, fit: BoxFit.cover, showControls: false)
+          else
+            Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallback(post))
         else
           _fallback(post),
         if (media.length > 1) const Positioned(right: 6, top: 6, child: Icon(Icons.collections_rounded, color: Colors.white, size: 18)),
+        if (mediaType == 'video') const Positioned(right: 6, top: 6, child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20)),
+        if (post['isPinned'] == true) const Positioned(left: 6, top: 6, child: Icon(Icons.push_pin_rounded, color: Colors.white, size: 18)),
       ]),
     );
   }
