@@ -66,6 +66,24 @@ export class PostService {
     return { ...post, media };
   }
 
+  async pinPost(postId: string, authorId: string) {
+    return withTransaction(this.pool, async client => {
+      const post = await client.query('SELECT is_pinned FROM posts WHERE id=$1 AND author_id=$2 AND status=\'published\' FOR UPDATE', [postId, authorId]);
+      if (!post.rowCount) throw new AppError('NOT_FOUND', 'Post not found');
+      if (post.rows[0]!.is_pinned) return { pinned: true };
+      const count = await client.query<{ count: string }>('SELECT count(*)::text AS count FROM posts WHERE author_id=$1 AND is_pinned=true AND status=\'published\'', [authorId]);
+      if (Number(count.rows[0]?.count ?? 0) >= 3) throw new AppError('BAD_REQUEST', 'You can pin up to three posts on your profile');
+      await client.query('UPDATE posts SET is_pinned=true, pinned_at=now(), updated_at=now() WHERE id=$1 AND author_id=$2', [postId, authorId]);
+      return { pinned: true };
+    });
+  }
+
+  async unpinPost(postId: string, authorId: string) {
+    const result = await this.pool.query('UPDATE posts SET is_pinned=false, pinned_at=NULL, updated_at=now() WHERE id=$1 AND author_id=$2 AND is_pinned=true RETURNING id', [postId, authorId]);
+    if (!result.rowCount) throw new AppError('NOT_FOUND', 'Pinned post not found');
+    return { pinned: false };
+  }
+
   async tagPeople(postId: string, authorId: string, usernames: string[]) {
     const normalized = [...new Set(usernames.map(name => name.trim().toLowerCase()))];
     return withTransaction(this.pool, async client => {
