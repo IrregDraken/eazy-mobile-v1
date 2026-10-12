@@ -39,9 +39,8 @@ export class StoryService {
 
   async create(authorId: string, input: z.infer<typeof createStorySchema>) {
     if (!this.storage) throw new AppError('SERVICE_UNAVAILABLE', 'Media storage is not configured');
-    const ownsKey = await this.pool.query('SELECT 1 FROM media_objects WHERE storage_key=$1 AND owner_id=$2 LIMIT 1', [input.storageKey, authorId]).catch(() => ({ rows: [] }));
-    // Older media deployments do not track media_objects. Validate that the key is scoped to this authenticated user instead.
-    if (!ownsKey.rows.length && !input.storageKey.includes(authorId)) {
+    // Eazy upload keys are scoped to the authenticated user by MediaService.
+    if (!input.storageKey.startsWith(authorId + '/') || input.storageKey.includes('..') || input.storageKey.startsWith('/')) {
       throw new AppError('VALIDATION_ERROR', 'Choose media uploaded to your Eazy account');
     }
     const inserted = await this.pool.query<{ id: string }>(
