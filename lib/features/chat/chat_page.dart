@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import 'chat_home_screen.dart';
 
 const _reactions = <String>['👍','❤️','😂','😮','😢','🙏','👏','🔥'];
 
@@ -15,118 +16,18 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final api = ApiClient();
-  final search = TextEditingController();
-  final username = TextEditingController();
-  bool loading = true, busy = false;
-  String? error;
-  List<Map<String,dynamic>> conversations = [];
 
-  @override void initState() { super.initState(); load(); }
-  @override void dispose() { search.dispose(); username.dispose(); super.dispose(); }
-
-  Future<void> load() async {
-    setState(() { loading = true; error = null; });
-    try {
-      final r = await api.get('chat/conversations?page=1&limit=50', auth:true);
-      conversations = (r['items'] as List? ?? const []).whereType<Map>()
-        .map((e) => Map<String,dynamic>.from(e)).toList();
-    } on ApiException catch (e) { if (mounted) setState(() => error = e.message); }
-    finally { if (mounted) setState(() => loading = false); }
+  Future<void> _openConversation(Map<String, dynamic> conversation) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ConversationPage(api: api, conversation: conversation),
+    ));
   }
 
-  Future<void> startChat() async {
-    final value = username.text.trim().replaceFirst('@','').toLowerCase();
-    if (!RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Enter a valid Eazy username.')));
-      return;
-    }
-    setState(() => busy = true);
-    try {
-      final r = await api.post('chat/conversations', auth:true, body:{'username':value});
-      username.clear();
-      await load();
-      final c = r['conversation'];
-      if (c is Map && mounted) {
-        await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ConversationPage(api:api, conversation:Map<String,dynamic>.from(c))));
-        await load();
-      }
-    } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.message)));
-    } finally { if (mounted) setState(() => busy = false); }
-  }
-
-  @override Widget build(BuildContext context) {
-    final q = search.text.trim().toLowerCase();
-    final filtered = conversations.where((c) {
-      if (q.isEmpty) return true;
-      final name = (c['displayName'] ?? c['display_name'] ?? c['username'] ?? '').toString().toLowerCase();
-      return name.contains(q);
-    }).toList();
-
-    return SafeArea(child:RefreshIndicator(onRefresh:load,child:ListView(
-      padding:const EdgeInsets.fromLTRB(20,18,20,110),children:[
-        Row(children:[
-          const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text('Chat',style:TextStyle(fontSize:30,fontWeight:FontWeight.w900,letterSpacing:-1)),
-            SizedBox(height:3),Text('Conversations that move with you',style:TextStyle(color:EazyColors.muted))
-          ])),
-          IconButton(onPressed:load,icon:const Icon(Icons.refresh_rounded))
-        ]),
-        const SizedBox(height:16),
-        Card(child:Padding(padding:const EdgeInsets.all(15),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          const Text('Start a conversation',style:TextStyle(fontWeight:FontWeight.w900)),
-          const SizedBox(height:10),
-          Row(children:[
-            Expanded(child:TextField(controller:username,autocorrect:false,decoration:const InputDecoration(
-              hintText:'@username',prefixIcon:Icon(Icons.person_search_outlined)))),
-            const SizedBox(width:9),
-            SizedBox(width:54,height:54,child:FilledButton(
-              onPressed:busy?null:startChat,
-              child:busy?const SizedBox(width:19,height:19,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.arrow_forward_rounded)))
-          ])
-        ]))),
-        const SizedBox(height:15),
-        TextField(controller:search,onChanged:(_) => setState((){}),decoration:const InputDecoration(
-          prefixIcon:Icon(Icons.search_rounded),hintText:'Search conversations')),
-        const SizedBox(height:18),
-        const Text('Messages',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900)),
-        const SizedBox(height:9),
-        if (loading) const Padding(padding:EdgeInsets.only(top:100),child:Center(child:CircularProgressIndicator()))
-        else if (error != null) _ChatState(error!,load)
-        else if (filtered.isEmpty) const _ChatState('No conversations yet. Start one above.')
-        else ...filtered.map((c) => _ConversationTile(c,onTap:() async {
-          await Navigator.of(context).push(MaterialPageRoute(builder:(_) => ConversationPage(api:api,conversation:c)));
-          await load();
-        }))
-      ])));
-  }
-}
-
-class _ConversationTile extends StatelessWidget {
-  const _ConversationTile(this.c,{required this.onTap});
-  final Map<String,dynamic> c;
-  final VoidCallback onTap;
-  @override Widget build(BuildContext context) {
-    final participants = c['participants'] is List ? c['participants'] as List : const[];
-    final p = participants.isNotEmpty && participants.first is Map ? Map<String,dynamic>.from(participants.first as Map) : <String,dynamic>{};
-    final name = (c['displayName'] ?? c['display_name'] ?? p['displayName'] ?? c['username'] ?? 'Eazy user').toString();
-    final latest = c['latestMessage'] is Map ? Map<String,dynamic>.from(c['latestMessage'] as Map) : <String,dynamic>{};
-    final unread = int.tryParse((c['unreadCount'] ?? c['unread_count'] ?? 0).toString()) ?? 0;
-    return Padding(padding:const EdgeInsets.only(bottom:8),child:Card(child:InkWell(onTap:onTap,
-      borderRadius:BorderRadius.circular(EazyRadius.lg),child:Padding(padding:const EdgeInsets.all(13),child:Row(children:[
-        CircleAvatar(radius:25,child:Text(name.characters.first.toUpperCase())),
-        const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text(name,style:const TextStyle(fontWeight:FontWeight.w900)),
-          const SizedBox(height:4),Text(latest['body']?.toString() ?? 'Start a conversation',
-            maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:12))
-        ])),
-        if(unread>0)Container(constraints:const BoxConstraints(minWidth:25),height:25,alignment:Alignment.center,
-          padding:const EdgeInsets.symmetric(horizontal:7),decoration:const BoxDecoration(color:EazyColors.green,shape:BoxShape.circle),
-          child:Text(unread.toString(),style:const TextStyle(color:EazyColors.canvas,fontSize:10,fontWeight:FontWeight.w900))),
-        const SizedBox(width:4),const Icon(Icons.chevron_right_rounded,color:EazyColors.muted)
-      ])))));
-  }
+  @override
+  Widget build(BuildContext context) => ChatHomeScreen(
+    api: api,
+    onOpen: _openConversation,
+  );
 }
 
 class ConversationPage extends StatefulWidget {
