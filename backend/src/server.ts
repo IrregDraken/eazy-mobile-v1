@@ -83,6 +83,7 @@ import { createEmailVerificationRouter } from './modules/auth/email-verification
 import { SupabaseStorageProvider } from './providers/supabase-storage.js';
 import { MediaService } from './modules/media/service.js';
 import { createMediaRouter } from './modules/media/routes.js';
+import { createResendInboundRouter } from './modules/email/resend-inbound-routes.js';
 
 const config = loadConfig();
 const logger = createLogger(config);
@@ -195,6 +196,7 @@ if (pool && firebaseProvider) {
 }
 
 const app = createApp(config, logger, {
+  inboundEmailRouter: createResendInboundRouter(config, logger),
   ...authOptions,
   readinessCheck: pool ? async () => {
     await pool.query('SELECT 1');
