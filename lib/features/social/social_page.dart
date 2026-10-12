@@ -25,6 +25,9 @@ class _SocialPageState extends State<SocialPage> {
   String mode = 'for_you';
   List<Map<String, dynamic>> posts = [];
   List<Map<String, dynamic>> suggestions = [];
+  final ScrollController scrollController = ScrollController();
+  int page = 1;
+  bool hasMore = true, loadingMore = false;
   final dismissedSuggestions = <String>{};
   final followedSuggestions = <String>{};
 
@@ -32,41 +35,68 @@ class _SocialPageState extends State<SocialPage> {
   void initState() {
     super.initState();
     media = EazyMediaService(api);
+    scrollController.addListener(_onScroll);
     load();
   }
 
   @override
   void dispose() {
     composer.dispose();
+    scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!scrollController.hasClients || loading || loadingMore || !hasMore) return;
+    if (scrollController.position.maxScrollExtent - scrollController.position.pixels < 500) {
+      loadMore();
+    }
   }
 
   Future<void> load() async {
     if (mounted) setState(() {
       loading = true;
       error = null;
+      page = 1;
+      hasMore = true;
     });
     try {
-      final result = await api.get(
-        'home/feed?page=1&limit=50&mode=$mode',
-        auth: true,
-      );
+      final result = await api.get('home/feed?page=1&limit=20&mode=$mode', auth: true);
       final raw = result['items'] as List? ?? const [];
-      posts = raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      final loaded = raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      final total = result['meta'] is Map ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '') : null;
       try {
         final people = await api.get('discover?type=people&page=1&limit=8', auth: true);
-        suggestions = (people['items'] as List? ?? const [])
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
-      } catch (_) {
-        suggestions = [];
-      }
+        suggestions = (people['items'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      } catch (_) { suggestions = []; }
+      if (mounted) setState(() {
+        posts = loaded;
+        hasMore = total == null ? loaded.length == 20 : loaded.length < total;
+      });
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  Future<void> loadMore() async {
+    if (loading || loadingMore || !hasMore) return;
+    setState(() => loadingMore = true);
+    try {
+      final nextPage = page + 1;
+      final result = await api.get('home/feed?page=$nextPage&limit=20&mode=$mode', auth: true);
+      final raw = result['items'] as List? ?? const [];
+      final loaded = raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      final total = result['meta'] is Map ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '') : null;
+      if (mounted) setState(() {
+        page = nextPage;
+        posts.addAll(loaded);
+        hasMore = total == null ? loaded.length == 20 : posts.length < total;
+      });
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally { if (mounted) setState(() => loadingMore = false); }
   }
 
   Future<void> followSuggestion(Map<String, dynamic> person) async {
@@ -192,6 +222,7 @@ class _SocialPageState extends State<SocialPage> {
     child: RefreshIndicator(
       onRefresh: load,
       child: CustomScrollView(
+        controller: scrollController,
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
@@ -304,6 +335,22 @@ class _SocialPageState extends State<SocialPage> {
               ),
             ),
           if (!loading && posts.isNotEmpty)
+          if (loadingMore)
+            const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(22), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))),
+          if (!loading && !hasMore && posts.isNotEmpty)
+            const SliverToBoxAdapter(child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 100),
+              child: Card(child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(children: [
+                  Icon(Icons.check_circle_rounded, color: EazyColors.green, size: 30),
+                  SizedBox(height: 8),
+                  Text("You're all caught up", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  SizedBox(height: 4),
+                  Text('You have seen the latest from your Eazy circle.', textAlign: TextAlign.center, style: TextStyle(color: EazyColors.muted)),
+                ]),
+              )),
+            )),
             SliverList.builder(
               itemCount: posts.length + (suggestions.isNotEmpty ? posts.length ~/ 10 : 0),
               itemBuilder: (c, i) {
