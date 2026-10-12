@@ -322,7 +322,7 @@ class _SocialPageState extends State<SocialPage> {
                 }
                 final postIndex = i - ((i + 1) ~/ 11);
                 if (postIndex < 0 || postIndex >= posts.length) return const SizedBox.shrink();
-                return _Post(post: posts[postIndex], api: api, onChanged: load);
+                return _Post(post: posts[postIndex], api: api, onChanged: load, currentUsername: widget.auth.profile?['username']?.toString() ?? '');
               },
             ),
         ],
@@ -332,10 +332,11 @@ class _SocialPageState extends State<SocialPage> {
 }
 
 class _Post extends StatefulWidget {
-  const _Post({required this.post, required this.api, required this.onChanged});
+  const _Post({required this.post, required this.api, required this.onChanged, required this.currentUsername});
   final Map<String, dynamic> post;
   final ApiClient api;
   final Future<void> Function() onChanged;
+  final String currentUsername;
   @override
   State<_Post> createState() => _PostState();
 }
@@ -563,12 +564,30 @@ class _PostState extends State<_Post> {
                       } else if (value == 'copy') {
                         await Clipboard.setData(ClipboardData(text: 'https://eazy.app/p/$id'));
                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
+                      } else if (value == 'tag') {
+                        final raw = await showDialog<String>(context: context, builder: (ctx) {
+                          final controller = TextEditingController();
+                          return AlertDialog(
+                            title: const Text('Tag people'),
+                            content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'username1, username2'), maxLines: 2),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                              FilledButton(onPressed: () => Navigator.pop(ctx, controller.text), child: const Text('Tag')),
+                            ],
+                          );
+                        });
+                        if (raw != null) {
+                          final names = raw.split(',').map((name) => name.trim().replaceFirst(RegExp(r'^@'), '')).where((name) => name.isNotEmpty).toList();
+                          if (names.isNotEmpty) await mutate('post', 'posts/$id/tags', body: {'usernames': names});
+                        }
                       }
                     },
                     itemBuilder: (_) => [
                       PopupMenuItem(value: 'save', child: Text(saved ? 'Remove from saved' : 'Save post')),
                       const PopupMenuItem(value: 'copy', child: Text('Copy link')),
                       const PopupMenuItem(value: 'report', child: Text('Report post')),
+                      if ((author['username']?.toString().toLowerCase() ?? '') == widget.currentUsername.toLowerCase())
+                        const PopupMenuItem(value: 'tag', child: Text('Tag people')),
                     ],
                   ),
                 ],
@@ -577,6 +596,11 @@ class _PostState extends State<_Post> {
               Text(
                 widget.post['content']?.toString() ?? '',
                 style: const TextStyle(height: 1.45, fontSize: 15),
+              ),
+              final taggedUsers = widget.post['taggedUsers'] is List ? widget.post['taggedUsers'] as List : const [];
+              if (taggedUsers.isNotEmpty) Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Wrap(spacing: 6, children: taggedUsers.whereType<Map>().map((person) => Text('@${person['username']}', style: const TextStyle(color: EazyColors.green, fontSize: 12, fontWeight: FontWeight.w700))).toList()),
               ),
               if (media.isNotEmpty) ...[
                 const SizedBox(height: 14),
