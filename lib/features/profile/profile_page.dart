@@ -240,7 +240,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _selectContentTab(int tab) async {
-    setState(() { contentTab = tab; loading = true; error = null; profilePage = 1; hasMoreProfilePosts = true; });
+    setState(() { contentTab = tab; loading = true; error = null; profilePage = 1; hasMoreProfilePosts = true; ownPosts = []; });
     try {
       final username = profile['username']?.toString() ?? '';
       final type = ['grid', 'reels', 'tagged'][tab];
