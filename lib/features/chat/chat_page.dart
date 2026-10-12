@@ -307,7 +307,7 @@ class _ConversationPageState extends State<ConversationPage> {
         Expanded(child:loading?const Center(child:CircularProgressIndicator()):error!=null?_ChatState(error!,loadMessages):messages.isEmpty
           ?const _ChatState('No messages yet. Start the conversation.')
           :ListView.builder(controller:scroll,padding:const EdgeInsets.fromLTRB(16,12,16,16),itemCount:messages.length,itemBuilder:(_,i){
-            return _MessageBubble(message:messages[i],isMine:_isMine(messages[i]),onLongPress:()=>actions(messages[i]),onReaction:(r)=>reactTo(messages[i],r),onTranslate:()=>translate(messages[i]));
+            return _MessageBubble(message:messages[i],isMine:_isMine(messages[i]),onLongPress:()=>actions(messages[i]),onReaction:(r)=>reactTo(messages[i],r),onTranslate:()=>translate(messages[i]),onOpenAttachment:_openAttachment);
           })),
         if(pendingAttachments.isNotEmpty)
           SizedBox(height:54,child:ListView.separated(
@@ -344,12 +344,13 @@ class _ConversationPageState extends State<ConversationPage> {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message,required this.isMine,required this.onLongPress,required this.onReaction,required this.onTranslate});
+  const _MessageBubble({required this.message,required this.isMine,required this.onLongPress,required this.onReaction,required this.onTranslate,required this.onOpenAttachment});
   final Map<String,dynamic> message;
   final bool isMine;
   final VoidCallback onLongPress;
   final ValueChanged<String> onReaction;
   final VoidCallback onTranslate;
+  final ValueChanged<Map<String,dynamic>> onOpenAttachment;
   @override Widget build(BuildContext context){
     final sender=message['sender'] is Map?Map<String,dynamic>.from(message['sender'] as Map):<String,dynamic>{};
     final deleted=message['status']=='deleted';
@@ -386,7 +387,7 @@ class _MessageBubble extends StatelessWidget {
                 final label=type.startsWith('image/')?'Photo':type.startsWith('video/')?'Video':type.startsWith('audio/')?'Audio':'Document';
                 final size=bytes>=1024*1024?'${(bytes/(1024*1024)).toStringAsFixed(1)} MB':'${(bytes/1024).round()} KB';
                 return InkWell(
-                  onTap:()=>_openAttachment(attachment),
+                  onTap:()=>onOpenAttachment(attachment),
                   borderRadius:BorderRadius.circular(11),
                   child:Container(
                   margin:const EdgeInsets.only(bottom:5),
