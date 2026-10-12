@@ -88,7 +88,11 @@ export class EngagementRepository {
   }
 
   async likeComment(client: DbClient, commentId: string, userId: string): Promise<boolean> {
-    const accessible = await client.query('SELECT 1 FROM comments WHERE id=$1 AND deleted_at IS NULL LIMIT 1', [commentId]);
+    const accessible = await client.query(`SELECT 1 FROM comments c JOIN posts p ON p.id=c.post_id
+      WHERE c.id=$1 AND c.deleted_at IS NULL AND p.status='published'
+        AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=c.author_id) OR (b.blocker_id=c.author_id AND b.blocked_id=$2))
+        AND (p.author_id=$2 OR p.visibility='public' OR (p.visibility='followers' AND EXISTS (SELECT 1 FROM follows f WHERE f.follower_id=$2 AND f.followee_id=p.author_id)))
+      LIMIT 1`, [commentId, userId]);
     if (!accessible.rowCount) throw new Error('COMMENT_NOT_FOUND');
     const result = await client.query('INSERT INTO comment_likes (comment_id,user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING user_id', [commentId,userId]);
     return Boolean(result.rowCount);
