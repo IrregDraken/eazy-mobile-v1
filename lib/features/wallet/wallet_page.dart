@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:local_auth/local_auth.dart';
 
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
@@ -167,80 +168,130 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   Future<void> sendToEazyUser() async {
-    final username = TextEditingController();
-    final amount = TextEditingController();
-    final values = await showDialog<Map<String, String>>(
+    final recipientInput = TextEditingController();
+    final rawHandle = await showDialog<String>(
       context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text('Send to an Eazy user'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: username,
-                  autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Recipient username',
-                    prefixText: '@ ',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: amount,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'Amount',
-                    prefixText: '$_currency ',
-                    hintText: '1000.00',
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed:
-                    () => Navigator.pop(dialogContext, {
-                      'username': username.text.trim(),
-                      'amount': amount.text.trim(),
-                    }),
-                child: const Text('Review transfer'),
-              ),
-            ],
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Send to an Eazy user'),
+        content: TextField(
+          controller: recipientInput,
+          autofocus: true,
+          autocorrect: false,
+          textCapitalization: TextCapitalization.none,
+          decoration: const InputDecoration(
+            labelText: 'Recipient username',
+            hintText: 'e.g. ada_okafor',
+            prefixText: '@',
+            helperText: 'Find the recipient first. You will review the amount before authorizing.',
           ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, recipientInput.text.trim()), child: const Text('Find recipient')),
+        ],
+      ),
     );
-    username.dispose();
-    amount.dispose();
-    if (values == null) return;
-    final handle =
-        values['username']?.replaceFirst('@', '').toLowerCase() ?? '';
-    final value = values['amount'] ?? '';
-    if (!_validUsername(handle) || !_validMoney(value)) {
-      _showError('Enter a valid username and amount with two decimal places.');
+    recipientInput.dispose();
+    if (rawHandle == null) return;
+    final handle = rawHandle.replaceFirst('@', '').trim().toLowerCase();
+    if (!_validUsername(handle)) {
+      _showError('Enter a valid Eazy username (3–32 letters, numbers, or underscores).');
       return;
     }
-    await _confirmAndRun(
-      title: 'Confirm Eazy transfer',
-      message:
-          'Send $_currency $value to @$handle? Your wallet balance will be debited by the server.',
-      action:
-          () => api.post(
-            'wallet/transfers',
-            auth: true,
-            headers: {'Idempotency-Key': idempotency('transfer')},
-            body: {
-              'recipientUsername': handle,
-              'amount': value,
-              'currency': _currency,
-            },
-          ),
+
+    Map<String, dynamic> recipient;
+    setState(() => busy = true);
+    try {
+      final result = await api.get('profiles/$handle', auth: true);
+      recipient = _map(result['profile']);
+      if (recipient.isEmpty) throw const ApiException('We could not find that Eazy user.');
+    } on ApiException catch (e) {
+      _showError(e.message);
+      return;
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+    if (!mounted) return;
+
+    final displayName = (recipient['displayName'] ?? recipient['firstName'] ?? handle).toString();
+    final amount = await _amountDialog(
+      title: 'Send to $displayName',
+      action: 'Review transfer',
     );
+    if (amount == null || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Review transfer'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('You are sending to'),
+            const SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(child: Text(displayName.characters.first.toUpperCase())),
+              title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w900)),
+              subtitle: Text('@$handle'),
+            ),
+            const Divider(),
+            _Info('Amount', '$_currency $amount'),
+            _Info('Available balance', '$_currency $_balance'),
+            _Info('Held balance', '$_currency $_heldBalance'),
+            const SizedBox(height: 10),
+            const Text('Your device will ask you to authenticate before this transfer is submitted.', style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.4)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Continue securely')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => busy = true);
+    try {
+      final authenticated = await _authenticateTransfer('Authorize sending $_currency $amount to @$handle');
+      if (!authenticated) return;
+      await api.post(
+        'wallet/transfers',
+        auth: true,
+        headers: {'Idempotency-Key': idempotency('transfer')},
+        body: {'recipientUsername': handle, 'amount': amount, 'currency': _currency},
+      );
+      await load();
+      _showMessage('Transfer submitted. Check wallet activity for its confirmed status.');
+    } on ApiException catch (e) {
+      _showError(e.message);
+    } catch (_) {
+      _showError('Authentication could not be completed. No transfer was submitted.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<bool> _authenticateTransfer(String reason) async {
+    final localAuth = LocalAuthentication();
+    final supported = await localAuth.isDeviceSupported();
+    final canCheck = await localAuth.canCheckBiometrics;
+    if (!supported && !canCheck) {
+      throw const ApiException(
+        'Set up a device screen lock or biometric authentication before sending money.',
+        kind: ApiErrorKind.validation,
+      );
+    }
+    final authenticated = await localAuth.authenticate(
+      localizedReason: reason,
+      options: const AuthenticationOptions(
+        biometricOnly: false,
+        stickyAuth: true,
+      ),
+    );
+    if (!authenticated) return false;
+    return true;
   }
 
   Future<void> sendToExternalBank() async {
