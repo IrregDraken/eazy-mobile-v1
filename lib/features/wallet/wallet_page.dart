@@ -736,6 +736,163 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   Map<String, dynamic> _map(dynamic value) =>
       value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
 
+  Future<void> _showMoreOptions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(shrinkWrap: true, children: [
+          const ListTile(title: Text('Wallet tools', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('Manage payments and account activity.')),
+          ListTile(leading: const Icon(Icons.shopping_bag_outlined), title: const Text('Orders'), subtitle: const Text('View marketplace purchases'), onTap: () { Navigator.pop(sheetContext); _showOrders(); }),
+          ListTile(leading: const Icon(Icons.tune_rounded), title: const Text('Wallet settings'), subtitle: const Text('Privacy and payment security'), onTap: () { Navigator.pop(sheetContext); _showWalletSettings(); }),
+          ListTile(leading: const Icon(Icons.sync_rounded), title: const Text('Verify pending payment'), subtitle: const Text('Re-check a deposit with the payment provider'), onTap: () { Navigator.pop(sheetContext); verifyPending(); }),
+          ListTile(leading: const Icon(Icons.receipt_long_outlined), title: const Text('Transaction history'), onTap: () { Navigator.pop(sheetContext); _showAllTransactions(); }),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _showBillsAndServices() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(shrinkWrap: true, children: [
+          const ListTile(title: Text('Bills & Services', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('Choose a service to continue.')),
+          ListTile(leading: const Icon(Icons.phone_android_rounded, color: EazyColors.green), title: const Text('Airtime'), onTap: () { Navigator.pop(sheetContext); _showBillService('Airtime'); }),
+          ListTile(leading: const Icon(Icons.data_usage_rounded, color: EazyColors.green), title: const Text('Data'), onTap: () { Navigator.pop(sheetContext); _showBillService('Data'); }),
+          ListTile(leading: const Icon(Icons.bolt_rounded, color: EazyColors.green), title: const Text('Electricity'), onTap: () { Navigator.pop(sheetContext); _showBillService('Electricity'); }),
+          ListTile(leading: const Icon(Icons.live_tv_rounded, color: EazyColors.green), title: const Text('Cable TV'), onTap: () { Navigator.pop(sheetContext); _showBillService('Cable TV'); }),
+        ]),
+      ),
+    );
+  }
+
+  void _showBillService(String service) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(service),
+        content: Text('$service payments are not enabled yet. Eazy will only offer this service once a bill-payment provider is configured and the server can confirm the transaction. No money has been taken.'),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Got it'))],
+      ),
+    );
+  }
+
+  Future<void> _showWalletSettings() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => SafeArea(
+          child: ListView(shrinkWrap: true, children: [
+            const ListTile(title: Text('Wallet settings', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('Your balance is always calculated by the server ledger.')),
+            SwitchListTile(
+              value: balanceVisible,
+              title: const Text('Show balance'),
+              subtitle: const Text('Hide amounts on this device when switched off.'),
+              onChanged: (value) async {
+                setState(() => balanceVisible = value);
+                setSheetState(() {});
+                await storage.write(key: 'eazy.wallet.balanceVisible', value: value.toString());
+              },
+            ),
+            const ListTile(leading: Icon(Icons.fingerprint_rounded), title: Text('Transfer authentication'), subtitle: Text('Device screen lock or biometrics are required before submitting a transfer.')),
+            const ListTile(leading: Icon(Icons.shield_outlined), title: Text('Payment confirmation'), subtitle: Text('Wallet deposits are credited only after server-side provider verification.')),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showOrders() async {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: api.get('orders?page=1&limit=20', auth: true),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(36), child: Center(child: CircularProgressIndicator()));
+            if (snapshot.hasError) return Padding(padding: const EdgeInsets.all(24), child: Text('Could not load orders: ${snapshot.error}'));
+            final orders = (snapshot.data?['items'] as List? ?? const []).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+            if (orders.isEmpty) return const Padding(padding: EdgeInsets.all(28), child: Text('No orders yet. Marketplace purchases will appear here.'));
+            return SizedBox(height: MediaQuery.sizeOf(context).height * .65, child: ListView(padding: const EdgeInsets.all(16), children: [
+              const Text('Orders', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              for (final order in orders) Card(child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.shopping_bag_outlined)),
+                title: Text('Order ${(order['id'] ?? '').toString().length > 8 ? (order['id'] as String).substring(0, 8) : order['id'] ?? 'Order'}'),
+                subtitle: Text('${order['status'] ?? 'pending'} · ${order['createdAt'] ?? ''}'),
+                trailing: Text('${order['currency'] ?? _currency} ${order['total'] ?? order['amount'] ?? '0.00'}', style: const TextStyle(fontWeight: FontWeight.w800)),
+              )),
+            ]));
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAllTransactions() async {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: api.get('wallet/transactions?page=1&limit=100', auth: true),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(36), child: Center(child: CircularProgressIndicator()));
+            if (snapshot.hasError) return Padding(padding: const EdgeInsets.all(24), child: Text('Could not load transaction history: ${snapshot.error}'));
+            final entries = (snapshot.data?['items'] as List? ?? const []).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+            if (entries.isEmpty) return const Padding(padding: EdgeInsets.all(28), child: Text('No transactions yet.'));
+            return SizedBox(height: MediaQuery.sizeOf(context).height * .7, child: ListView(padding: const EdgeInsets.all(16), children: [
+              const Text('Transaction history', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              for (final entry in entries) ListTile(
+                leading: const Icon(Icons.receipt_long_rounded, color: EazyColors.green),
+                title: Text(entry['type']?.toString() ?? 'Transaction'),
+                subtitle: Text('${entry['status'] ?? 'unknown'} · ${entry['createdAt'] ?? ''}'),
+                trailing: Text(balanceVisible ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}' : '••••••', style: const TextStyle(fontWeight: FontWeight.w800)),
+                onTap: () => _showTransactionDetails(entry),
+              ),
+            ]));
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showTransactionDetails(Map<String, dynamic> entry) async {
+    final id = entry['id']?.toString();
+    Map<String, dynamic> detail = entry;
+    if (id != null && id.isNotEmpty) {
+      try {
+        final result = await api.get('wallet/transactions/$id', auth: true);
+        final fetched = _map(result['transaction']);
+        if (fetched.isNotEmpty) detail = fetched;
+      } on ApiException {
+        detail = entry;
+      }
+    }
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Transaction details'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _Info('Type', detail['type']?.toString() ?? 'Transaction'),
+          _Info('Status', detail['status']?.toString() ?? 'unknown'),
+          _Info('Amount', balanceVisible ? '${detail['currency'] ?? _currency} ${detail['amount'] ?? '0.00'}' : '••••••'),
+          _Info('Reference', detail['reference']?.toString() ?? 'Not available'),
+          _Info('Date', detail['createdAt']?.toString() ?? 'Not available'),
+        ]),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close'))],
+      ),
+    );
+  }
+
   Future<void> _showSendOptions() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -998,11 +1155,31 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Transaction history',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          const SizedBox(height: 22),
+          Row(children: [
+            const Expanded(child: Text('Bills & Services', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
+            TextButton(onPressed: _showBillsAndServices, child: const Text('View all')),
+          ]),
+          const SizedBox(height: 10),
+          GridView.count(
+            crossAxisCount: 4,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: .82,
+            children: [
+              _ServiceShortcut(icon: Icons.phone_android_rounded, label: 'Airtime', onTap: () => _showBillService('Airtime')),
+              _ServiceShortcut(icon: Icons.data_usage_rounded, label: 'Data', onTap: () => _showBillService('Data')),
+              _ServiceShortcut(icon: Icons.bolt_rounded, label: 'Electricity', onTap: () => _showBillService('Electricity')),
+              _ServiceShortcut(icon: Icons.live_tv_rounded, label: 'Cable TV', onTap: () => _showBillService('Cable TV')),
+            ],
           ),
+          const SizedBox(height: 22),
+          Row(children: [
+            const Expanded(child: Text('Transaction history', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
+            TextButton.icon(onPressed: _showAllTransactions, icon: const Icon(Icons.arrow_forward_rounded, size: 17), label: const Text('See all')),
+          ]),
           const SizedBox(height: 10),
           if (transactions.isEmpty)
             const Card(
@@ -1045,6 +1222,23 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         ],
       ),
     ),
+  );
+}
+
+class _ServiceShortcut extends StatelessWidget {
+  const _ServiceShortcut({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(16),
+    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Container(width: 54, height: 54, decoration: BoxDecoration(color: EazyColors.green.withValues(alpha: .10), borderRadius: BorderRadius.circular(17)), child: Icon(icon, color: EazyColors.green, size: 25)),
+      const SizedBox(height: 7),
+      Text(label, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+    ]),
   );
 }
 
