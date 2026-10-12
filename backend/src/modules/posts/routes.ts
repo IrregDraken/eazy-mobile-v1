@@ -6,6 +6,8 @@ import { sendSuccess } from '../../utils/http.js';
 import { paginationQuerySchema } from '../../utils/pagination.js';
 import { createPostSchema, postIdSchema, PostService } from './service.js';
 
+const profilePostsQuerySchema = paginationQuerySchema.extend({ type: z.enum(['grid', 'reels', 'tagged']).default('grid') });
+
 export function createPostRouter(service: PostService): Router {
   const router = Router();
   router.post('/', requireAuth, validate('body', createPostSchema), async (request, response) => {
@@ -13,7 +15,7 @@ export function createPostRouter(service: PostService): Router {
     return response.status(201).json({ success: true, data: { post }, meta: {} });
   });
   router.get('/mine', requireAuth, validate('query', paginationQuerySchema), async (request, response) => sendSuccess(response, await service.mine(currentUserId(request), request.query as never)));
-  router.get('/profile/:username', validate('params', z.object({ username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,32}$/) })), validate('query', paginationQuerySchema), async (request, response) => sendSuccess(response, await service.byUsername(request.auth?.userId, param(request.params.username), request.query as never)));
+  router.get('/profile/:username', validate('params', z.object({ username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,32}$/) })), validate('query', profilePostsQuerySchema), async (request, response) => sendSuccess(response, await service.byUsername(request.auth?.userId, param(request.params.username), request.query as never, String(request.query.type ?? 'grid') as 'grid' | 'reels' | 'tagged')));
   router.get('/:id', validate('params', postIdSchema), async (request, response) => sendSuccess(response, { post: await service.getById(param(request.params.id), request.auth?.userId) }));
   router.delete('/:id', requireAuth, validate('params', postIdSchema), async (request, response) => sendSuccess(response, await service.delete(param(request.params.id), currentUserId(request))));
   return router;
