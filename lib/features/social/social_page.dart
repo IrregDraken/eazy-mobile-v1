@@ -299,7 +299,7 @@ class _SocialPageState extends State<SocialPage> {
             ),
           if (!loading && posts.isNotEmpty)
             SliverList.builder(
-              itemCount: posts.length + (posts.length ~/ 10),
+              itemCount: posts.length + (suggestions.isNotEmpty ? posts.length ~/ 10 : 0),
               itemBuilder: (c, i) {
                 if ((i + 1) % 11 == 0 && suggestions.isNotEmpty) {
                   return _SuggestedAccounts(
