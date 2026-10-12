@@ -46,7 +46,7 @@ export class EngagementService {
   async createComment(postId: string, userId: string, content: string, parentId?: string) {
     const result = await withTransaction(this.pool, async client => {
       await this.assertAccessible(client, postId, userId);
-      let comment;
+      let comment: import('./repository.js').CommentProjection;
       try { comment = await this.repository.createComment(client, postId, userId, content, parentId); }
       catch (error) { if (error instanceof Error && error.message === 'COMMENT_PARENT_INACCESSIBLE') throw new AppError('NOT_FOUND', 'Reply target not found'); throw error; }
       let notificationId: string | null = null;
