@@ -347,7 +347,7 @@ class _MessageBubble extends StatelessWidget {
                 final type=attachment['contentType']?.toString() ?? '';
                 final bytes=int.tryParse(attachment['byteSize']?.toString() ?? '') ?? 0;
                 final label=type.startsWith('image/')?'Photo':type.startsWith('video/')?'Video':type.startsWith('audio/')?'Audio':'Document';
-                final size=bytes>=1024*1024?'\${(bytes/(1024*1024)).toStringAsFixed(1)} MB':'\${(bytes/1024).round()} KB';
+                final size=bytes>=1024*1024?'${(bytes/(1024*1024)).toStringAsFixed(1)} MB':'${(bytes/1024).round()} KB';
                 return Container(
                   margin:const EdgeInsets.only(bottom:5),
                   padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
@@ -355,7 +355,7 @@ class _MessageBubble extends StatelessWidget {
                   child:Row(mainAxisSize:MainAxisSize.min,children:[
                     Icon(type.startsWith('image/')?Icons.image_outlined:type.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:EazyColors.green,size:18),
                     const SizedBox(width:7),
-                    Text('\${label} attachment',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
+                    Text('${label} attachment',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
                     const SizedBox(width:7),
                     Text(size,style:const TextStyle(fontSize:10,color:EazyColors.muted)),
                   ]),
