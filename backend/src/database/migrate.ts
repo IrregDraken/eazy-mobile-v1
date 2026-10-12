@@ -38,7 +38,8 @@ const hostedMigrationNames: Record<string, string> = {
   '017_eazy_media_bucket.sql': 'eazy_media_bucket',
   '018_email_verification_users.sql': 'email_verification_users',
   '019_profile_middle_name.sql': 'profile_middle_name',
-  '020_social_stories.sql': 'social_stories'
+  '020_social_stories.sql': 'social_stories',
+  '021_social_interactions.sql': 'social_interactions'
 };
 
 async function main() {
