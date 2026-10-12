@@ -109,6 +109,19 @@ class _ProfilePageState extends State<ProfilePage> {
     } finally { if (mounted) setState(() => followBusy = false); }
   }
 
+  Future<void> _selectContentTab(int tab) async {
+    setState(() { contentTab = tab; loading = true; error = null; });
+    try {
+      final username = profile['username']?.toString() ?? '';
+      final type = ['grid', 'reels', 'tagged'][tab];
+      final result = await api.get('posts/profile/$username?type=$type&page=1&limit=50', auth: true);
+      final items = (result['items'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      if (mounted) setState(() => ownPosts = items);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } finally { if (mounted) setState(() => loading = false); }
+  }
+
   String _count(dynamic value) {
     final n = int.tryParse(value?.toString() ?? '') ?? 0;
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(n % 1000000 < 100000 ? 0 : 1)}M';
@@ -315,9 +328,9 @@ class _ProfilePageState extends State<ProfilePage> {
         SliverToBoxAdapter(child: Container(
           decoration: const BoxDecoration(border: Border(top: BorderSide(color: EazyColors.border))),
           child: Row(children: [
-            ProfileTab(icon: Icons.grid_on_rounded, selected: contentTab == 0, onTap: () => setState(() => contentTab = 0)),
-            ProfileTab(icon: Icons.play_circle_outline_rounded, selected: contentTab == 1, onTap: () => setState(() => contentTab = 1)),
-            ProfileTab(icon: Icons.person_pin_outlined, selected: contentTab == 2, onTap: () => setState(() => contentTab = 2)),
+            ProfileTab(icon: Icons.grid_on_rounded, selected: contentTab == 0, onTap: () => _selectContentTab(0)),
+            ProfileTab(icon: Icons.play_circle_outline_rounded, selected: contentTab == 1, onTap: () => _selectContentTab(1)),
+            ProfileTab(icon: Icons.person_pin_outlined, selected: contentTab == 2, onTap: () => _selectContentTab(2)),
           ]),
         )),
         if (loading && ownPosts.isEmpty)
@@ -325,7 +338,7 @@ class _ProfilePageState extends State<ProfilePage> {
         if (!loading && contentTab == 0 && ownPosts.isNotEmpty)
           SliverPadding(padding: const EdgeInsets.all(2), sliver: SliverGrid(
             delegate: SliverChildBuilderDelegate((context, index) => ProfilePostTile(post: ownPosts[index]), childCount: ownPosts.length),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 2, mainAxisSpacing: 2, childAspectRatio: 1),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 2, mainAxisSpacing: 2, childAspectRatio: contentTab == 1 ? 9 / 16 : 1),
           )),
         if (!loading && (contentTab != 0 || ownPosts.isEmpty))
           SliverToBoxAdapter(child: Padding(
@@ -336,7 +349,7 @@ class _ProfilePageState extends State<ProfilePage> {
               Text(contentTab == 0 ? ((int.tryParse(postsCount.toString()) ?? 0) > 0 ? 'Your posts are not in the current feed page yet' : 'Share your first moment') : contentTab == 1 ? 'Your Reels will live here' : 'Photos you are tagged in will appear here', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               const SizedBox(height: 6),
               Text(contentTab == 0 ? 'Build your corner of Eazy, one post at a time.' : 'This view will fill with content when the matching Eazy feature is available.', textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted, height: 1.45)),
-              if (contentTab == 0) Padding(padding: const EdgeInsets.only(top: 14), child: FilledButton.icon(onPressed: () => context.go('/home'), icon: const Icon(Icons.add_rounded), label: const Text('Create a post'))),
+              if (contentTab == 0 && isOwnProfile) Padding(padding: const EdgeInsets.only(top: 14), child: FilledButton.icon(onPressed: () => context.go('/home'), icon: const Icon(Icons.add_rounded), label: const Text('Create a post'))),
             ]),
           )),
         if (error != null && ownPosts.isEmpty && !loading)
