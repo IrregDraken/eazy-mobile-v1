@@ -15,6 +15,7 @@ export function createProfileRouter(service: ProfileService): Router {
     const currentUser = request.auth?.userId;
     return sendSuccess(response, await service.isUsernameAvailable(param(request.params.username), currentUser));
   });
+  router.get('/search', requireAuth, validate('query', z.object({ q: z.string().trim().min(2).max(80) })), async (request, response) => sendSuccess(response, { items: await service.searchPublic(String(request.query.q ?? ''), currentUserId(request)) }));
   router.get('/:username', validate('params', z.object({ username: usernameSchema })), async (request, response) => sendSuccess(response, { profile: await service.getPublic(param(request.params.username), request.auth?.userId) }));
   return router;
 }
