@@ -7,6 +7,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/media/media_service.dart';
 import 'stories_tray.dart';
+import 'video_media.dart';
 
 class SocialPage extends StatefulWidget {
   const SocialPage({super.key, required this.auth});
@@ -619,27 +620,21 @@ class _PostState extends State<_Post> {
                       final url = m['url']?.toString();
                       return ClipRRect(
                         borderRadius: BorderRadius.circular(18),
-                        child:
-                            url != null
-                                ? Image.network(
-                                  url,
-                                  fit: BoxFit.cover,
-                                  errorBuilder:
-                                      (_, __, ___) => const ColoredBox(
-                                        color: EazyColors.surfaceRaised,
-                                        child: Center(
-                                          child: Icon(
-                                            Icons.broken_image_outlined,
-                                          ),
-                                        ),
-                                      ),
-                                )
-                                : const ColoredBox(
-                                  color: EazyColors.surfaceRaised,
-                                  child: Center(
-                                    child: Icon(Icons.image_outlined),
-                                  ),
-                                ),
+                        child: url != null
+                            ? (m['mediaType']?.toString() == 'video'
+                                ? EazyVideoMedia(url: url, fit: BoxFit.cover)
+                                : Image.network(
+                                    url,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const ColoredBox(
+                                      color: EazyColors.surfaceRaised,
+                                      child: Center(child: Icon(Icons.broken_image_outlined)),
+                                    ),
+                                  ))
+                            : const ColoredBox(
+                                color: EazyColors.surfaceRaised,
+                                child: Center(child: Icon(Icons.image_outlined)),
+                              ),
                       );
                     },
                   ),
