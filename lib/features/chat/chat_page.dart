@@ -143,12 +143,25 @@ class _ConversationPageState extends State<ConversationPage> {
   Map<String,dynamic>? replying,editing;
   bool loading=true,sending=false;
   String? error;
+  String? currentUsername;
   WebSocket? socket;
   StreamSubscription? subscription;
 
   String get id=>widget.conversation['id']?.toString() ?? '';
 
-  @override void initState(){super.initState();loadMessages();connectRealtime();}
+  @override void initState(){super.initState();loadMessages();connectRealtime();loadMyProfile();}
+  Future<void> loadMyProfile() async {
+    try {
+      final result = await widget.api.get('profiles/me', auth:true);
+      final profile = result['profile'];
+      if (mounted && profile is Map) setState(() => currentUsername = profile['username']?.toString());
+    } catch (_) {}
+  }
+  bool _isMine(Map<String,dynamic> message) {
+    final sender = message['sender'] is Map ? Map<String,dynamic>.from(message['sender'] as Map) : <String,dynamic>{};
+    final value = (sender['username'] ?? message['senderUsername'] ?? message['sender_username'])?.toString().toLowerCase();
+    return currentUsername != null && value == currentUsername!.toLowerCase();
+  }
   @override void dispose(){subscription?.cancel();socket?.close();draft.dispose();scroll.dispose();super.dispose();}
 
   Future<void> loadMessages() async {
@@ -266,12 +279,34 @@ class _ConversationPageState extends State<ConversationPage> {
     final status=m['status']?.toString() ?? 'sent';
     showModalBottomSheet(context:context,showDragHandle:true,builder:(ctx)=>SafeArea(child:Wrap(children:[
       ListTile(leading:const Icon(Icons.reply_rounded),title:const Text('Reply'),onTap:(){Navigator.pop(ctx);setState(()=>replying=m);}),
+      if(status!='deleted')ListTile(leading:const Icon(Icons.add_reaction_outlined),title:const Text('React'),onTap:(){Navigator.pop(ctx);chooseReaction(m);}),
       if(status!='deleted')ListTile(leading:const Icon(Icons.translate_rounded),title:const Text('Translate to English'),onTap:(){Navigator.pop(ctx);translate(m);}),
       if(status!='deleted')ListTile(leading:const Icon(Icons.flag_outlined),title:const Text('Report'),onTap:(){Navigator.pop(ctx);report(m,'Other inappropriate content');}),
       if(status!='deleted')ListTile(leading:const Icon(Icons.edit_outlined),title:const Text('Edit'),onTap:(){Navigator.pop(ctx);setState(() { editing=m; draft.text=m['body']?.toString() ?? ''; });}),
       if(status!='deleted')ListTile(leading:const Icon(Icons.delete_outline_rounded),title:const Text('Delete'),onTap:(){Navigator.pop(ctx);deleteMessage(m);}),
       const SizedBox(height:8)
     ])));
+  }
+
+  void chooseReaction(Map<String,dynamic> message) {
+    showModalBottomSheet<void>(
+      context:context,
+      showDragHandle:true,
+      builder:(ctx)=>SafeArea(
+        child:Padding(
+          padding:const EdgeInsets.all(18),
+          child:Wrap(
+            alignment:WrapAlignment.spaceEvenly,
+            spacing:8,
+            runSpacing:8,
+            children:_reactions.map((reaction)=>IconButton(
+              onPressed:(){Navigator.pop(ctx);reactTo(message,reaction);},
+              icon:Text(reaction,style:const TextStyle(fontSize:26)),
+            )).toList(),
+          ),
+        ),
+      ),
+    );
   }
 
   @override Widget build(BuildContext context){
@@ -287,7 +322,7 @@ class _ConversationPageState extends State<ConversationPage> {
         Expanded(child:loading?const Center(child:CircularProgressIndicator()):error!=null?_ChatState(error!,loadMessages):messages.isEmpty
           ?const _ChatState('No messages yet. Start the conversation.')
           :ListView.builder(controller:scroll,padding:const EdgeInsets.fromLTRB(16,12,16,16),itemCount:messages.length,itemBuilder:(_,i){
-            return _MessageBubble(message:messages[i],onLongPress:()=>actions(messages[i]),onReaction:(r)=>reactTo(messages[i],r),onTranslate:()=>translate(messages[i]));
+            return _MessageBubble(message:messages[i],isMine:_isMine(messages[i]),onLongPress:()=>actions(messages[i]),onReaction:(r)=>reactTo(messages[i],r),onTranslate:()=>translate(messages[i]));
           })),
         SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(12,6,12,10),child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
           Expanded(child:TextField(controller:draft,maxLines:5,minLines:1,decoration:InputDecoration(
@@ -301,8 +336,9 @@ class _ConversationPageState extends State<ConversationPage> {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message,required this.onLongPress,required this.onReaction,required this.onTranslate});
+  const _MessageBubble({required this.message,required this.isMine,required this.onLongPress,required this.onReaction,required this.onTranslate});
   final Map<String,dynamic> message;
+  final bool isMine;
   final VoidCallback onLongPress;
   final ValueChanged<String> onReaction;
   final VoidCallback onTranslate;
@@ -310,12 +346,25 @@ class _MessageBubble extends StatelessWidget {
     final sender=message['sender'] is Map?Map<String,dynamic>.from(message['sender'] as Map):<String,dynamic>{};
     final deleted=message['status']=='deleted';
     final reactions=(message['reactions'] as List? ?? const[]).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();
-    return GestureDetector(onLongPress:onLongPress,child:Container(
+    return Align(
+      alignment:isMine?Alignment.centerRight:Alignment.centerLeft,
+      child:ConstrainedBox(
+        constraints:BoxConstraints(maxWidth:MediaQuery.sizeOf(context).width*.80),
+        child:GestureDetector(onLongPress:onLongPress,child:Container(
       margin:const EdgeInsets.only(bottom:9),padding:const EdgeInsets.fromLTRB(13,10,10,9),
-      decoration:BoxDecoration(color:deleted?EazyColors.surfaceRaised:EazyColors.surface,borderRadius:BorderRadius.circular(19),border:Border.all(color:EazyColors.border)),
+      decoration:BoxDecoration(
+        color:deleted?EazyColors.surfaceRaised:(isMine?const Color(0xFF075B3A):EazyColors.surfaceRaised),
+        borderRadius:BorderRadius.only(
+          topLeft:Radius.circular(isMine?19:5),
+          topRight:Radius.circular(isMine?5:19),
+          bottomLeft:const Radius.circular(19),
+          bottomRight:const Radius.circular(19),
+        ),
+        border:Border.all(color:isMine?const Color(0xFF167A4C):EazyColors.border),
+      ),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        if(sender['displayName']!=null&&!deleted)Text(sender['displayName'].toString(),style:const TextStyle(color:EazyColors.muted,fontSize:10,fontWeight:FontWeight.w800)),
-        Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color:deleted?EazyColors.muted:EazyColors.ink,fontSize:14,height:1.35,fontStyle:deleted?FontStyle.italic:FontStyle.normal)),
+        if(!isMine&&sender['displayName']!=null&&!deleted)Text(sender['displayName'].toString(),style:const TextStyle(color:EazyColors.muted,fontSize:10,fontWeight:FontWeight.w800)),
+        Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color:deleted?EazyColors.muted:(isMine?Colors.white:EazyColors.ink),fontSize:14,height:1.35,fontStyle:deleted?FontStyle.italic:FontStyle.normal)),
         if(message['replyTo'] is Map)Padding(padding:const EdgeInsets.only(top:8),child:Text('↳ ' + ((message['replyTo']['body'] ?? 'Deleted message').toString()),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))),
         if(message['_translation']!=null)Padding(padding:const EdgeInsets.only(top:8),child:Text(message['_translation'].toString(),style:const TextStyle(color:EazyColors.mint,fontSize:12,height:1.35))),
         if(reactions.isNotEmpty)Padding(padding:const EdgeInsets.only(top:7),child:Wrap(
@@ -330,14 +379,12 @@ class _MessageBubble extends StatelessWidget {
             ),
           )).toList(),
         )),
-        if(!deleted)SizedBox(height:28,child:ListView(scrollDirection:Axis.horizontal,children:_reactions.map((r)=>IconButton(
-          padding:EdgeInsets.zero,constraints:const BoxConstraints(minWidth:30),onPressed:()=>onReaction(r),icon:Text(r,style:const TextStyle(fontSize:16)))).toList())),
-        Row(children:[
+         Row(children:[
           Expanded(child:Text(_time(message['createdAt'] ?? message['created_at']),style:const TextStyle(color:EazyColors.muted,fontSize:9))),
           if(!deleted)TextButton(onPressed:onTranslate,child:const Text('Translate',style:TextStyle(fontSize:10)))
         ])
       ])
-    ));
+        )));
   }
   String _time(dynamic value){
     final d=DateTime.tryParse(value?.toString() ?? '');if(d==null)return '';
