@@ -16,10 +16,12 @@ interface ResendInboundEvent {
   data?: { email_id?: string; to?: string[] };
 }
 interface InboundAttachment {
+  id?: string;
   filename?: string;
   content_type?: string;
   download_url?: string;
 }
+interface AttachmentList { data?: InboundAttachment[]; object?: string; }
 interface InboundEmail {
   from?: string;
   to?: string[];
@@ -70,8 +72,15 @@ export function createResendInboundRouter(config: AppConfig, logger: Logger): Ro
       const email = await inboundResponse.json() as InboundEmail;
       if (!email.from) throw new Error('Inbound email did not include a sender');
 
+      const attachmentListResponse = await fetch(
+        `https://api.resend.com/emails/receiving/${encodeURIComponent(emailId)}/attachments`,
+        { headers: { authorization: `Bearer ${config.RESEND_API_KEY}` }, signal: AbortSignal.timeout(15_000) }
+      );
+      if (!attachmentListResponse.ok) throw new Error(`Resend attachment listing failed with status ${attachmentListResponse.status}`);
+      const attachmentList = await attachmentListResponse.json() as AttachmentList;
+      const attachmentMetadata = attachmentList.data ?? email.attachments ?? [];
       const attachments: OutboundAttachment[] = [];
-      for (const attachment of email.attachments ?? []) {
+      for (const attachment of attachmentMetadata) {
         if (!attachment.download_url) continue;
         const fileResponse = await fetch(attachment.download_url, { signal: AbortSignal.timeout(15_000) });
         if (!fileResponse.ok) throw new Error('Could not retrieve an inbound email attachment');
@@ -93,17 +102,18 @@ export function createResendInboundRouter(config: AppConfig, logger: Logger): Ro
         `Subject: ${subject}`,
         '',
         email.text ?? '(No plain-text body. See the original HTML content below.)',
-        ...(email.html ? ['', 'Original HTML body is included as a separate section in this message.'] : [])
+        ...(email.html ? ['', 'The original HTML email is attached as original-email.html.'] : [])
       ].join('\n');
       const safeFrom = escapeHtml(email.from);
       const safeRecipient = escapeHtml(routedRecipient);
       const safeSubject = escapeHtml(subject);
       const safeText = escapeHtml(email.text ?? '(No plain-text body provided.)');
-      const html = `<!doctype html><html><body style="margin:0;background:#f2f5f1;font-family:Arial,sans-serif;color:#15251d;padding:24px"><div style="max-width:680px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #dce5dd"><div style="background:#071b12;padding:24px 28px"><div style="color:#b8f34a;font-size:13px;font-weight:700;letter-spacing:3px">EAZY</div><h1 style="color:#fff;font-size:22px;margin:12px 0 0">New support email</h1></div><div style="padding:26px 28px"><div style="font-size:13px;color:#52645a;line-height:1.8"><b>From:</b> ${safeFrom}<br><b>To:</b> ${safeRecipient}<br><b>Subject:</b> ${safeSubject}<br><b>Received:</b> ${escapeHtml(email.created_at ?? new Date().toISOString())}</div><hr style="border:0;border-top:1px solid #e3e9e3;margin:22px 0"><div style="font-size:15px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere">${safeText}</div>${email.html ? `<details style="margin-top:22px"><summary style="cursor:pointer;color:#315d3d;font-weight:700">View original HTML email</summary><div style="margin-top:12px;padding:14px;background:#f6f8f5;border-radius:10px;overflow-wrap:anywhere">The original HTML is available in the received message stored by Resend.</div></details>` : ''}<p style="margin:28px 0 0;font-size:12px;color:#68776d">Reply to this message in Gmail to respond to the sender, provided your mail client keeps the original sender as Reply-To.</p></div></div></body></html>`;
+      const originalHtmlSection = email.html ? `<p style="margin-top:20px;font-size:13px;color:#536459">The original HTML email is attached as <strong>original-email.html</strong>.</p><details style="margin-top:12px"><summary style="cursor:pointer;color:#315d3d;font-weight:700">View original HTML source</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8f5;padding:14px;border-radius:10px;font-size:12px">${escapeHtml(email.html)}</pre></details>` : '';
+      const html = `<!doctype html><html><body style="margin:0;background:#f2f5f1;font-family:Arial,sans-serif;color:#15251d;padding:24px"><div style="max-width:680px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #dce5dd"><div style="background:#071b12;padding:24px 28px"><div style="color:#b8f34a;font-size:13px;font-weight:700;letter-spacing:3px">EAZY</div><h1 style="color:#fff;font-size:22px;margin:12px 0 0">New support email</h1></div><div style="padding:26px 28px"><div style="font-size:13px;color:#52645a;line-height:1.8"><b>From:</b> ${safeFrom}<br><b>To:</b> ${safeRecipient}<br><b>Subject:</b> ${safeSubject}<br><b>Received:</b> ${escapeHtml(email.created_at ?? new Date().toISOString())}</div><hr style="border:0;border-top:1px solid #e3e9e3;margin:22px 0"><div style="font-size:15px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere">${safeText}</div>${originalHtmlSection}<p style="margin:28px 0 0;font-size:12px;color:#68776d">Reply to this message in Gmail to respond to the sender, provided your mail client keeps the original sender as Reply-To.</p></div></div></body></html>`;
 
       const forwardResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
-        headers: { authorization: `Bearer ${config.RESEND_API_KEY}`, 'content-type': 'application/json' },
+        headers: { authorization: `Bearer ${config.RESEND_API_KEY}`, 'content-type': 'application/json', 'idempotency-key': `eazy-inbound-${emailId}` },
         body: JSON.stringify({
           from: config.RESEND_FROM_EMAIL,
           to: [SUPPORT_INBOX],
@@ -111,7 +121,7 @@ export function createResendInboundRouter(config: AppConfig, logger: Logger): Ro
           subject: `[Eazy ${routedRecipient.split('@')[0]}] ${subject}`,
           text,
           html,
-          ...(attachments.length ? { attachments } : {})
+          ...((attachments.length || email.html) ? { attachments: [...attachments, ...(email.html ? [{ filename: 'original-email.html', content: Buffer.from(email.html, 'utf8').toString('base64'), content_type: 'text/html' }] : [])] } : {})
         }),
         signal: AbortSignal.timeout(15_000)
       });
