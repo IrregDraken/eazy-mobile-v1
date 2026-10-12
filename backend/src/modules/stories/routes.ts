@@ -81,7 +81,7 @@ export class StoryService {
       let coverUrl: string | null = null;
       if (this.storage && row.coverStorageKey) { try { coverUrl = (await this.storage.createSignedUrl(row.coverStorageKey, 3600)).signedUrl; } catch { coverUrl = null; } }
       return { ...row, coverUrl, stories };
-    }) };
+    })) };
   }
 
   async createHighlight(ownerId: string, input: z.infer<typeof createHighlightSchema>) {
