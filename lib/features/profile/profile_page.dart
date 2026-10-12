@@ -126,12 +126,13 @@ class _ProfilePageState extends State<ProfilePage> {
     if (username == null || username.isEmpty) return;
     setState(() => loadingMoreProfilePosts = true);
     try {
+      final requestedTab = contentTab;
       final nextPage = profilePage + 1;
-      final result = await api.get('posts/profile/$username?type=${['grid', 'reels', 'tagged'][contentTab]}&page=$nextPage&limit=50', auth: true);
+      final result = await api.get('posts/profile/$username?type=${['grid', 'reels', 'tagged'][requestedTab]}&page=$nextPage&limit=50', auth: true);
       final raw = result['items'] as List? ?? const [];
       final items = raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
       final total = result['meta'] is Map ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '') : null;
-      if (mounted) setState(() {
+      if (mounted && contentTab == requestedTab) setState(() {
         profilePage = nextPage;
         ownPosts.addAll(items);
         hasMoreProfilePosts = total == null ? items.length >= 50 : ownPosts.length < total;
@@ -271,7 +272,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final result = await api.get('posts/profile/$username?type=$type&page=1&limit=50', auth: true);
       final items = (result['items'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
       final total = result['meta'] is Map ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '') : null;
-      if (mounted) setState(() {
+      if (mounted && contentTab == tab) setState(() {
         ownPosts = items;
         profilePage = 1;
         hasMoreProfilePosts = total == null ? items.length >= 50 : items.length < total;
