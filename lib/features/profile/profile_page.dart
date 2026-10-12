@@ -6,8 +6,9 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key, required this.auth});
+  const ProfilePage({super.key, required this.auth, this.username});
   final AuthController auth;
+  final String? username;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -22,6 +23,9 @@ class _ProfilePageState extends State<ProfilePage> {
   List<Map<String, dynamic>> ownPosts = [];
   String? error;
   int contentTab = 0;
+  bool isFollowing = false;
+  bool followBusy = false;
+  bool get isOwnProfile => widget.username == null || widget.username!.toLowerCase() == (profile['username']?.toString().toLowerCase() ?? '');
 
   @override
   void initState() {
@@ -33,35 +37,70 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> load() async {
     if (mounted) setState(() { loading = true; error = null; });
     try {
+      final requested = widget.username?.trim().toLowerCase();
+      final currentUsername = widget.auth.profile?['username']?.toString().toLowerCase();
+      final own = requested == null || requested.isEmpty || requested == currentUsername;
+      final fetched = await api.get(own ? 'profiles/me' : 'profiles/$requested', auth: own);
+      final fetchedProfile = fetched['profile'];
+      if (fetchedProfile is! Map) throw const ApiException('Eazy could not load this profile.');
+      final nextProfile = Map<String, dynamic>.from(fetchedProfile);
+      final actualUsername = (nextProfile['username'] ?? nextProfile['user_name'])?.toString().toLowerCase();
+      if (actualUsername == null || actualUsername.isEmpty) throw const ApiException('This profile has no username yet.');
       final results = await Future.wait([
-        api.get('profiles/me', auth: true),
-        api.get('profiles/me/stats', auth: true),
-        api.get('home/feed?page=1&limit=50&mode=for_you', auth: true),
+        api.get('posts/profile/$actualUsername?page=1&limit=50', auth: true),
+        if (own) api.get('profiles/me/stats', auth: true),
+        if (!own) api.get('social/followers/$actualUsername?page=1&limit=1', auth: true),
+        if (!own) api.get('social/following/$actualUsername?page=1&limit=1', auth: true),
+        if (!own) api.get('social/relationship/$actualUsername', auth: true),
       ]);
-      final fetchedProfile = results[0]['profile'];
-      final fetchedStats = results[1]['stats'];
-      final rawPosts = results[2]['items'] as List? ?? const [];
-      final username = (fetchedProfile is Map
-          ? fetchedProfile['username']
-          : profile['username'])?.toString().toLowerCase();
-      final profileId = (fetchedProfile is Map
-          ? (fetchedProfile['user_id'] ?? fetchedProfile['userId'] ?? fetchedProfile['id'])
-          : (profile['userId'] ?? profile['id']))?.toString();
-      final posts = rawPosts.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).where((post) {
-        final author = post['author'] is Map ? Map<String, dynamic>.from(post['author'] as Map) : <String, dynamic>{};
-        return (profileId != null && profileId.isNotEmpty && author['id']?.toString() == profileId) ||
-            (username != null && username.isNotEmpty && author['username']?.toString().toLowerCase() == username);
-      }).toList();
+      final postResult = results[0];
+      final rawPosts = postResult['items'] as List? ?? const [];
+      final fetchedStats = own ? results[1]['stats'] : null;
+      final relationship = own ? const <String, dynamic>{} : Map<String, dynamic>.from(results[3]['following'] is Map ? results[3]['following'] as Map : results[3] as Map);
+      final followState = own ? false : relationship['following'] == true;
+      final newStats = own && fetchedStats is Map
+          ? Map<String, dynamic>.from(fetchedStats)
+          : <String, dynamic>{
+              'posts': (postResult['meta'] is Map ? (postResult['meta'] as Map)['total'] : rawPosts.length) ?? rawPosts.length,
+              'followers': (own ? 0 : ((results[1]['meta'] is Map ? (results[1]['meta'] as Map)['total'] : 0) ?? 0)),
+              'following': (own ? 0 : ((results[2]['meta'] is Map ? (results[2]['meta'] as Map)['total'] : 0) ?? 0)),
+            };
+      // The public list endpoints return totals in their meta fields.
+      if (!own) {
+        newStats['followers'] = (results[1]['meta'] is Map ? (results[1]['meta'] as Map)['total'] : 0) ?? 0;
+        newStats['following'] = (results[2]['meta'] is Map ? (results[2]['meta'] as Map)['total'] : 0) ?? 0;
+      }
       if (mounted) setState(() {
-        if (fetchedProfile is Map) profile = Map<String, dynamic>.from(fetchedProfile);
-        if (fetchedStats is Map) stats = Map<String, dynamic>.from(fetchedStats);
-        ownPosts = posts;
+        profile = nextProfile;
+        stats = newStats;
+        ownPosts = rawPosts.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        isFollowing = followState;
       });
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  Future<void> toggleFollow() async {
+    final username = profile['username']?.toString() ?? '';
+    if (username.isEmpty || followBusy) return;
+    final wasFollowing = isFollowing;
+    setState(() { isFollowing = !wasFollowing; followBusy = true; });
+    try {
+      if (wasFollowing) {
+        await api.delete('social/follow/$username', auth: true);
+      } else {
+        await api.post('social/follow/$username', auth: true);
+      }
+      await load();
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => isFollowing = wasFollowing);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally { if (mounted) setState(() => followBusy = false); }
   }
 
   String _count(dynamic value) {
