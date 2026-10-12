@@ -117,6 +117,19 @@ class _SocialPageState extends State<SocialPage> {
   Future<void> compose() async {
     composer.clear();
     MediaUpload? attachment;
+    Future<void> chooseMedia(bool video, StateSetter setSheetState) async {
+      try {
+        final value = video
+            ? await media.pickAndUploadVideo(kind: 'post')
+            : await media.pickAndUpload(kind: 'post');
+        if (value != null) {
+          attachment = value;
+          setSheetState(() {});
+        }
+      } on ApiException catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
     final body = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -149,34 +162,24 @@ class _SocialPageState extends State<SocialPage> {
                 ),
                 const SizedBox(height: 8),
                 StatefulBuilder(
-                  builder:
-                      (ctx, setSheetState) => Row(
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed:
-                                () => media.pickAndUpload(kind: 'post').then((
-                                  value,
-                                ) {
-                                  attachment = value;
-                                  setSheetState(() {});
-                                }),
-                            icon: const Icon(Icons.photo_outlined),
-                            label: Text(
-                              attachment == null
-                                  ? 'Add photo'
-                                  : 'Photo attached',
-                            ),
-                          ),
-                          if (attachment != null)
-                            const Padding(
-                              padding: EdgeInsets.only(left: 10),
-                              child: Icon(
-                                Icons.check_circle,
-                                color: EazyColors.green,
-                              ),
-                            ),
-                        ],
+                  builder: (ctx, setSheetState) => Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => chooseMedia(false, setSheetState),
+                        icon: const Icon(Icons.photo_outlined),
+                        label: Text(attachment != null && !attachment!.contentType.startsWith('video/') ? 'Photo attached' : 'Add photo'),
                       ),
+                      OutlinedButton.icon(
+                        onPressed: () => chooseMedia(true, setSheetState),
+                        icon: const Icon(Icons.video_library_outlined),
+                        label: Text(attachment != null && attachment!.contentType.startsWith('video/') ? 'Video attached' : 'Add video'),
+                      ),
+                      if (attachment != null)
+                        const Icon(Icons.check_circle, color: EazyColors.green),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -191,7 +194,7 @@ class _SocialPageState extends State<SocialPage> {
             ),
           ),
     );
-    if (body == null || body.isEmpty) return;
+    if (body == null || (body.isEmpty && attachment == null)) return;
     setState(() => posting = true);
     try {
       await api.post(
@@ -204,7 +207,7 @@ class _SocialPageState extends State<SocialPage> {
             if (attachment != null)
               {
                 'storageKey': attachment!.path,
-                'mediaType': 'image',
+                'mediaType': attachment!.contentType.startsWith('video/') ? 'video' : 'image',
                 'position': 0,
               },
           ],
