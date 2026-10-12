@@ -168,43 +168,42 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   Future<void> sendToEazyUser() async {
-    final recipientInput = TextEditingController();
-    final rawHandle = await showDialog<String>(
+    final searchInput = TextEditingController();
+    final query = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Send to an Eazy user'),
+        title: const Text('Find an Eazy user'),
         content: TextField(
-          controller: recipientInput,
+          controller: searchInput,
           autofocus: true,
-          autocorrect: false,
-          textCapitalization: TextCapitalization.none,
           decoration: const InputDecoration(
-            labelText: 'Recipient username',
-            hintText: 'e.g. ada_okafor',
-            prefixText: '@',
-            helperText: 'Find the recipient first. You will review the amount before authorizing.',
+            labelText: 'Name or username',
+            hintText: 'e.g. Ada Okafor or ada_okafor',
+            prefixIcon: Icon(Icons.search_rounded),
+            helperText: 'Search by the person’s name or Eazy username.',
           ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, recipientInput.text.trim()), child: const Text('Find recipient')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, searchInput.text.trim()), child: const Text('Search')),
         ],
       ),
     );
-    recipientInput.dispose();
-    if (rawHandle == null) return;
-    final handle = rawHandle.replaceFirst('@', '').trim().toLowerCase();
-    if (!_validUsername(handle)) {
-      _showError('Enter a valid Eazy username (3–32 letters, numbers, or underscores).');
+    searchInput.dispose();
+    if (query == null) return;
+    if (query.trim().length < 2) {
+      _showError('Enter at least two characters to search.');
       return;
     }
 
-    Map<String, dynamic> recipient;
+    List<Map<String, dynamic>> matches;
     setState(() => busy = true);
     try {
-      final result = await api.get('profiles/$handle', auth: true);
-      recipient = _map(result['profile']);
-      if (recipient.isEmpty) throw const ApiException('We could not find that Eazy user.');
+      final result = await api.get('profiles/search?q=${Uri.encodeQueryComponent(query.trim())}', auth: true);
+      matches = (result['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
     } on ApiException catch (e) {
       _showError(e.message);
       return;
@@ -212,8 +211,51 @@ class _WalletPageState extends State<WalletPage> {
       if (mounted) setState(() => busy = false);
     }
     if (!mounted) return;
+    if (matches.isEmpty) {
+      _showError('No Eazy users matched “$query”. Check the spelling and try again.');
+      return;
+    }
 
+    final recipient = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Choose recipient'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: (matches.length * 72.0).clamp(72.0, 360.0),
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: matches.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (_, index) {
+              final item = matches[index];
+              final name = (item['displayName'] ?? item['firstName'] ?? item['username'] ?? 'Eazy user').toString();
+              final handle = (item['username'] ?? '').toString();
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  child: Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase()),
+                ),
+                title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text('@$handle'),
+                onTap: () => Navigator.pop(dialogContext, item),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+        ],
+      ),
+    );
+    if (recipient == null || !mounted) return;
+    final handle = (recipient['username'] ?? '').toString().trim().toLowerCase();
+    if (!_validUsername(handle)) {
+      _showError('The selected Eazy profile has an invalid username.');
+      return;
+    }
     final displayName = (recipient['displayName'] ?? recipient['firstName'] ?? handle).toString();
+
     final amount = await _amountDialog(
       title: 'Send to $displayName',
       action: 'Review transfer',
