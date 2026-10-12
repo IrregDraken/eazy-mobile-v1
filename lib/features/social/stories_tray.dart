@@ -4,6 +4,7 @@ import '../../app/theme/eazy_theme.dart';
 import '../../core/media/media_service.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import 'video_media.dart';
 
 class StoriesTray extends StatefulWidget {
   const StoriesTray({super.key, required this.api, required this.media});
@@ -37,7 +38,19 @@ class _StoriesTrayState extends State<StoriesTray> {
     if (uploading) return;
     setState(() => uploading = true);
     try {
-      final upload = await widget.media.pickAndUpload(kind: 'post');
+      final choice = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (ctx) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(leading: const Icon(Icons.image_outlined), title: const Text('Photo story'), onTap: () => Navigator.pop(ctx, 'image')),
+          ListTile(leading: const Icon(Icons.video_library_outlined), title: const Text('Video story'), onTap: () => Navigator.pop(ctx, 'video')),
+          const SizedBox(height: 8),
+        ])),
+      );
+      if (choice == null) return;
+      final upload = choice == 'video'
+          ? await widget.media.pickAndUploadVideo(kind: 'post')
+          : await widget.media.pickAndUpload(kind: 'post');
       if (upload == null) return;
       await widget.api.post('stories', auth: true, body: {
         'storageKey': upload.path,
@@ -227,8 +240,11 @@ class _StoryViewerState extends State<StoryViewer> {
           onLongPressEnd: (_) { paused = false; _startTimer(); setState(() {}); },
           child: Stack(fit: StackFit.expand, children: [
             if (url != null && url.startsWith('http'))
-              Center(child: Image.network(url, fit: BoxFit.contain, width: double.infinity, height: double.infinity,
-                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.white, size: 48)))
+              if (current['mediaType']?.toString() == 'video')
+                EazyVideoMedia(url: url, fit: BoxFit.contain, showControls: false)
+              else
+                Center(child: Image.network(url, fit: BoxFit.contain, width: double.infinity, height: double.infinity,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.white, size: 48)))
             else
               const Center(child: Icon(Icons.image_not_supported_outlined, color: Colors.white, size: 48)),
             Row(children: [
