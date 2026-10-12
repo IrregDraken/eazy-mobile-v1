@@ -263,7 +263,7 @@ class _StoryViewerState extends State<StoryViewer> {
                 try {
                   await widget.api.delete('stories/${current['id']}', auth: true);
                   if (widget.stories.length == 1) { if (context.mounted) Navigator.of(context).pop(); }
-                  else { setState(() { widget.stories.removeAt(index); index = index.clamp(0, widget.stories.length - 1); }); _startTimer(); }
+                  else { setState(() { widget.stories.removeAt(index); index = index.clamp(0, widget.stories.length - 1).toInt(); }); _startTimer(); }
                   await widget.onChanged();
                 } on ApiException catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message))); }
               }, icon: const Icon(Icons.delete_outline_rounded, color: Colors.white)),
