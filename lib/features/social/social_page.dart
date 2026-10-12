@@ -364,37 +364,115 @@ class _PostState extends State<_Post> {
   }
 
   Future<void> comment() async {
-    final c = TextEditingController();
-    final text = await showDialog<String>(
+    final id = widget.post['id']?.toString() ?? '';
+    final controller = TextEditingController();
+    List<Map<String, dynamic>> comments = [];
+    bool commentsLoading = true;
+    bool sendingComment = false;
+    String? commentError;
+
+    Future<void> refreshComments(StateSetter setSheetState) async {
+      try {
+        final result = await widget.api.get('posts/$id/comments?page=1&limit=50', auth: true);
+        comments = (result['items'] as List? ?? const [])
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+        commentError = null;
+      } on ApiException catch (e) {
+        commentError = e.message;
+      } finally {
+        commentsLoading = false;
+        setSheetState(() {});
+      }
+    }
+
+    await showModalBottomSheet<void>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('Comment'),
-            content: TextField(
-              controller: c,
-              maxLines: 4,
-              maxLength: 2000,
-              decoration: const InputDecoration(hintText: 'Write a comment'),
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: EazyColors.surface,
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * .82),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          if (commentsLoading) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (commentsLoading) refreshComments(setSheetState);
+            });
+          }
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: SizedBox(
+              height: MediaQuery.of(ctx).size.height * .68,
+              child: Column(children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 8, 20, 14),
+                  child: Text('Comments', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                ),
+                const Divider(height: 1),
+                Expanded(child: commentsLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : commentError != null && comments.isEmpty
+                        ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.chat_bubble_outline_rounded, size: 34, color: EazyColors.muted),
+                              const SizedBox(height: 10),
+                              Text(commentError!, textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted)),
+                              const SizedBox(height: 10),
+                              OutlinedButton(onPressed: () { commentsLoading = true; refreshComments(setSheetState); }, child: const Text('Try again')),
+                            ],
+                          )))
+                        : comments.isEmpty
+                            ? const Center(child: Text('Start the conversation.', style: TextStyle(color: EazyColors.muted)))
+                            : ListView.separated(
+                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                                itemCount: comments.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                                itemBuilder: (_, index) => _CommentTile(comment: comments[index]),
+                              )),
+                const Divider(height: 1),
+                SafeArea(top: false, child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Expanded(child: TextField(
+                      controller: controller,
+                      minLines: 1,
+                      maxLines: 4,
+                      maxLength: 2000,
+                      decoration: const InputDecoration(hintText: 'Add a comment…', counterText: ''),
+                    )),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Post comment',
+                      onPressed: sendingComment ? null : () async {
+                        final text = controller.text.trim();
+                        if (text.isEmpty) return;
+                        setSheetState(() => sendingComment = true);
+                        try {
+                          await widget.api.post('posts/$id/comments', auth: true, body: {'content': text});
+                          controller.clear();
+                          await refreshComments(setSheetState);
+                          await widget.onChanged();
+                        } on ApiException catch (e) {
+                          if (ctx.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+                        } finally {
+                          setSheetState(() => sendingComment = false);
+                        }
+                      },
+                      icon: sendingComment
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.send_rounded, color: EazyColors.green),
+                    ),
+                  ]),
+                )),
+              ]),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, c.text.trim()),
-                child: const Text('Comment'),
-              ),
-            ],
-          ),
+          );
+        },
+      ),
     );
-    c.dispose();
-    if (text == null || text.isEmpty) return;
-    await mutate(
-      'post',
-      'posts/${widget.post['id']}/comments',
-      body: {'content': text},
-    );
+    controller.dispose();
   }
 
   @override
@@ -553,6 +631,34 @@ class _PostState extends State<_Post> {
         ),
       ),
     );
+  }
+}
+
+class _CommentTile extends StatelessWidget {
+  const _CommentTile({required this.comment});
+  final Map<String, dynamic> comment;
+  @override
+  Widget build(BuildContext context) {
+    final author = comment['author'] is Map ? Map<String, dynamic>.from(comment['author'] as Map) : <String, dynamic>{};
+    final name = author['displayName']?.toString() ?? author['username']?.toString() ?? 'Eazy user';
+    final username = author['username']?.toString();
+    final avatar = author['avatarUrl']?.toString();
+    final created = comment['createdAt']?.toString() ?? '';
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      CircleAvatar(
+        radius: 17,
+        backgroundColor: EazyColors.surfaceRaised,
+        backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
+        child: avatar == null || !avatar.startsWith('http') ? Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase(), style: const TextStyle(color: EazyColors.green, fontSize: 12, fontWeight: FontWeight.w900)) : null,
+      ),
+      const SizedBox(width: 10),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(username == null || username.isEmpty ? name : '@$username', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+        const SizedBox(height: 3),
+        Text(comment['content']?.toString() ?? '', style: const TextStyle(height: 1.4)),
+        if (created.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(created.length >= 10 ? created.substring(0, 10) : created, style: const TextStyle(color: EazyColors.muted, fontSize: 10))),
+      ])),
+    ]);
   }
 }
 
