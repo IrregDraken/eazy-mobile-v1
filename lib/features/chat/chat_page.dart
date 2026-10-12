@@ -132,7 +132,7 @@ class _ConversationPageState extends State<ConversationPage> {
         editing=null;
       }else{
         final r=await widget.api.post('chat/conversations/' + id + '/messages',auth:true,body:{
-          'body':body,if(replying!=null)'replyToMessageId':replying!['id'],if(pendingAttachments.isNotEmpty)'attachments':pendingAttachments.map((a)=>{'storageKey':a.path,'contentType':a.contentType,'byteSize':a.byteSize}).toList()
+          if(body.isNotEmpty)'body':body,if(replying!=null)'replyToMessageId':replying!['id'],if(pendingAttachments.isNotEmpty)'attachments':pendingAttachments.map((a)=>{'storageKey':a.path,'contentType':a.contentType,'byteSize':a.byteSize}).toList()
         });
         final m=r['message'];
         if(m is Map && !messages.any((x)=>x['id']==m['id']))messages.add(Map<String,dynamic>.from(m));
@@ -337,6 +337,32 @@ class _MessageBubble extends StatelessWidget {
         if(!isMine&&sender['displayName']!=null&&!deleted)Padding(padding:const EdgeInsets.only(bottom:4),child:Text(sender['displayName'].toString(),style:const TextStyle(color:EazyColors.green,fontSize:10,fontWeight:FontWeight.w900,letterSpacing:.2))),
         Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color:deleted?EazyColors.muted:EazyColors.ink,fontSize:14,height:1.45,fontStyle:deleted?FontStyle.italic:FontStyle.normal)), 
         if(message['replyTo'] is Map)Padding(padding:const EdgeInsets.only(top:8),child:Text('↳ ' + ((message['replyTo']['body'] ?? 'Deleted message').toString()),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))),
+        if(message['attachments'] is List && (message['attachments'] as List).isNotEmpty)
+          Padding(
+            padding:const EdgeInsets.only(top:8),
+            child:Column(
+              crossAxisAlignment:CrossAxisAlignment.start,
+              children:(message['attachments'] as List).whereType<Map>().map<Widget>((raw){
+                final attachment=Map<String,dynamic>.from(raw);
+                final type=attachment['contentType']?.toString() ?? '';
+                final bytes=int.tryParse(attachment['byteSize']?.toString() ?? '') ?? 0;
+                final label=type.startsWith('image/')?'Photo':type.startsWith('video/')?'Video':type.startsWith('audio/')?'Audio':'Document';
+                final size=bytes>=1024*1024?'\${(bytes/(1024*1024)).toStringAsFixed(1)} MB':'\${(bytes/1024).round()} KB';
+                return Container(
+                  margin:const EdgeInsets.only(bottom:5),
+                  padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
+                  decoration:BoxDecoration(color:EazyColors.surfaceRaised,borderRadius:BorderRadius.circular(11),border:Border.all(color:EazyColors.border)),
+                  child:Row(mainAxisSize:MainAxisSize.min,children:[
+                    Icon(type.startsWith('image/')?Icons.image_outlined:type.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:EazyColors.green,size:18),
+                    const SizedBox(width:7),
+                    Text('\${label} attachment',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
+                    const SizedBox(width:7),
+                    Text(size,style:const TextStyle(fontSize:10,color:EazyColors.muted)),
+                  ]),
+                );
+              }).toList(),
+            ),
+          ),
         if(message['_translation']!=null)Padding(padding:const EdgeInsets.only(top:8),child:Text(message['_translation'].toString(),style:const TextStyle(color:EazyColors.mint,fontSize:12,height:1.35))),
         if(reactions.isNotEmpty)Padding(padding:const EdgeInsets.only(top:7),child:Wrap(
           spacing:4,
