@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/media/media_service.dart';
 import 'chat_home_screen.dart';
 
 const _reactions = <String>['👍','❤️','😂','😮','😢','🙏','👏','🔥'];
@@ -40,6 +42,8 @@ class ConversationPage extends StatefulWidget {
 class _ConversationPageState extends State<ConversationPage> {
   final draft=TextEditingController();
   final scroll=ScrollController();
+  late final EazyMediaService media;
+  final List<MediaUpload> pendingAttachments=[];
   List<Map<String,dynamic>> messages=[];
   Map<String,dynamic>? replying,editing;
   bool loading=true,sending=false;
@@ -50,7 +54,7 @@ class _ConversationPageState extends State<ConversationPage> {
 
   String get id=>widget.conversation['id']?.toString() ?? '';
 
-  @override void initState(){super.initState();loadMessages();connectRealtime();loadMyProfile();}
+  @override void initState(){super.initState();media=EazyMediaService(widget.api);loadMessages();connectRealtime();loadMyProfile();}
   Future<void> loadMyProfile() async {
     try {
       final result = await widget.api.get('profiles/me', auth:true);
@@ -118,7 +122,7 @@ class _ConversationPageState extends State<ConversationPage> {
 
   Future<void> send() async {
     final body=draft.text.trim();
-    if(body.isEmpty||sending)return;
+    if((body.isEmpty && pendingAttachments.isEmpty)||sending)return;
     setState(()=>sending=true);
     try{
       if(editing!=null){
@@ -128,11 +132,12 @@ class _ConversationPageState extends State<ConversationPage> {
         editing=null;
       }else{
         final r=await widget.api.post('chat/conversations/' + id + '/messages',auth:true,body:{
-          'body':body,if(replying!=null)'replyToMessageId':replying!['id']
+          'body':body,if(replying!=null)'replyToMessageId':replying!['id'],if(pendingAttachments.isNotEmpty)'attachments':pendingAttachments.map((a)=>{'storageKey':a.path,'contentType':a.contentType,'byteSize':a.byteSize}).toList()
         });
         final m=r['message'];
         if(m is Map && !messages.any((x)=>x['id']==m['id']))messages.add(Map<String,dynamic>.from(m));
         replying=null;
+        pendingAttachments.clear();
       }
       draft.clear();setState((){});await markRead();
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -162,6 +167,48 @@ class _ConversationPageState extends State<ConversationPage> {
       final value=r['translatedText']?.toString() ?? r['text']?.toString();
       if(value!=null&&mounted)setState(()=>m['_translation']=value);
     }on ApiException catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.message)));}
+  }
+
+  Future<void> _pickAttachment() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(child: Wrap(children: [
+        ListTile(leading: const Icon(Icons.photo_library_outlined, color: EazyColors.green), title: const Text('Photo'), subtitle: const Text('Choose an image'), onTap: () => Navigator.pop(sheet, 'photo')),
+        ListTile(leading: const Icon(Icons.video_library_outlined, color: EazyColors.green), title: const Text('Video'), subtitle: const Text('Choose a video'), onTap: () => Navigator.pop(sheet, 'video')),
+        ListTile(leading: const Icon(Icons.attach_file_rounded, color: EazyColors.green), title: const Text('File or document'), subtitle: const Text('PDF, Word, TXT or CSV, up to 25 MB'), onTap: () => Navigator.pop(sheet, 'file')),
+        const SizedBox(height: 8),
+      ])),
+    );
+    if (choice == null || !mounted) return;
+    try {
+      final upload = switch (choice) {
+        'photo' => await media.pickAndUpload(kind: 'message'),
+        'video' => await media.pickAndUploadVideo(kind: 'message'),
+        _ => await media.pickAndUploadDocument(kind: 'message'),
+      };
+      if (upload != null && mounted) setState(() => pendingAttachments.add(upload));
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not attach that file. Please try again.')));
+    }
+  }
+
+  Future<void> _translateDraft() async {
+    final text = draft.text.trim();
+    if (text.isEmpty) {
+      if (mounted) context.push('/translation');
+      return;
+    }
+    try {
+      final result = await widget.api.post('translation', auth: true, body: {'text': text, 'targetLanguage': 'en'});
+      final translated = (result['translatedText'] ?? result['text'])?.toString();
+      if (translated == null || translated.trim().isEmpty) throw const ApiException('No translated text was returned.');
+      if (mounted) setState(() { draft.text = translated; draft.selection = TextSelection.collapsed(offset: translated.length); });
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   Future<void> deleteMessage(Map<String,dynamic> m) async {
@@ -225,11 +272,34 @@ class _ConversationPageState extends State<ConversationPage> {
           :ListView.builder(controller:scroll,padding:const EdgeInsets.fromLTRB(16,12,16,16),itemCount:messages.length,itemBuilder:(_,i){
             return _MessageBubble(message:messages[i],isMine:_isMine(messages[i]),onLongPress:()=>actions(messages[i]),onReaction:(r)=>reactTo(messages[i],r),onTranslate:()=>translate(messages[i]));
           })),
-        SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(12,6,12,10),child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
+        if(pendingAttachments.isNotEmpty)
+          SizedBox(height:54,child:ListView.separated(
+            scrollDirection:Axis.horizontal,
+            padding:const EdgeInsets.fromLTRB(14,4,14,4),
+            itemCount:pendingAttachments.length,
+            separatorBuilder:(_,__)=>const SizedBox(width:8),
+            itemBuilder:(context,index){
+              final item=pendingAttachments[index];
+              return Container(
+                constraints:const BoxConstraints(maxWidth:220),
+                padding:const EdgeInsets.only(left:10,right:4),
+                decoration:BoxDecoration(color:EazyColors.surface,borderRadius:BorderRadius.circular(14),border:Border.all(color:EazyColors.border)),
+                child:Row(mainAxisSize:MainAxisSize.min,children:[
+                  Icon(item.contentType.startsWith('image/')?Icons.image_outlined:item.contentType.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:EazyColors.green,size:18),
+                  const SizedBox(width:6),
+                  Flexible(child:Text(item.fileName,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:11))),
+                  IconButton(visualDensity:VisualDensity.compact,iconSize:17,onPressed:()=>setState(()=>pendingAttachments.removeAt(index)),icon:const Icon(Icons.close_rounded)),
+                ]),
+              );
+            },
+          )),
+        SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(8,6,8,10),child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
+          IconButton(tooltip:'Attach photo, video or document',onPressed:sending?null:_pickAttachment,style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:const Icon(Icons.add_circle_outline_rounded,size:29)),
           Expanded(child:TextField(controller:draft,maxLines:5,minLines:1,decoration:InputDecoration(
-            hintText:editing!=null?'Edit message…':replying!=null?'Write a reply…':'Message on Eazy…',
-            prefixIcon:Icon(editing!=null?Icons.edit_outlined:replying!=null?Icons.reply_rounded:Icons.add_rounded,color:EazyColors.green)))),
-          const SizedBox(width:8),SizedBox(width:54,height:54,child:FilledButton(onPressed:sending?null:send,child:sending?const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2)):Icon(editing!=null?Icons.check_rounded:Icons.send_rounded)))
+            hintText:editing!=null?'Edit message…':replying!=null?'Write a reply…':'Message on Eazy…'))),
+          IconButton(tooltip:'Open Eazy Assist',onPressed:()=>context.push('/assist'),style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:Image.asset('assets/images/eazy_logo_mark.png',width:23,height:23,errorBuilder:(_,__,___)=>const Icon(Icons.auto_awesome_rounded))),
+          IconButton(tooltip:'Translate draft to English',onPressed:_translateDraft,style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:const Icon(Icons.translate_rounded)),
+          SizedBox(width:48,height:52,child:FilledButton(onPressed:sending?null:send,style:FilledButton.styleFrom(padding:EdgeInsets.zero),child:sending?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):Icon(editing!=null?Icons.check_rounded:Icons.send_rounded)))
         ])))
       ])
     );
