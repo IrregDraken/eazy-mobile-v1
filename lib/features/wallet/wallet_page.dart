@@ -749,33 +749,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _showBillsAndServices() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(shrinkWrap: true, children: [
-          const ListTile(title: Text('Bills & Services', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('Choose a service to continue.')),
-          ListTile(leading: const Icon(Icons.phone_android_rounded, color: EazyColors.green), title: const Text('Airtime'), onTap: () { Navigator.pop(sheetContext); _showBillService('Airtime'); }),
-          ListTile(leading: const Icon(Icons.data_usage_rounded, color: EazyColors.green), title: const Text('Data'), onTap: () { Navigator.pop(sheetContext); _showBillService('Data'); }),
-          ListTile(leading: const Icon(Icons.bolt_rounded, color: EazyColors.green), title: const Text('Electricity'), onTap: () { Navigator.pop(sheetContext); _showBillService('Electricity'); }),
-          ListTile(leading: const Icon(Icons.live_tv_rounded, color: EazyColors.green), title: const Text('Cable TV'), onTap: () { Navigator.pop(sheetContext); _showBillService('Cable TV'); }),
-        ]),
-      ),
-    );
-  }
-
-  void _showBillService(String service) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(service),
-        content: Text('$service payments are not enabled yet. Eazy will only offer this service once a bill-payment provider is configured and the server can confirm the transaction. No money has been taken.'),
-        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Got it'))],
-      ),
-    );
-  }
-
   Future<void> _showWalletSettings() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -1163,26 +1136,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 22),
           Row(children: [
-            const Expanded(child: Text('Bills & Services', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
-            TextButton(onPressed: _showBillsAndServices, child: const Text('View all')),
-          ]),
-          const SizedBox(height: 10),
-          GridView.count(
-            crossAxisCount: 4,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: .82,
-            children: [
-              _ServiceShortcut(icon: Icons.phone_android_rounded, label: 'Airtime', onTap: () => _showBillService('Airtime')),
-              _ServiceShortcut(icon: Icons.data_usage_rounded, label: 'Data', onTap: () => _showBillService('Data')),
-              _ServiceShortcut(icon: Icons.bolt_rounded, label: 'Electricity', onTap: () => _showBillService('Electricity')),
-              _ServiceShortcut(icon: Icons.live_tv_rounded, label: 'Cable TV', onTap: () => _showBillService('Cable TV')),
-            ],
-          ),
-          const SizedBox(height: 22),
-          Row(children: [
             const Expanded(child: Text('Transaction history', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
             TextButton.icon(onPressed: _showAllTransactions, icon: const Icon(Icons.arrow_forward_rounded, size: 17), label: const Text('See all')),
           ]),
@@ -1228,23 +1181,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         ],
       ),
     ),
-  );
-}
-
-class _ServiceShortcut extends StatelessWidget {
-  const _ServiceShortcut({required this.icon, required this.label, required this.onTap});
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(16),
-    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Container(width: 54, height: 54, decoration: BoxDecoration(color: EazyColors.green.withValues(alpha: .10), borderRadius: BorderRadius.circular(17)), child: Icon(icon, color: EazyColors.green, size: 25)),
-      const SizedBox(height: 7),
-      Text(label, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
-    ]),
   );
 }
 
