@@ -15,6 +15,7 @@ export interface PostProjection {
   likedByViewer: boolean;
   savedByViewer: boolean;
   isPinned: boolean;
+  taggedUsers: { username: string; displayName: string }[];
 }
 
 const projection = `p.id, p.content, p.visibility, p.created_at AS "createdAt",
@@ -25,7 +26,9 @@ const projection = `p.id, p.content, p.visibility, p.created_at AS "createdAt",
   (SELECT count(*)::int FROM saves s WHERE s.post_id = p.id) AS "saveCount",
   EXISTS (SELECT 1 FROM likes viewer_like WHERE viewer_like.post_id = p.id AND viewer_like.user_id = $1) AS "likedByViewer",
   EXISTS (SELECT 1 FROM saves viewer_save WHERE viewer_save.post_id = p.id AND viewer_save.user_id = $1) AS "savedByViewer",
-  p.is_pinned AS "isPinned"`;
+  p.is_pinned AS "isPinned",
+  COALESCE((SELECT json_agg(json_build_object('username', tag_profile.username, 'displayName', tag_profile.display_name) ORDER BY tag_profile.username)
+    FROM post_tags pt JOIN profiles tag_profile ON tag_profile.user_id=pt.user_id WHERE pt.post_id=p.id), '[]'::json) AS "taggedUsers"`;
 
 export class PostRepository {
   constructor(private readonly pool: Pool) {}
