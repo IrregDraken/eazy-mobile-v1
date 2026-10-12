@@ -533,6 +533,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final search = TextEditingController();
     List<Map<String, dynamic>> people = [];
     bool listLoading = true;
+    bool listLoadingMore = false;
+    bool listHasMore = true;
+    int listPage = 1;
     String? listError;
     showModalBottomSheet<void>(
       context: context,
@@ -545,10 +548,32 @@ class _ProfilePageState extends State<ProfilePage> {
             try {
               final result = await api.get('social/$direction/$username?page=1&limit=50', auth: true);
               people = (result['items'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+              final total = result['meta'] is Map ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '') : null;
+              listHasMore = total == null ? people.length >= 50 : people.length < total;
             } on ApiException catch (e) { listError = e.message; }
             listLoading = false;
             if (ctx.mounted) setSheetState(() {});
           });
+        }
+        Future<void> loadMorePeople() async {
+          if (listLoading || listLoadingMore || !listHasMore) return;
+          listLoadingMore = true;
+          setSheetState(() {});
+          try {
+            final nextPage = listPage + 1;
+            final result = await api.get('social/$direction/$username?page=$nextPage&limit=50', auth: true);
+            final raw = (result['items'] as List? ?? const []).whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e)).toList();
+            final total = result['meta'] is Map ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '') : null;
+            people.addAll(raw);
+            listPage = nextPage;
+            listHasMore = total == null ? raw.length >= 50 : people.length < total;
+          } on ApiException catch (e) {
+            if (ctx.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+          } finally {
+            listLoadingMore = false;
+            if (ctx.mounted) setSheetState(() {});
+          }
         }
         final filtered = people.where((person) {
           final q = search.text.trim().toLowerCase();
@@ -571,9 +596,21 @@ class _ProfilePageState extends State<ProfilePage> {
                     : filtered.isEmpty
                         ? Center(child: Text(people.isEmpty ? 'No $direction yet.' : 'No matching people.', style: const TextStyle(color: EazyColors.muted)))
                         : ListView.separated(
-                            itemCount: filtered.length,
+                            itemCount: filtered.length + (listHasMore ? 1 : 0),
                             separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
                             itemBuilder: (_, index) {
+                              if (index >= filtered.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Center(child: TextButton.icon(
+                                    onPressed: listLoadingMore ? null : loadMorePeople,
+                                    icon: listLoadingMore
+                                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                        : const Icon(Icons.expand_more_rounded),
+                                    label: Text(listLoadingMore ? 'Loading…' : 'Load more'),
+                                  )),
+                                );
+                              }
                               final person = filtered[index];
                               final avatar = person['avatarUrl']?.toString();
                               final name = person['displayName']?.toString() ?? person['username']?.toString() ?? 'Eazy user';
