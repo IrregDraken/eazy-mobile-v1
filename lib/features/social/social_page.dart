@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
@@ -540,10 +541,23 @@ class _PostState extends State<_Post> {
                       if (value == 'save') {
                         await mutate(saved ? 'delete' : 'post', 'posts/$id/save');
                       } else if (value == 'report') {
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report options will be available with Eazy moderation controls.')));
+                        final reason = await showDialog<String>(context: context, builder: (ctx) {
+                          final controller = TextEditingController();
+                          return AlertDialog(
+                            title: const Text('Report post'),
+                            content: TextField(controller: controller, maxLines: 3, decoration: const InputDecoration(hintText: 'Tell us what is wrong with this post')),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                              FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Submit')),
+                            ],
+                          );
+                        });
+                        if (reason != null && reason.length >= 3) {
+                          await mutate('post', 'posts/$id/report', body: {'reason': reason});
+                        }
                       } else if (value == 'copy') {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('A shareable post link is not available for this post yet.')));
+                        await Clipboard.setData(ClipboardData(text: 'https://eazy.app/p/$id'));
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
                       }
                     },
                     itemBuilder: (_) => [
