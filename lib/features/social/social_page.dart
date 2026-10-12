@@ -397,6 +397,22 @@ class _PostState extends State<_Post> {
     Map<String, dynamic>? body,
   }) async {
     if (busy) return;
+    final previous = <String, dynamic>{};
+    final wasLike = widget.post['likedByViewer'] == true;
+    final wasSave = widget.post['savedByViewer'] == true;
+    final wasPinned = widget.post['isPinned'] == true;
+    if (path.endsWith('/like')) {
+      previous['likedByViewer'] = wasLike;
+      previous['likeCount'] = widget.post['likeCount'] ?? 0;
+      widget.post['likedByViewer'] = action == 'post';
+      widget.post['likeCount'] = (int.tryParse(widget.post['likeCount']?.toString() ?? '') ?? 0) + (action == 'post' ? 1 : -1);
+    } else if (path.endsWith('/save')) {
+      previous['savedByViewer'] = wasSave;
+      widget.post['savedByViewer'] = action == 'post';
+    } else if (path.endsWith('/pin')) {
+      previous['isPinned'] = wasPinned;
+      widget.post['isPinned'] = action == 'post';
+    }
     setState(() => busy = true);
     try {
       if (action == 'post') {
@@ -405,10 +421,9 @@ class _PostState extends State<_Post> {
         await widget.api.delete(path, auth: true);
       }
     } on ApiException catch (e) {
+      widget.post.addAll(previous);
       if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
       if (mounted) {
         setState(() => busy = false);
