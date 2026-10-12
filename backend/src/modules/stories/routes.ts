@@ -94,7 +94,7 @@ export class StoryService {
     const uniqueIds = [...new Set(input.storyIds)];
     const result = await withTransaction(this.pool, async client => {
       const found = await client.query<{ id: string; storage_key: string }>(
-        'SELECT id, storage_key FROM stories WHERE author_id=$1 AND id=ANY($2::uuid[]) ORDER BY created_at ASC',
+        'SELECT id, storage_key FROM stories WHERE author_id=$1 AND id=ANY($2::uuid[]) ORDER BY array_position($2::uuid[], id)',
         [ownerId, uniqueIds]
       );
       if (found.rows.length !== uniqueIds.length) throw new AppError('VALIDATION_ERROR', 'Highlights can only include your own stories');
