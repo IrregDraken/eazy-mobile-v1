@@ -769,7 +769,7 @@ class _PostState extends State<_Post> {
                     label: Text('${widget.post['commentCount'] ?? 0}'),
                   ),
                   IconButton(
-                    tooltip: 'Share post',
+                    tooltip: 'Copy post link',
                     onPressed: () async {
                       await Clipboard.setData(ClipboardData(text: 'https://eazy.app/p/$id'));
                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
