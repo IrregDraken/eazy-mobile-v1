@@ -36,8 +36,21 @@ export class EmailVerificationService {
       await this.provider.send({
         to: email,
         subject: 'Your Eazy verification code',
-        text: `Your Eazy verification code is ${code}. It expires in ${ttlMinutes} minutes.`,
-        html: `<p>Your Eazy verification code is <strong>${code}</strong>.</p><p>This code expires in ${ttlMinutes} minutes.</p>`
+        text: [
+          'Welcome to Eazy',
+          '',
+          'Use the verification code below to finish setting up your account:',
+          '',
+          code,
+          '',
+          `This code expires in ${ttlMinutes} minutes.`,
+          '',
+          'For your security, never share this code with anyone, including someone claiming to be from Eazy.',
+          'If you did not request this code, you can safely ignore this email.',
+          '',
+          'Eazy | Your world, made easier.'
+        ].join('\\n'),
+        html: verificationEmailHtml(code, ttlMinutes)
       });
     } catch (error) {
       await this.pool.query('DELETE FROM email_verification_challenges WHERE id = $1', [challengeId]);
@@ -90,4 +103,8 @@ function normalizeEmail(value: string): string {
 
 function hashCode(challengeId: string, code: string): string {
   return createHash('sha256').update(`${challengeId}:${code}`).digest('hex');
+}
+
+function verificationEmailHtml(code: string, ttlMinutes: number): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:#f1f5f1;font-family:Arial,Helvetica,sans-serif;color:#14241b"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5f1;padding:28px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #dce6dc;border-radius:20px;overflow:hidden"><tr><td style="background:#061b11;padding:30px 32px 28px"><div style="font-size:13px;font-weight:800;letter-spacing:4px;color:#b8f34a">EAZY</div><h1 style="margin:22px 0 8px;color:#ffffff;font-size:27px;line-height:1.25;font-weight:700">Your world, made easier.</h1><p style="margin:0;color:#c4d4c9;font-size:15px;line-height:1.6">One quick step to verify your email.</p></td></tr><tr><td style="padding:30px 32px"><p style="margin:0 0 12px;font-size:16px;line-height:1.7">Use this verification code to continue creating your Eazy account.</p><div style="margin:24px 0;padding:24px 12px;text-align:center;background:#f2f8ec;border:1px solid #d8e9c8;border-radius:14px"><div style="font-size:11px;letter-spacing:2px;font-weight:700;color:#59724e;text-transform:uppercase;margin-bottom:12px">Your verification code</div><div style="font-family:Arial,Helvetica,sans-serif;font-size:36px;line-height:1.2;font-weight:800;letter-spacing:8px;color:#102b1b">${code}</div></div><p style="margin:0;color:#536459;font-size:14px;line-height:1.7">This code expires in <strong style="color:#172c20">${ttlMinutes} minutes</strong>. If it expires, request a new one in the app.</p><div style="margin-top:26px;padding:16px 18px;border-radius:12px;background:#f7f8f6"><p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#263c2d">Keep your account safe</p><p style="margin:0;font-size:13px;line-height:1.7;color:#5a695e">Never share this code with anyone, including someone claiming to be from Eazy. If you did not request it, you can safely ignore this email.</p></div></td></tr><tr><td style="padding:20px 32px;background:#f8faf7;border-top:1px solid #e5ebe4"><p style="margin:0;font-size:12px;line-height:1.7;color:#6a786e">This is an automated security email from Eazy. Replies may not be monitored.<br>© Eazy. Your world, made easier.</p></td></tr></table></td></tr></table></body></html>`;
 }
