@@ -49,7 +49,7 @@ export class EmailVerificationService {
           'If you did not request this code, you can safely ignore this email.',
           '',
           'Eazy | Your world, made easier.'
-        ].join('\\n'),
+        ].join('\n'),
         html: verificationEmailHtml(code, ttlMinutes)
       });
     } catch (error) {
