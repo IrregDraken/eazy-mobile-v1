@@ -950,6 +950,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   subtitle: Text('Receive from Eazy or an external bank.'),
                 ),
                 ListTile(
+                  leading: const Icon(Icons.add_card_rounded, color: EazyColors.green),
+                  title: const Text('Add money online', style: TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: const Text('Fund your wallet through secure Paystack checkout'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    deposit();
+                  },
+                ),
+                ListTile(
                   leading: const Icon(Icons.qr_code_2_rounded),
                   title: const Text('Receive from an Eazy user'),
                   subtitle: Text('Show your QR code or username: @$_username'),
