@@ -374,7 +374,7 @@ class _ChatRow extends StatelessWidget {
 class _Avatar extends StatelessWidget {
   const _Avatar({required this.name, this.url});
   final String name; final String? url;
-  String _initials(String value) { final parts = value.trim().split(RegExp(r'\\s+')).where((p) => p.isNotEmpty).toList(); if (parts.isEmpty) return 'E'; return parts.length == 1 ? parts.first.substring(0, 1).toUpperCase() : (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase(); }
+  String _initials(String value) { final parts = value.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList(); if (parts.isEmpty) return 'E'; return parts.length == 1 ? parts.first.substring(0, 1).toUpperCase() : (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase(); }
   @override
   Widget build(BuildContext context) {
     final image = url == null || url!.isEmpty ? null : NetworkImage(url!);
