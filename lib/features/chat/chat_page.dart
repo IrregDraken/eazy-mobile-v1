@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
@@ -195,6 +196,42 @@ class _ConversationPageState extends State<ConversationPage> {
     }
   }
 
+  Future<void> _openAttachment(Map<String, dynamic> attachment) async {
+    final path = attachment['storageKey']?.toString();
+    if (path == null || path.isEmpty) return;
+    try {
+      final result = await widget.api.post('media/signed-message-attachment-url', auth: true, body: {'path': path});
+      final url = result['signedUrl']?.toString();
+      if (url == null || url.isEmpty) throw const ApiException('The attachment could not be opened.');
+      final type = attachment['contentType']?.toString() ?? '';
+      if (type.startsWith('image/')) {
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => Dialog(
+            backgroundColor: EazyColors.canvas,
+            insetPadding: const EdgeInsets.all(16),
+            child: InteractiveViewer(
+              child: Image.network(url, fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text('This image could not be loaded.'),
+                ),
+              ),
+            ),
+          ),
+        );
+      } else {
+        final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        if (!opened && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No app could open this attachment.')));
+      }
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open this attachment. Please try again.')));
+    }
+  }
+
   Future<void> _translateDraft() async {
     final text = draft.text.trim();
     if (text.isEmpty) {
@@ -348,7 +385,10 @@ class _MessageBubble extends StatelessWidget {
                 final bytes=int.tryParse(attachment['byteSize']?.toString() ?? '') ?? 0;
                 final label=type.startsWith('image/')?'Photo':type.startsWith('video/')?'Video':type.startsWith('audio/')?'Audio':'Document';
                 final size=bytes>=1024*1024?'${(bytes/(1024*1024)).toStringAsFixed(1)} MB':'${(bytes/1024).round()} KB';
-                return Container(
+                return InkWell(
+                  onTap:()=>_openAttachment(attachment),
+                  borderRadius:BorderRadius.circular(11),
+                  child:Container(
                   margin:const EdgeInsets.only(bottom:5),
                   padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
                   decoration:BoxDecoration(color:EazyColors.surfaceRaised,borderRadius:BorderRadius.circular(11),border:Border.all(color:EazyColors.border)),
@@ -359,6 +399,7 @@ class _MessageBubble extends StatelessWidget {
                     const SizedBox(width:7),
                     Text(size,style:const TextStyle(fontSize:10,color:EazyColors.muted)),
                   ]),
+                  ),
                 );
               }).toList(),
             ),
