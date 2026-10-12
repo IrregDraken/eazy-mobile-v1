@@ -1,7 +1,7 @@
 name: eazy_mobile_v1
 description: Eazy, rebuilt in Flutter with a fresh visual system and production architecture.
 publish_to: "none"
-version: 1.0.0+1
+version: 1.0.0+6
 
 environment:
   sdk: ">=3.7.0 <4.0.0"
@@ -25,6 +25,7 @@ dependencies:
   qr_flutter: ^4.1.0
   geolocator: ^14.0.2
   url_launcher: ^6.3.2
+  local_auth: ^2.3.0
   firebase_messaging: ^16.0.0
   flutter_local_notifications: ^19.4.1
 
