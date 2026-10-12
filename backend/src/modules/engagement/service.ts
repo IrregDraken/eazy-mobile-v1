@@ -84,6 +84,17 @@ export class EngagementService {
     return { liked: false, removed: await withTransaction(this.pool, client => this.repository.unlikeComment(client, commentId, userId)) };
   }
 
+  async reportComment(commentId: string, userId: string, reason: string) {
+    const comment = await this.pool.query<{ post_id: string }>('SELECT post_id FROM comments WHERE id=$1 AND deleted_at IS NULL LIMIT 1', [commentId]);
+    if (!comment.rowCount) throw new AppError('NOT_FOUND', 'Comment not found');
+    await this.assertAccessible(this.pool, comment.rows[0]!.post_id, userId);
+    const result = await this.pool.query<{ id: string }>(
+      "INSERT INTO reports (reporter_id, resource_type, resource_id, reason) VALUES ($1,'comment',$2,$3) RETURNING id",
+      [userId, commentId, reason]
+    );
+    return { submitted: true, reportId: result.rows[0]!.id };
+  }
+
   async reportPost(postId: string, userId: string, reason: string) {
     await this.assertAccessible(this.pool, postId, userId);
     const result = await this.pool.query<{ id: string }>(
