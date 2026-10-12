@@ -337,56 +337,76 @@ class _WalletPageState extends State<WalletPage> {
   }
 
   Future<void> sendToExternalBank() async {
+    List<Map<String, dynamic>> availableBanks;
+    setState(() => busy = true);
+    try {
+      final result = await api.get('banks?currency=$_currency', auth: true);
+      availableBanks = (result['banks'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .where((item) => item['active'] != false)
+          .toList();
+    } on ApiException catch (e) {
+      _showError(e.message);
+      return;
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+    if (!mounted) return;
+    if (availableBanks.isEmpty) {
+      _showError('External bank transfers are unavailable because no supported banks were returned by the payment provider.');
+      return;
+    }
+
     final accountNumber = TextEditingController();
-    final bankCode = TextEditingController();
-    final bankName = TextEditingController();
+    String? selectedBankCode;
     final details = await showDialog<Map<String, String>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Choose bank recipient'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: bankName,
-              decoration: const InputDecoration(labelText: 'Bank name'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: bankCode,
-              autocorrect: false,
-              decoration: const InputDecoration(labelText: 'Bank code'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: accountNumber,
-              keyboardType: TextInputType.number,
-              maxLength: 10,
-              decoration: const InputDecoration(labelText: '10-digit account number'),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Eazy will resolve the account name with the bank before you enter an amount.',
-              style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.35),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Choose bank recipient'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selectedBankCode,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Bank'),
+                items: availableBanks.map((bank) => DropdownMenuItem<String>(
+                  value: bank['code'].toString(),
+                  child: Text(bank['name'].toString(), overflow: TextOverflow.ellipsis),
+                )).toList(),
+                onChanged: (value) => setDialogState(() => selectedBankCode = value),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: accountNumber,
+                keyboardType: TextInputType.number,
+                maxLength: 10,
+                decoration: const InputDecoration(labelText: '10-digit account number'),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Eazy will resolve and display the account name before you enter an amount.',
+                style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.35),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: selectedBankCode == null ? null : () => Navigator.pop(dialogContext, {
+                'accountNumber': accountNumber.text.trim(),
+                'bankCode': selectedBankCode!,
+                'bankName': availableBanks.firstWhere((bank) => bank['code'].toString() == selectedBankCode)['name'].toString(),
+              }),
+              child: const Text('Resolve account'),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, {
-              'accountNumber': accountNumber.text.trim(),
-              'bankCode': bankCode.text.trim(),
-              'bankName': bankName.text.trim(),
-            }),
-            child: const Text('Resolve account'),
-          ),
-        ],
       ),
     );
     accountNumber.dispose();
-    bankCode.dispose();
-    bankName.dispose();
     if (details == null) return;
 
     final number = details['accountNumber'] ?? '';
