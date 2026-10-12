@@ -72,10 +72,14 @@ export class StoryService {
         FROM profile_highlight_stories hs JOIN stories s ON s.id=hs.story_id WHERE hs.highlight_id=h.id), '[]'::json) AS stories
       FROM profile_highlights h JOIN profiles p ON p.user_id=h.owner_id
       WHERE p.username=$1
-        AND ($2::uuid IS NULL OR NOT EXISTS (
+        AND $2::uuid IS NOT NULL
+        AND ($2::uuid = h.owner_id OR EXISTS (
+          SELECT 1 FROM follows f WHERE f.follower_id=$2 AND f.followee_id=h.owner_id
+        ))
+        AND NOT EXISTS (
           SELECT 1 FROM blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=h.owner_id)
             OR (b.blocker_id=h.owner_id AND b.blocked_id=$2)
-        ))
+        )
       ORDER BY h.created_at ASC`, [username.toLowerCase(), viewerId ?? null]);
     return { items: await Promise.all(result.rows.map(async row => {
       const stories = await Promise.all((row.stories as any[]).map(async story => {
