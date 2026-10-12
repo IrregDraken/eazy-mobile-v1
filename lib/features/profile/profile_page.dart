@@ -29,17 +29,36 @@ class _ProfilePageState extends State<ProfilePage> {
   int contentTab = 0;
   bool isFollowing = false;
   bool followBusy = false;
+  final ScrollController profileScrollController = ScrollController();
+  int profilePage = 1;
+  bool hasMoreProfilePosts = true;
+  bool loadingMoreProfilePosts = false;
   bool get isOwnProfile => widget.username == null || widget.username!.toLowerCase() == (profile['username']?.toString().toLowerCase() ?? '');
 
   @override
   void initState() {
     super.initState();
     profile = Map<String, dynamic>.from(widget.auth.profile ?? const {});
+    profileScrollController.addListener(_onProfileScroll);
     load();
   }
 
+  @override
+  void dispose() {
+    profileScrollController.removeListener(_onProfileScroll);
+    profileScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onProfileScroll() {
+    if (!profileScrollController.hasClients || loading || loadingMoreProfilePosts || !hasMoreProfilePosts) return;
+    if (profileScrollController.position.maxScrollExtent - profileScrollController.position.pixels < 420) {
+      _loadMoreProfilePosts();
+    }
+  }
+
   Future<void> load() async {
-    if (mounted) setState(() { loading = true; error = null; });
+    if (mounted) setState(() { loading = true; error = null; profilePage = 1; hasMoreProfilePosts = true; });
     try {
       final requested = widget.username?.trim().toLowerCase();
       final currentUsername = widget.auth.profile?['username']?.toString().toLowerCase();
@@ -56,7 +75,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final actualUsername = (nextProfile['username'] ?? nextProfile['user_name'])?.toString().toLowerCase();
       if (actualUsername == null || actualUsername.isEmpty) throw const ApiException('This profile has no username yet.');
       final results = await Future.wait([
-        api.get('posts/profile/$actualUsername?page=1&limit=50', auth: true),
+        api.get('posts/profile/$actualUsername?type=${['grid', 'reels', 'tagged'][contentTab]}&page=1&limit=50', auth: true),
         if (own) api.get('profiles/me/stats', auth: true),
         if (!own) api.get('social/followers/$actualUsername?page=1&limit=1', auth: true),
         if (!own) api.get('social/following/$actualUsername?page=1&limit=1', auth: true),
@@ -88,6 +107,9 @@ class _ProfilePageState extends State<ProfilePage> {
         profile = nextProfile;
         stats = newStats;
         ownPosts = rawPosts.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        profilePage = 1;
+        final total = postResult['meta'] is Map ? int.tryParse((postResult['meta'] as Map)['total']?.toString() ?? '') : null;
+        hasMoreProfilePosts = total == null ? rawPosts.length >= 50 : rawPosts.length < total;
         isFollowing = followState;
         highlights = loadedHighlights;
       });
@@ -95,6 +117,29 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) setState(() => error = e.message);
     } finally {
       if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> _loadMoreProfilePosts() async {
+    if (loading || loadingMoreProfilePosts || !hasMoreProfilePosts) return;
+    final username = profile['username']?.toString();
+    if (username == null || username.isEmpty) return;
+    setState(() => loadingMoreProfilePosts = true);
+    try {
+      final nextPage = profilePage + 1;
+      final result = await api.get('posts/profile/$username?type=${['grid', 'reels', 'tagged'][contentTab]}&page=$nextPage&limit=50', auth: true);
+      final raw = result['items'] as List? ?? const [];
+      final items = raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      final total = result['meta'] is Map ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '') : null;
+      if (mounted) setState(() {
+        profilePage = nextPage;
+        ownPosts.addAll(items);
+        hasMoreProfilePosts = total == null ? items.length >= 50 : ownPosts.length < total;
+      });
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => loadingMoreProfilePosts = false);
     }
   }
 
@@ -195,13 +240,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _selectContentTab(int tab) async {
-    setState(() { contentTab = tab; loading = true; error = null; });
+    setState(() { contentTab = tab; loading = true; error = null; profilePage = 1; hasMoreProfilePosts = true; });
     try {
       final username = profile['username']?.toString() ?? '';
       final type = ['grid', 'reels', 'tagged'][tab];
       final result = await api.get('posts/profile/$username?type=$type&page=1&limit=50', auth: true);
       final items = (result['items'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-      if (mounted) setState(() => ownPosts = items);
+      final total = result['meta'] is Map ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '') : null;
+      if (mounted) setState(() {
+        ownPosts = items;
+        profilePage = 1;
+        hasMoreProfilePosts = total == null ? items.length >= 50 : items.length < total;
+      });
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally { if (mounted) setState(() => loading = false); }
@@ -292,7 +342,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return SafeArea(child: RefreshIndicator(
       onRefresh: load,
-      child: CustomScrollView(slivers: [
+      child: CustomScrollView(controller: profileScrollController, slivers: [
         SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 16, 14),
           child: Row(children: [
@@ -426,12 +476,12 @@ class _ProfilePageState extends State<ProfilePage> {
         )),
         if (loading && ownPosts.isEmpty)
           const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(36), child: Center(child: CircularProgressIndicator()))),
-        if (!loading && contentTab == 0 && ownPosts.isNotEmpty)
+        if (!loading && ownPosts.isNotEmpty)
           SliverPadding(padding: const EdgeInsets.all(2), sliver: SliverGrid(
             delegate: SliverChildBuilderDelegate((context, index) => ProfilePostTile(post: ownPosts[index]), childCount: ownPosts.length),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 2, mainAxisSpacing: 2, childAspectRatio: contentTab == 1 ? 9 / 16 : 1),
           )),
-        if (!loading && (contentTab != 0 || ownPosts.isEmpty))
+        if (!loading && ownPosts.isEmpty)
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.fromLTRB(28, 42, 28, 100),
             child: Column(children: [
@@ -443,6 +493,8 @@ class _ProfilePageState extends State<ProfilePage> {
               if (contentTab == 0 && isOwnProfile) Padding(padding: const EdgeInsets.only(top: 14), child: FilledButton.icon(onPressed: () => context.go('/home'), icon: const Icon(Icons.add_rounded), label: const Text('Create a post'))),
             ]),
           )),
+        if (loadingMoreProfilePosts)
+          const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(18), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))),
         if (error != null && ownPosts.isEmpty && !loading)
           SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(20), child: Text('Could not refresh all profile content. Pull down to retry.', style: const TextStyle(color: EazyColors.muted)))),
         const SliverToBoxAdapter(child: SizedBox(height: 110)),
