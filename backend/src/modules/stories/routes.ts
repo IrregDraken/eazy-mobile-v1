@@ -65,13 +65,18 @@ export class StoryService {
     return { seen: true };
   }
 
-  async listHighlights(username: string) {
+  async listHighlights(username: string, viewerId?: string) {
     const result = await this.pool.query<any>(`SELECT h.id, h.title, h.cover_storage_key AS "coverStorageKey",
       h.created_at AS "createdAt", p.username, p.display_name AS "displayName", p.avatar_url AS "avatarUrl",
       COALESCE((SELECT json_agg(json_build_object('id',s.id,'storageKey',s.storage_key,'mediaType',s.media_type,'caption',s.caption,'createdAt',s.created_at,'position',hs.position) ORDER BY hs.position, hs.created_at)
         FROM profile_highlight_stories hs JOIN stories s ON s.id=hs.story_id WHERE hs.highlight_id=h.id), '[]'::json) AS stories
       FROM profile_highlights h JOIN profiles p ON p.user_id=h.owner_id
-      WHERE p.username=$1 ORDER BY h.created_at ASC`, [username.toLowerCase()]);
+      WHERE p.username=$1
+        AND ($2::uuid IS NULL OR NOT EXISTS (
+          SELECT 1 FROM blocks b WHERE (b.blocker_id=$2 AND b.blocked_id=h.owner_id)
+            OR (b.blocker_id=h.owner_id AND b.blocked_id=$2)
+        ))
+      ORDER BY h.created_at ASC`, [username.toLowerCase(), viewerId ?? null]);
     return { items: await Promise.all(result.rows.map(async row => {
       const stories = await Promise.all((row.stories as any[]).map(async story => {
         let mediaUrl: string | null = null;
@@ -132,7 +137,7 @@ export function createStoryRouter(service: StoryService): Router {
   router.post('/', requireAuth, validate('body', createStorySchema), async (request, response) => response.status(201).json({ success: true, data: await service.create(currentUserId(request), request.body), meta: {} }));
   router.post('/:storyId/view', requireAuth, validate('params', storyIdSchema), async (request, response) => sendSuccess(response, await service.markSeen(param(request.params.storyId), currentUserId(request))));
   router.delete('/:storyId', requireAuth, validate('params', storyIdSchema), async (request, response) => sendSuccess(response, await service.delete(param(request.params.storyId), currentUserId(request))));
-  router.get('/highlights/:username', validate('params', usernameSchema), async (request, response) => sendSuccess(response, await service.listHighlights(param(request.params.username))));
+  router.get('/highlights/:username', validate('params', usernameSchema), async (request, response) => sendSuccess(response, await service.listHighlights(param(request.params.username), request.auth?.userId)));
   router.post('/highlights', requireAuth, validate('body', createHighlightSchema), async (request, response) => response.status(201).json({ success: true, data: await service.createHighlight(currentUserId(request), request.body), meta: {} }));
   router.delete('/highlights/:highlightId', requireAuth, validate('params', highlightIdSchema), async (request, response) => sendSuccess(response, await service.deleteHighlight(param(request.params.highlightId), currentUserId(request))));
   return router;
