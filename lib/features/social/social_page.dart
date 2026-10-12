@@ -510,23 +510,27 @@ class _PostState extends State<_Post> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          author['displayName']?.toString() ?? 'Eazy user',
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                        Text(
-                          author['username']?.toString().isNotEmpty == true
-                              ? '@${author['username']}'
-                              : 'Eazy',
-                          style: const TextStyle(
-                            color: EazyColors.muted,
-                            fontSize: 12,
+                    child: InkWell(
+                      onTap: () {
+                        final username = author['username']?.toString() ?? '';
+                        if (username.isNotEmpty) context.push('/profile/$username');
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            author['displayName']?.toString() ?? 'Eazy user',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
-                        ),
-                      ],
+                          Text(
+                            author['username']?.toString().isNotEmpty == true
+                                ? '@${author['username']}'
+                                : 'Eazy',
+                            style: const TextStyle(color: EazyColors.muted, fontSize: 12),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   PopupMenuButton<String>(
