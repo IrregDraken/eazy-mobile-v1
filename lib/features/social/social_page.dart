@@ -565,6 +565,10 @@ class _PostState extends State<_Post> {
                       } else if (value == 'copy') {
                         await Clipboard.setData(ClipboardData(text: 'https://eazy.app/p/$id'));
                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
+                      } else if (value == 'pin') {
+                        await mutate('post', 'posts/$id/pin');
+                      } else if (value == 'unpin') {
+                        await mutate('delete', 'posts/$id/pin');
                       } else if (value == 'tag') {
                         final raw = await showDialog<String>(context: context, builder: (ctx) {
                           final controller = TextEditingController();
@@ -587,8 +591,10 @@ class _PostState extends State<_Post> {
                       PopupMenuItem(value: 'save', child: Text(saved ? 'Remove from saved' : 'Save post')),
                       const PopupMenuItem(value: 'copy', child: Text('Copy link')),
                       const PopupMenuItem(value: 'report', child: Text('Report post')),
-                      if ((author['username']?.toString().toLowerCase() ?? '') == widget.currentUsername.toLowerCase())
+                      if ((author['username']?.toString().toLowerCase() ?? '') == widget.currentUsername.toLowerCase()) ...[
                         const PopupMenuItem(value: 'tag', child: Text('Tag people')),
+                        PopupMenuItem(value: widget.post['isPinned'] == true ? 'unpin' : 'pin', child: Text(widget.post['isPinned'] == true ? 'Unpin from profile' : 'Pin to profile')),
+                      ],
                     ],
                   ),
                 ],
