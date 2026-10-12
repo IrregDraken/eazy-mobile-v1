@@ -420,7 +420,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile link copied')));
                   },
                   icon: const Icon(Icons.ios_share_rounded, size: 17),
-                  label: const Text('Share profile'),
+                  label: const Text('Copy profile link'),
                 )),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(tooltip: 'Discover people', onPressed: () => context.push('/discovery'), icon: const Icon(Icons.person_add_alt_1_rounded)),
@@ -512,9 +512,9 @@ class _ProfilePageState extends State<ProfilePage> {
             child: Column(children: [
               Icon(contentTab == 0 ? Icons.add_a_photo_outlined : contentTab == 1 ? Icons.play_circle_outline_rounded : Icons.person_pin_outlined, size: 42, color: EazyColors.green),
               const SizedBox(height: 12),
-              Text(contentTab == 0 ? ((int.tryParse(postsCount.toString()) ?? 0) > 0 ? 'Your posts are not in the current feed page yet' : 'Share your first moment') : contentTab == 1 ? 'Your Reels will live here' : 'Photos you are tagged in will appear here', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              Text(contentTab == 0 ? ((int.tryParse(postsCount.toString()) ?? 0) > 0 ? 'Posts are not available on this page yet' : isOwnProfile ? 'Share your first moment' : 'No posts yet') : contentTab == 1 ? 'No Reels yet' : 'No tagged posts yet', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               const SizedBox(height: 6),
-              Text(contentTab == 0 ? 'Build your corner of Eazy, one post at a time.' : 'This view will fill with content when the matching Eazy feature is available.', textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted, height: 1.45)),
+              Text(contentTab == 0 ? (isOwnProfile ? 'Build your corner of Eazy, one post at a time.' : 'New posts will appear here when they are shared.') : contentTab == 1 ? 'Video posts from this profile will appear here.' : 'Posts tagging this profile will appear here.', textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted, height: 1.45)),
               if (contentTab == 0 && isOwnProfile) Padding(padding: const EdgeInsets.only(top: 14), child: FilledButton.icon(onPressed: () => context.go('/home'), icon: const Icon(Icons.add_rounded), label: const Text('Create a post'))),
             ]),
           )),
