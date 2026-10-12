@@ -5,6 +5,7 @@ import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../social/stories_tray.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.auth, this.username});
@@ -114,6 +115,28 @@ class _ProfilePageState extends State<ProfilePage> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } finally { if (mounted) setState(() => followBusy = false); }
+  }
+
+  Future<void> _openHighlight(Map<String, dynamic> highlight) async {
+    final stories = (highlight['stories'] as List? ?? const []).whereType<Map>().map((item) {
+      final story = Map<String, dynamic>.from(item);
+      story['username'] = profile['username']?.toString() ?? 'Eazy user';
+      story['isMine'] = false;
+      return story;
+    }).toList();
+    if (stories.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This highlight has no available stories.')));
+      return;
+    }
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Close highlight',
+      barrierColor: Colors.black,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (ctx, _, __) => StoryViewer(stories: stories, api: api, onChanged: load, allowDelete: false, markSeen: false),
+      transitionBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+    );
   }
 
   Future<void> _createHighlight() async {
@@ -386,6 +409,13 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ]),
         )),
+        if (isOwnProfile || highlights.isNotEmpty)
+          SliverToBoxAdapter(child: _HighlightsRow(
+            highlights: highlights,
+            ownProfile: isOwnProfile,
+            onNew: _createHighlight,
+            onOpen: _openHighlight,
+          )),
         SliverToBoxAdapter(child: Container(
           decoration: const BoxDecoration(border: Border(top: BorderSide(color: EazyColors.border))),
           child: Row(children: [
@@ -484,6 +514,59 @@ class _ProfilePageState extends State<ProfilePage> {
       }),
     ).whenComplete(search.dispose);
   }
+}
+
+class _HighlightsRow extends StatelessWidget {
+  const _HighlightsRow({required this.highlights, required this.ownProfile, required this.onNew, required this.onOpen});
+  final List<Map<String, dynamic>> highlights;
+  final bool ownProfile;
+  final VoidCallback onNew;
+  final ValueChanged<Map<String, dynamic>> onOpen;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 112,
+    child: ListView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      children: [
+        if (ownProfile) SizedBox(width: 78, child: InkWell(
+          onTap: onNew,
+          borderRadius: BorderRadius.circular(16),
+          child: Column(children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: EazyColors.border, width: 1.5)),
+              child: const CircleAvatar(radius: 27, backgroundColor: EazyColors.surfaceRaised, child: Icon(Icons.add_rounded, size: 28)),
+            ),
+            const SizedBox(height: 5),
+            const Text('New', style: TextStyle(fontSize: 11)),
+          ]),
+        )),
+        ...highlights.map((highlight) {
+          final cover = highlight['coverUrl']?.toString();
+          return SizedBox(width: 78, child: InkWell(
+            onTap: () => onOpen(highlight),
+            borderRadius: BorderRadius.circular(16),
+            child: Column(children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: EazyColors.border, width: 1.5)),
+                child: CircleAvatar(
+                  radius: 27,
+                  backgroundColor: EazyColors.surfaceRaised,
+                  backgroundImage: cover != null && cover.startsWith('http') ? NetworkImage(cover) : null,
+                  child: cover == null || !cover.startsWith('http') ? const Icon(Icons.auto_awesome_rounded, color: EazyColors.green) : null,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(highlight['title']?.toString() ?? 'Highlight', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+            ]),
+          ));
+        }),
+      ],
+    ),
+  );
 }
 
 class StatsRow extends StatelessWidget {
