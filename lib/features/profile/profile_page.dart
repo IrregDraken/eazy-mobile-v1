@@ -84,7 +84,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final postResult = results[0];
       final rawPosts = postResult['items'] as List? ?? const [];
       final fetchedStats = own ? results[1]['stats'] : null;
-      final relationship = own ? const <String, dynamic>{} : Map<String, dynamic>.from(results[4] as Map);
+      final relationship = own ? const <String, dynamic>{} : Map<String, dynamic>.from(results[3] as Map);
       final followState = own ? false : relationship['following'] == true;
       final newStats = own && fetchedStats is Map
           ? Map<String, dynamic>.from(fetchedStats)
