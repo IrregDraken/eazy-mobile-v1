@@ -34,6 +34,19 @@ class _StoriesTrayState extends State<StoriesTray> {
     } finally { if (mounted) setState(() => loading = false); }
   }
 
+  Future<void> openStories(List<Map<String, dynamic>> group) async {
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Close stories',
+      barrierColor: Colors.black,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (ctx, _, __) => StoryViewer(stories: group, api: widget.api, onChanged: load),
+      transitionBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+    );
+    if (mounted) await load();
+  }
+
   Future<void> createStory() async {
     if (uploading) return;
     setState(() => uploading = true);
@@ -71,7 +84,8 @@ class _StoriesTrayState extends State<StoriesTray> {
       final key = story['authorId']?.toString() ?? story['username']?.toString() ?? 'unknown';
       grouped.putIfAbsent(key, () => []).add(story);
     }
-    final groups = grouped.values.toList();
+    final ownStories = stories.where((story) => story['isMine'] == true).toList();
+    final groups = grouped.values.where((group) => group.isNotEmpty && group.first['isMine'] != true).toList();
     return SizedBox(
       height: 112,
       child: ListView(
@@ -84,7 +98,7 @@ class _StoriesTrayState extends State<StoriesTray> {
             seen: true,
             isOwn: true,
             busy: uploading,
-            onTap: createStory,
+            onTap: () => ownStories.isEmpty ? createStory() : openStories(ownStories),
           ),
           if (loading && stories.isEmpty)
             const Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: SizedBox(width: 32, child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))),
@@ -99,22 +113,7 @@ class _StoriesTrayState extends State<StoriesTray> {
               seen: seen,
               isOwn: first['isMine'] == true,
               busy: false,
-              onTap: () async {
-                await showGeneralDialog<void>(
-                  context: context,
-                  barrierDismissible: true,
-                  barrierLabel: 'Close stories',
-                  barrierColor: Colors.black,
-                  transitionDuration: const Duration(milliseconds: 180),
-                  pageBuilder: (ctx, _, __) => StoryViewer(
-                    stories: group,
-                    api: widget.api,
-                    onChanged: load,
-                  ),
-                  transitionBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
-                );
-                if (mounted) load();
-              },
+              onTap: () => openStories(group),
             );
           }),
           if (error != null && stories.isEmpty)
