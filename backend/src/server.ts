@@ -115,8 +115,8 @@ if (pool) {
 
   if (storageProvider) {
     authOptions.mediaRouter = createMediaRouter(new MediaService(storageProvider));
-    authOptions.storiesRouter = createStoryRouter(new StoryService(pool, storageProvider));
   }
+  authOptions.storiesRouter = createStoryRouter(new StoryService(pool, storageProvider));
 
   const chatRepository = new ChatRepository(pool);
   const socialRepository = new SocialRepository(pool);
