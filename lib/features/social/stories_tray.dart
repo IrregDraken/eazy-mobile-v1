@@ -160,10 +160,12 @@ class _StoryAvatar extends StatelessWidget {
 }
 
 class StoryViewer extends StatefulWidget {
-  const StoryViewer({super.key, required this.stories, required this.api, required this.onChanged});
+  const StoryViewer({super.key, required this.stories, required this.api, required this.onChanged, this.allowDelete = true, this.markSeen = true});
   final List<Map<String, dynamic>> stories;
   final ApiClient api;
   final Future<void> Function() onChanged;
+  final bool allowDelete;
+  final bool markSeen;
 
   @override
   State<StoryViewer> createState() => _StoryViewerState();
@@ -183,6 +185,7 @@ class _StoryViewerState extends State<StoryViewer> {
   void dispose() { timer?.cancel(); super.dispose(); }
 
   Future<void> _markSeen() async {
+    if (!widget.markSeen) return;
     try { await widget.api.post('stories/${current['id']}/view', auth: true); }
     on ApiException catch (e) { if (mounted) setState(() => failure = e.message); }
   }
@@ -240,7 +243,7 @@ class _StoryViewerState extends State<StoryViewer> {
               const CircleAvatar(radius: 17, child: Icon(Icons.person_rounded, size: 19)),
               const SizedBox(width: 9),
               Expanded(child: Text(current['username']?.toString() ?? 'Eazy user', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
-              if (mine) IconButton(onPressed: () async {
+              if (mine && widget.allowDelete) IconButton(onPressed: () async {
                 try {
                   await widget.api.delete('stories/${current['id']}', auth: true);
                   if (widget.stories.length == 1) { if (context.mounted) Navigator.of(context).pop(); }
