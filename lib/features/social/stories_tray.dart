@@ -61,6 +61,25 @@ class _StoriesTrayState extends State<StoriesTray> {
         ])),
       );
       if (choice == null) return;
+      final captionController = TextEditingController();
+      final caption = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Add a story caption'),
+          content: TextField(
+            controller: captionController,
+            maxLength: 500,
+            maxLines: 3,
+            decoration: const InputDecoration(hintText: 'Write a little something (optional)'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, captionController.text.trim()), child: const Text('Continue')),
+          ],
+        ),
+      );
+      captionController.dispose();
+      if (caption == null) return;
       final upload = choice == 'video'
           ? await widget.media.pickAndUploadVideo(kind: 'post')
           : await widget.media.pickAndUpload(kind: 'post');
@@ -68,7 +87,7 @@ class _StoriesTrayState extends State<StoriesTray> {
       await widget.api.post('stories', auth: true, body: {
         'storageKey': upload.path,
         'mediaType': upload.contentType.startsWith('video/') ? 'video' : 'image',
-        'caption': '',
+        'caption': caption,
       });
       await load();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your story is live for 24 hours.')));
