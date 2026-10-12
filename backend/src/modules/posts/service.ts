@@ -68,6 +68,7 @@ export class PostService {
 
   async pinPost(postId: string, authorId: string) {
     return withTransaction(this.pool, async client => {
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [authorId]);
       const post = await client.query('SELECT is_pinned FROM posts WHERE id=$1 AND author_id=$2 AND status=\'published\' FOR UPDATE', [postId, authorId]);
       if (!post.rowCount) throw new AppError('NOT_FOUND', 'Post not found');
       if (post.rows[0]!.is_pinned) return { pinned: true };
