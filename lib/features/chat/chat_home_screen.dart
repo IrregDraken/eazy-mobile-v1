@@ -34,7 +34,6 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     super.initState();
     _load();
     _loadProfile();
-    _connectRealtime();
     _scroll.addListener(_scrollChanged);
   }
 
@@ -61,6 +60,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
         setState(() { _myUsername = result['profile']['username']?.toString(); _myUserId = result['profile']['id']?.toString(); });
       }
     } catch (_) {}
+    await _connectRealtime();
   }
 
   Future<void> _load({bool quiet = false}) async {
