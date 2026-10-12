@@ -367,10 +367,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 PopupMenuButton<String>(
                   tooltip: 'Profile options',
                   onSelected: (value) async {
-                    final targetId = (profile['userId'] ?? profile['user_id'])?.toString() ?? '';
                     try {
-                      if (value == 'block' && targetId.isNotEmpty) {
-                        await api.post('blocks', auth: true, body: {'userId': targetId});
+                      if (value == 'block') {
+                        await api.post('social/block/$username', auth: true);
                         if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account blocked')));
                       } else if (value == 'report') {
                         final reason = await showDialog<String>(context: context, builder: (ctx) {
