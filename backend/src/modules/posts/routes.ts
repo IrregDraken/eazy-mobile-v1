@@ -5,11 +5,15 @@ import { validate } from '../../middleware/validate.js';
 import { sendSuccess } from '../../utils/http.js';
 import { paginationQuerySchema } from '../../utils/pagination.js';
 import { createPostSchema, postIdSchema, PostService } from './service.js';
+const postTagsSchema = z.object({ usernames: z.array(z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,32}$/)).min(1).max(20) }).strict();
 
 const profilePostsQuerySchema = paginationQuerySchema.extend({ type: z.enum(['grid', 'reels', 'tagged']).default('grid') });
 
 export function createPostRouter(service: PostService): Router {
   const router = Router();
+  router.post('/:id/tags', requireAuth, validate('params', postIdSchema), validate('body', postTagsSchema), async (request, response) => sendSuccess(response, await service.tagPeople(param(request.params.id), currentUserId(request), request.body.usernames)));
+  router.delete('/:id/tags/:username', requireAuth, validate('params', z.object({ id: z.string().uuid(), username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,32}$/) })), async (request, response) => sendSuccess(response, await service.untagPerson(param(request.params.id), currentUserId(request), param(request.params.username))));
+
   router.post('/', requireAuth, validate('body', createPostSchema), async (request, response) => {
     const post = await service.create(currentUserId(request), request.body);
     return response.status(201).json({ success: true, data: { post }, meta: {} });
