@@ -44,6 +44,11 @@ class _ProfilePageState extends State<ProfilePage> {
       final fetchedProfile = fetched['profile'];
       if (fetchedProfile is! Map) throw const ApiException('Eazy could not load this profile.');
       final nextProfile = Map<String, dynamic>.from(fetchedProfile);
+      nextProfile['displayName'] ??= nextProfile['display_name'];
+      nextProfile['firstName'] ??= nextProfile['first_name'];
+      nextProfile['lastName'] ??= nextProfile['last_name'];
+      nextProfile['avatarUrl'] ??= nextProfile['avatar_url'];
+      nextProfile['userId'] ??= nextProfile['user_id'];
       final actualUsername = (nextProfile['username'] ?? nextProfile['user_name'])?.toString().toLowerCase();
       if (actualUsername == null || actualUsername.isEmpty) throw const ApiException('This profile has no username yet.');
       final results = await Future.wait([
@@ -283,20 +288,68 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showSocialList(String title) {
+    final username = profile['username']?.toString() ?? '';
+    final direction = title.toLowerCase() == 'followers' ? 'followers' : 'following';
+    final search = TextEditingController();
+    List<Map<String, dynamic>> people = [];
+    bool listLoading = true;
+    String? listError;
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
-      builder: (ctx) => SafeArea(child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 30),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 12),
-          const Icon(Icons.people_outline_rounded, size: 38, color: EazyColors.green),
-          const SizedBox(height: 10),
-          const Text('Your social counts are synced. Searchable follower lists will appear here once the people-list API is enabled.', textAlign: TextAlign.center, style: TextStyle(color: EazyColors.muted, height: 1.45)),
-        ]),
-      )),
-    );
+      backgroundColor: EazyColors.surface,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheetState) {
+        if (listLoading && people.isEmpty && listError == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            try {
+              final result = await api.get('social/$direction/$username?page=1&limit=50', auth: true);
+              people = (result['items'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+            } on ApiException catch (e) { listError = e.message; }
+            listLoading = false;
+            if (ctx.mounted) setSheetState(() {});
+          });
+        }
+        final filtered = people.where((person) {
+          final q = search.text.trim().toLowerCase();
+          return q.isEmpty || (person['username']?.toString().toLowerCase().contains(q) ?? false) || (person['displayName']?.toString().toLowerCase().contains(q) ?? false);
+        }).toList();
+        return SafeArea(child: SizedBox(
+          height: MediaQuery.of(ctx).size.height * .72,
+          child: Column(children: [
+            Padding(padding: const EdgeInsets.fromLTRB(20, 4, 20, 12), child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: TextField(
+              controller: search,
+              onChanged: (_) => setSheetState(() {}),
+              decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded), hintText: 'Search $direction', filled: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)),
+            )),
+            const SizedBox(height: 8),
+            Expanded(child: listLoading
+                ? const Center(child: CircularProgressIndicator())
+                : listError != null
+                    ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(listError!, textAlign: TextAlign.center)))
+                    : filtered.isEmpty
+                        ? Center(child: Text(people.isEmpty ? 'No $direction yet.' : 'No matching people.', style: const TextStyle(color: EazyColors.muted)))
+                        : ListView.separated(
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+                            itemBuilder: (_, index) {
+                              final person = filtered[index];
+                              final avatar = person['avatarUrl']?.toString();
+                              final name = person['displayName']?.toString() ?? person['username']?.toString() ?? 'Eazy user';
+                              final handle = person['username']?.toString() ?? '';
+                              return ListTile(
+                                leading: CircleAvatar(backgroundColor: EazyColors.surfaceRaised, backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null, child: avatar == null || !avatar.startsWith('http') ? const Icon(Icons.person_rounded, color: EazyColors.green) : null),
+                                title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                                subtitle: Text('@$handle'),
+                                onTap: handle.isEmpty ? null : () { Navigator.pop(ctx); context.push('/profile/$handle'); },
+                              );
+                            },
+                          )),
+          ]),
+        ));
+      }),
+    ).whenComplete(search.dispose);
   }
 }
 
