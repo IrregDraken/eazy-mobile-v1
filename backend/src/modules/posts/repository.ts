@@ -105,7 +105,7 @@ export class PostRepository {
     const authorId = profile.rows[0]?.user_id;
     if (!authorId) return { items: [], total: 0 };
     const where = `p.author_id=$2 AND p.status='published'
-      AND NOT EXISTS (SELECT 1 FROM blocks b WHERE ($1::uuid IS NOT NULL AND ((b.blocker_id=$1 AND b.blocked_id=p.author_id) OR (b.blocker_id=p.author_id AND b.blocked_id=$1)))
+      AND NOT EXISTS (SELECT 1 FROM blocks b WHERE ($1::uuid IS NOT NULL AND ((b.blocker_id=$1 AND b.blocked_id=p.author_id) OR (b.blocker_id=p.author_id AND b.blocked_id=$1))))
       AND ($1::uuid IS NOT NULL AND p.author_id=$1 OR p.visibility='public' OR ($1::uuid IS NOT NULL AND p.visibility='followers' AND EXISTS (SELECT 1 FROM follows f WHERE f.follower_id=$1 AND f.followee_id=p.author_id)))`;
     const count = await this.pool.query<{ count: string }>(`SELECT count(*)::text AS count FROM posts p WHERE ${where}`, [viewerId ?? null, authorId]);
     const result = await this.pool.query<PostProjection>(
