@@ -58,6 +58,7 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     try {
       final preflight = await api.get('auth/delete-account/preflight', auth: true);
+      if (!mounted) return;
       final blockers = (preflight['blockers'] as List? ?? const [])
           .whereType<Map>()
           .map((item) => item['message']?.toString() ?? '')
@@ -86,6 +87,10 @@ class _SettingsPageState extends State<SettingsPage> {
       }
 
       final confirmation = TextEditingController();
+      if (!mounted) {
+        confirmation.dispose();
+        return;
+      }
       final confirmed = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
@@ -184,7 +189,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 Card(
                   child: DropdownButtonFormField<String>(
-                    value: theme,
+                    initialValue: theme,
                     decoration: const InputDecoration(labelText: 'Theme'),
                     items: const [
                       DropdownMenuItem(value: 'system', child: Text('System')),
@@ -213,7 +218,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 Card(
                   child: DropdownButtonFormField<String>(
-                    value: language,
+                    initialValue: language,
                     decoration: const InputDecoration(
                       labelText: 'App language',
                     ),
