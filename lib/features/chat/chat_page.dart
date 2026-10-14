@@ -54,6 +54,20 @@ class _ConversationPageState extends State<ConversationPage> {
   StreamSubscription? subscription;
 
   String get id=>widget.conversation['id']?.toString() ?? '';
+  String get _conversationUsername {
+    final participants = widget.conversation['participants'];
+    if (participants is List) {
+      final people = participants.whereType<Map>().toList();
+      final other = people.firstWhere(
+        (person) => (person['username'] ?? '').toString().toLowerCase() != (currentUsername ?? '').toLowerCase(),
+        orElse: () => people.isEmpty ? <String, dynamic>{} : people.first,
+      );
+      final username = other['username']?.toString();
+      if (username != null && username.isNotEmpty) return '@$username';
+    }
+    final username = widget.conversation['username']?.toString();
+    return username == null || username.isEmpty ? 'Private conversation' : '@$username';
+  }
 
   @override void initState(){super.initState();media=EazyMediaService(widget.api);loadMessages();connectRealtime();loadMyProfile();}
   Future<void> loadMyProfile() async {
@@ -72,7 +86,7 @@ class _ConversationPageState extends State<ConversationPage> {
 
   Future<void> loadMessages() async {
     try {
-      setState(()=>loading=true);
+      if (messages.isEmpty && mounted) setState(()=>loading=true);
       final r=await widget.api.get('chat/conversations/' + id + '/messages?page=1&limit=50',auth:true);
       messages=(r['items'] as List? ?? const[]).whereType<Map>()
         .map((e)=>Map<String,dynamic>.from(e)).toList().reversed.toList();
@@ -299,7 +313,7 @@ class _ConversationPageState extends State<ConversationPage> {
     return Scaffold(
       appBar:AppBar(title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(title,style:Theme.of(context).textTheme.titleMedium?.copyWith(fontSize:17,fontWeight:FontWeight.w900)),
-        Text('EAZY CONVERSATION',style:const TextStyle(fontSize:9,color:EazyColors.green,fontWeight:FontWeight.w900,letterSpacing:1.35))
+        Text(_conversationUsername,style:const TextStyle(fontSize:11,color:EazyColors.muted,fontWeight:FontWeight.w600))
       ]),actions:[IconButton(onPressed:loadMessages,tooltip:'Refresh conversation',icon:const Icon(Icons.refresh_rounded,color:EazyColors.green))]),
       body:Column(children:[
         if(replying!=null)_ContextBar(label:'REPLYING',value:replying!['body']?.toString() ?? '',onClose:()=>setState(()=>replying=null)),
@@ -336,7 +350,7 @@ class _ConversationPageState extends State<ConversationPage> {
             hintText:editing!=null?'Edit message…':replying!=null?'Write a reply…':'Message on Eazy…'))),
           IconButton(tooltip:'Open Eazy Assist',onPressed:()=>context.push('/assist'),style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:Image.asset('assets/images/eazy_logo_mark.png',width:23,height:23,errorBuilder:(_,__,___)=>const Icon(Icons.auto_awesome_rounded))),
           IconButton(tooltip:'Translate draft to English',onPressed:_translateDraft,style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:const Icon(Icons.translate_rounded)),
-          SizedBox(width:48,height:52,child:FilledButton(onPressed:sending?null:send,style:FilledButton.styleFrom(padding:EdgeInsets.zero),child:sending?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):Icon(editing!=null?Icons.check_rounded:Icons.send_rounded)))
+          SizedBox(width:48,height:52,child:FilledButton(onPressed:sending?null:send,style:FilledButton.styleFrom(padding:EdgeInsets.zero),child:Icon(editing!=null?Icons.check_rounded:Icons.send_rounded)))
         ])))
       ])
     );
