@@ -400,7 +400,15 @@ class _ConversationPageState extends State<ConversationPage> {
           ],
         ),
       ]),
-      body:Column(children:[
+      body:Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [EazyColors.canvas, EazyColors.surface],
+          ),
+        ),
+        child: Column(children:[
         if(replying!=null)_ContextBar(label:'REPLYING',value:replying!['body']?.toString() ?? '',onClose:()=>setState(()=>replying=null)),
         if(editing!=null)_ContextBar(label:'EDITING',value:editing!['body']?.toString() ?? '',onClose:()=>setState(() { editing=null; draft.clear(); })),
         Expanded(child:loading?const Center(child:CircularProgressIndicator()):error!=null?_ChatState(error!,loadMessages):messages.isEmpty
@@ -437,7 +445,7 @@ class _ConversationPageState extends State<ConversationPage> {
           IconButton(tooltip:'Translate draft to English',onPressed:_translateDraft,style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:const Icon(Icons.translate_rounded)),
           SizedBox(width:48,height:52,child:FilledButton(onPressed:sending?null:send,style:FilledButton.styleFrom(padding:EdgeInsets.zero),child:Icon(editing!=null?Icons.check_rounded:Icons.send_rounded)))
         ])))
-      ])
+      ]))
     );
   }
 }
