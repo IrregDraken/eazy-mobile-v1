@@ -33,19 +33,35 @@ export class OpenAICompatibleProvider implements AIProvider {
     const timeout = setTimeout(() => controller.abort(), this.config.AI_PROVIDER_TIMEOUT_MS ?? 15_000);
     try {
       const endpoint = new URL('chat/completions', this.baseUrl);
-      const response = await fetch(endpoint, {
+      const headers = { authorization: `Bearer ${this.apiKey}`, 'content-type': 'application/json' };
+      const common = { model: this.model, messages, stream: false };
+      let response = await fetch(endpoint, {
         method: 'POST',
         redirect: 'error',
         signal: controller.signal,
-        headers: { authorization: `Bearer ${this.apiKey}`, 'content-type': 'application/json' },
+        headers,
         body: JSON.stringify({
-          model: this.model,
-          messages,
-          max_completion_tokens: input.maxOutputTokens,
-          stream: false,
+          ...common,
+          max_tokens: input.maxOutputTokens,
           ...(input.jsonMode ? { response_format: { type: 'json_object' } } : {})
         })
       });
+      // Some OpenAI-compatible providers do not implement JSON mode or the
+      // newer token parameter consistently. Retry only request-shape errors,
+      // never authentication failures or rate limits.
+      if ([400, 404, 422].includes(response.status)) {
+        await response.body?.cancel().catch(() => undefined);
+        response = await fetch(endpoint, {
+          method: 'POST',
+          redirect: 'error',
+          signal: controller.signal,
+          headers,
+          body: JSON.stringify({
+            ...common,
+            max_tokens: input.maxOutputTokens
+          })
+        });
+      }
       if (!response.ok) throw unavailable();
       const raw = await readBoundedBody(response);
       const payload = JSON.parse(raw) as unknown;
