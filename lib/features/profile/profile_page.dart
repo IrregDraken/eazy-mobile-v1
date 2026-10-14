@@ -549,7 +549,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      backgroundColor: EazyColors.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSheetState) {
         if (listLoading && people.isEmpty && listError == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -731,7 +731,7 @@ class ProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(child: InkWell(
     onTap: onTap,
-    child: Container(height: 48, decoration: BoxDecoration(border: Border(bottom: BorderSide(color: selected ? EazyColors.green : Colors.transparent, width: 2))), child: Icon(icon, color: selected ? EazyColors.ink : EazyColors.muted, size: 22)),
+    child: Container(height: 48, decoration: BoxDecoration(border: Border(bottom: BorderSide(color: selected ? EazyColors.green : Colors.transparent, width: 2))), child: Icon(icon, color: selected ? Theme.of(context).colorScheme.primary : EazyColors.muted, size: 22)),
   ));
 }
 
@@ -767,6 +767,6 @@ class ProfilePostTile extends StatelessWidget {
 
   Widget _fallback(Map<String, dynamic> post) => ColoredBox(
     color: EazyColors.surfaceRaised,
-    child: Center(child: Padding(padding: const EdgeInsets.all(8), child: Text(post['content']?.toString() ?? '', maxLines: 4, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: EazyColors.ink)))),
+    child: Center(child: Padding(padding: const EdgeInsets.all(8), child: Text(post['content']?.toString() ?? '', maxLines: 4, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface)))),
   );
 }

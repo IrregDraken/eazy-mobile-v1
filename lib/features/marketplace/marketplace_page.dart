@@ -73,7 +73,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     ),
                     Container(
                       decoration: BoxDecoration(
-                        color: EazyColors.surface,
+                        color: Theme.of(context).colorScheme.surface,
                         shape: BoxShape.circle,
                         border: Border.all(color: EazyColors.border),
                       ),
@@ -148,7 +148,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: EazyColors.surface,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(30),
                           border: Border.all(color: EazyColors.border),
                         ),
@@ -214,14 +214,14 @@ class _CategoryTile extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ) : null,
-              color: selected ? null : EazyColors.surface,
+              color: selected ? null : Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(21),
               border: Border.all(color: selected ? EazyColors.green : EazyColors.border),
               boxShadow: selected ? [
                 BoxShadow(color: EazyColors.green.withValues(alpha: .15), blurRadius: 18, spreadRadius: 1),
               ] : null,
             ),
-            child: Icon(icon, color: selected ? EazyColors.canvas : EazyColors.green, size: 25),
+            child: Icon(icon, color: selected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary, size: 25),
           ),
           const SizedBox(height: 7),
           Text(
@@ -229,7 +229,7 @@ class _CategoryTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-              color: selected ? EazyColors.ink : EazyColors.muted),
+              color: selected ? Theme.of(context).colorScheme.primary : EazyColors.muted),
           ),
         ],
       ),
@@ -289,7 +289,7 @@ class _Product extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: EazyColors.canvas.withValues(alpha: .72),
+                        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: .72),
                         shape: BoxShape.circle,
                         border: Border.all(color: EazyColors.border),
                       ),

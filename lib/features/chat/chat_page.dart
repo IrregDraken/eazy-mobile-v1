@@ -236,7 +236,7 @@ class _ConversationPageState extends State<ConversationPage> {
         await showDialog<void>(
           context: context,
           builder: (dialogContext) => Dialog(
-            backgroundColor: EazyColors.canvas,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             insetPadding: const EdgeInsets.all(16),
             child: InteractiveViewer(
               child: Image.network(url, fit: BoxFit.contain,
@@ -386,7 +386,7 @@ class _ConversationPageState extends State<ConversationPage> {
   @override Widget build(BuildContext context){
     final title = _conversationTitle;
     return Scaffold(
-      backgroundColor: EazyColors.canvas,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar:AppBar(title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(title,style:Theme.of(context).textTheme.titleMedium?.copyWith(fontSize:17,fontWeight:FontWeight.w900)),
         Text(_conversationUsername,style:const TextStyle(fontSize:11,color:EazyColors.muted,fontWeight:FontWeight.w600))
@@ -405,7 +405,7 @@ class _ConversationPageState extends State<ConversationPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [EazyColors.canvas, EazyColors.surface],
+            colors: [Theme.of(context).scaffoldBackgroundColor, Theme.of(context).colorScheme.surface],
           ),
         ),
         child: Column(children:[
@@ -427,7 +427,7 @@ class _ConversationPageState extends State<ConversationPage> {
               return Container(
                 constraints:const BoxConstraints(maxWidth:220),
                 padding:const EdgeInsets.only(left:10,right:4),
-                decoration:BoxDecoration(color:EazyColors.surface,borderRadius:BorderRadius.circular(14),border:Border.all(color:EazyColors.border)),
+                decoration:BoxDecoration(color:Theme.of(context).colorScheme.surface,borderRadius:BorderRadius.circular(14),border:Border.all(color:Theme.of(context).dividerColor)),
                 child:Row(mainAxisSize:MainAxisSize.min,children:[
                   Icon(item.contentType.startsWith('image/')?Icons.image_outlined:item.contentType.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:EazyColors.green,size:18),
                   const SizedBox(width:6),
@@ -469,7 +469,7 @@ class _MessageBubble extends StatelessWidget {
         child:GestureDetector(onLongPress:onLongPress,child:Container(
       margin:const EdgeInsets.only(bottom:9),padding:const EdgeInsets.fromLTRB(13,10,10,9),
       decoration:BoxDecoration(
-        color:deleted?EazyColors.surfaceRaised:(isMine?const Color(0xFF173D2B):EazyColors.surface),
+        color: deleted ? Theme.of(context).colorScheme.surfaceContainerHighest : (isMine ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface),
         borderRadius:BorderRadius.only(
           topLeft:const Radius.circular(20),
           topRight:const Radius.circular(20),
@@ -480,7 +480,7 @@ class _MessageBubble extends StatelessWidget {
       ),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         if(!isMine&&sender['displayName']!=null&&!deleted)Padding(padding:const EdgeInsets.only(bottom:4),child:Text(sender['displayName'].toString(),style:const TextStyle(color:EazyColors.green,fontSize:10,fontWeight:FontWeight.w900,letterSpacing:.2))),
-        Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color:deleted?EazyColors.muted:EazyColors.ink,fontSize:14,height:1.45,fontStyle:deleted?FontStyle.italic:FontStyle.normal)),
+        Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color: deleted ? EazyColors.muted : (isMine ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface),fontSize:14,height:1.45,fontStyle:deleted?FontStyle.italic:FontStyle.normal)),
         if(message['replyTo'] is Map)Padding(padding:const EdgeInsets.only(top:8),child:Text('↳ ' + ((message['replyTo']['body'] ?? 'Deleted message').toString()),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))),
         if(message['attachments'] is List && (message['attachments'] as List).isNotEmpty)
           Padding(
@@ -543,7 +543,7 @@ class _ContextBar extends StatelessWidget{
   const _ContextBar({required this.label,required this.value,required this.onClose});
   final String label,value;final VoidCallback onClose;
   @override Widget build(BuildContext context)=>Container(margin:const EdgeInsets.fromLTRB(12,6,12,0),padding:const EdgeInsets.symmetric(horizontal:12,vertical:9),
-    decoration:BoxDecoration(color:EazyColors.surface,borderRadius:BorderRadius.circular(EazyRadius.md),border:Border.all(color:EazyColors.border)),child:Row(children:[
+    decoration:BoxDecoration(color:Theme.of(context).colorScheme.surface,borderRadius:BorderRadius.circular(EazyRadius.md),border:Border.all(color:Theme.of(context).dividerColor)),child:Row(children:[
       Container(width:3,height:31,decoration:BoxDecoration(gradient:const LinearGradient(colors:[EazyColors.green,EazyColors.mint],begin:Alignment.topCenter,end:Alignment.bottomCenter),borderRadius:BorderRadius.circular(4))),const SizedBox(width:9),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(label,style:const TextStyle(color:EazyColors.green,fontSize:9,fontWeight:FontWeight.w900,letterSpacing:1)),

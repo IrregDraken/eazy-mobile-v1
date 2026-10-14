@@ -494,7 +494,7 @@ class _PostState extends State<_Post> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      backgroundColor: EazyColors.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * .82),
       builder: (sheetContext) => StatefulBuilder(
         builder: (ctx, setSheetState) {
@@ -893,7 +893,7 @@ class _CommentTileState extends State<_CommentTile> {
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         CircleAvatar(
           radius: 17,
-          backgroundColor: EazyColors.surfaceRaised,
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
           backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
           child: avatar == null || !avatar.startsWith('http') ? Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase(), style: const TextStyle(color: EazyColors.green, fontSize: 12, fontWeight: FontWeight.w900)) : null,
         ),
@@ -953,7 +953,7 @@ class _SuggestedAccounts extends StatelessWidget {
                 width: 142,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: EazyColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(EazyRadius.md),
                   border: Border.all(color: EazyColors.border),
                 ),
@@ -967,7 +967,7 @@ class _SuggestedAccounts extends StatelessWidget {
                   )),
                   CircleAvatar(
                     radius: 27,
-                    backgroundColor: EazyColors.surfaceRaised,
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
                     child: avatar == null || !avatar.startsWith('http') ? Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase(), style: const TextStyle(color: EazyColors.green, fontWeight: FontWeight.w900)) : null,
                   ),

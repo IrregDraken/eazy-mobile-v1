@@ -159,7 +159,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     final chats = _filtered;
     final unreadTotal = _items.fold<int>(0, (sum, c) => sum + _unread(c));
     return Scaffold(
-      backgroundColor: EazyColors.canvas,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(child: Column(children: [
         Padding(padding: const EdgeInsets.fromLTRB(20, 12, 12, 10),
           child: Row(children: [
@@ -169,9 +169,9 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
         if (_connecting) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 8), child: Row(children: [Container(width: 7, height: 7, decoration: const BoxDecoration(color: EazyColors.amber, shape: BoxShape.circle)), const SizedBox(width: 8), Text('Reconnecting to Eazy', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: EazyColors.muted))])),
         Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: TextField(controller: _search, onChanged: (_) => setState(() {}),
-            style: const TextStyle(color: EazyColors.ink),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             decoration: InputDecoration(hintText: 'Search conversations or people', prefixIcon: const Icon(Icons.search_rounded, color: EazyColors.green),
-              hintStyle: const TextStyle(color: EazyColors.muted), filled: true, fillColor: EazyColors.surface,
+              hintStyle: const TextStyle(color: EazyColors.muted), filled: true, fillColor: Theme.of(context).colorScheme.surface,
               contentPadding: const EdgeInsets.symmetric(vertical: 3),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: EazyColors.border)),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: EazyColors.border))))),
@@ -262,12 +262,12 @@ class _NewChatScreenState extends State<_NewChatScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(backgroundColor: EazyColors.canvas,
+  Widget build(BuildContext context) => Scaffold(backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     appBar: AppBar(title: const Text('Find people on Eazy'), backgroundColor: EazyColors.canvas),
     body: Column(children: [
       Padding(padding: const EdgeInsets.all(16), child: TextField(controller: _query, autofocus: true, onChanged: _search,
         decoration: InputDecoration(hintText: 'Search name or username', prefixIcon: const Icon(Icons.search),
-          filled: true, fillColor: EazyColors.surface,
+          filled: true, fillColor: Theme.of(context).colorScheme.surface,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: EazyColors.border))))),
       if (_busy) const LinearProgressIndicator(minHeight: 2),
       Expanded(child: _loading ? const Center(child: CircularProgressIndicator())
@@ -278,7 +278,7 @@ class _NewChatScreenState extends State<_NewChatScreen> {
         : ListView.builder(itemCount: _contacts.length, itemBuilder: (_, i) {
           final c = _contacts[i]; final name = (c['displayName'] ?? c['fullName'] ?? c['username'] ?? 'Eazy user').toString();
           final avatar = c['avatarUrl']?.toString();
-          return ListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5), leading: _Avatar(name: name, url: avatar), title: Text(name, style: const TextStyle(color: EazyColors.ink, fontWeight: FontWeight.w800)),
+          return ListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5), leading: _Avatar(name: name, url: avatar), title: Text(name, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w800)),
             subtitle: Text('@${c['username'] ?? ''}', style: const TextStyle(color: EazyColors.muted)),
             onTap: () => _select(c));
         })),
@@ -289,7 +289,7 @@ class _Chip extends StatelessWidget {
   const _Chip(this.label, this.selected, this.onTap);
   final String label; final bool selected; final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Material(color: selected ? EazyColors.green.withValues(alpha: .13) : EazyColors.surface,
+  Widget build(BuildContext context) => Material(color: selected ? EazyColors.green.withValues(alpha: .13) : Theme.of(context).colorScheme.surface,
     borderRadius: BorderRadius.circular(EazyRadius.sm), child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(EazyRadius.sm),
       child: Container(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10), decoration: BoxDecoration(borderRadius: BorderRadius.circular(EazyRadius.sm), border: Border.all(color: selected ? EazyColors.green.withValues(alpha: .5) : EazyColors.border)),
         child: Text(label, style: TextStyle(color: selected ? EazyColors.green : EazyColors.muted,
@@ -310,7 +310,7 @@ class _ChatRow extends StatelessWidget {
         Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Row(children: [
             Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: EazyColors.ink, fontSize: 15, letterSpacing: -.15, fontWeight: unread > 0 ? FontWeight.w900 : FontWeight.w700))),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15, letterSpacing: -.15, fontWeight: unread > 0 ? FontWeight.w900 : FontWeight.w700))),
             const SizedBox(width: 8),
             Text(timestamp, style: TextStyle(color: unread > 0 ? EazyColors.green : EazyColors.muted, fontSize: 11)),
           ]),
