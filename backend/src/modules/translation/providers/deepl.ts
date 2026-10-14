@@ -41,18 +41,31 @@ export class DeepLTranslationProvider implements TranslationProvider {
         body.source_lang = normalizeDeepLLanguage(input.source);
       }
 
-      const response = await fetch(this.endpoint, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json',
-          authorization: `DeepL-Auth-Key ${this.apiKey}`
-        },
-        body: JSON.stringify(body)
-      });
+      const endpoints = this.config.TRANSLATION_PROVIDER_BASE_URL
+        ? [this.endpoint]
+        : [this.endpoint, new URL('https://api.deepl.com/v2/translate')];
+      let response: Response | undefined;
+      for (const endpoint of endpoints) {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            authorization: `DeepL-Auth-Key ${this.apiKey}`
+          },
+          body: JSON.stringify(body)
+        });
+        if (response.ok) break;
+        // DeepL Free and Pro use different API hosts. If the key belongs to
+        // the other plan, retry only against DeepL's other official endpoint.
+        if (![401, 403].includes(response.status) || endpoint === endpoints[endpoints.length - 1]) {
+          throw unavailable();
+        }
+        await response.body?.cancel().catch(() => undefined);
+      }
 
-      if (!response.ok) throw unavailable();
+      if (!response?.ok) throw unavailable();
       const raw = await readBoundedBody(response);
       const payload = JSON.parse(raw) as {
         translations?: Array<{ text?: unknown; detected_source_language?: unknown }>;
