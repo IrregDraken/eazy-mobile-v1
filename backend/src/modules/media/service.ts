@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { AppError } from '../../middleware/errors.js';
 import type { SupabaseStorageProvider } from '../../providers/supabase-storage.js';
+import type { Pool } from 'pg';
 
-const allowedTypes = new Set(['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','audio/mpeg','audio/mp4','audio/wav']);
+const allowedTypes = new Set(['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','audio/mpeg','audio/mp4','audio/wav','application/pdf','text/plain','text/csv','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document']);
 
 export class MediaService {
-  constructor(private readonly storage: SupabaseStorageProvider) {}
+  constructor(private readonly storage: SupabaseStorageProvider, private readonly pool?: Pool) {}
 
   capabilities() { return this.storage.getCapabilities(); }
 
@@ -18,6 +19,18 @@ export class MediaService {
     } catch {
       throw new AppError('SERVICE_UNAVAILABLE', 'Media storage is not configured');
     }
+  }
+
+  async signMessageAttachmentRead(userId: string, path: string) {
+    if (!this.pool) throw new AppError('SERVICE_UNAVAILABLE', 'Chat attachment access is unavailable');
+    if (path.includes('..') || path.startsWith('/') || path.length > 1024) throw new AppError('BAD_REQUEST', 'Invalid media path');
+    const allowed = await this.pool.query(
+      "SELECT 1 FROM message_attachments a JOIN messages m ON m.id = a.message_id AND m.status <> 'deleted' JOIN conversation_members cm ON cm.conversation_id = m.conversation_id WHERE a.storage_key = $1 AND cm.user_id = $2 AND cm.left_at IS NULL LIMIT 1",
+      [path, userId]
+    );
+    if (!allowed.rowCount) throw new AppError('NOT_FOUND', 'Attachment not found');
+    try { return await this.storage.createSignedUrl(path, 3600); }
+    catch { throw new AppError('NOT_FOUND', 'Attachment could not be signed'); }
   }
 
   async signRead(userId: string, path: string) {

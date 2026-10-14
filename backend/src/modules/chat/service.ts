@@ -58,15 +58,27 @@ export class ChatService {
     return { items: result.items, meta: paginationMeta(pagination, result.total) };
   }
 
-  async sendMessage(currentUserId: string, conversationId: string, input: { body: string; replyToMessageId?: string }) {
-    const body = normalizeBody(input.body);
+  async sendMessage(currentUserId: string, conversationId: string, input: { body?: string; replyToMessageId?: string; attachments?: { storageKey: string; contentType: string; byteSize: number }[] }) {
+    const attachments = input.attachments ?? [];
+    const body = input.body?.trim() ?? '';
+    if (!body && attachments.length === 0) throw new AppError('VALIDATION_ERROR', 'Message needs text or an attachment');
+    if (Array.from(body).length > 10_000) throw new AppError('VALIDATION_ERROR', 'Message body is too long');
+    const allowedAttachmentTypes = new Set(['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','audio/mpeg','audio/mp4','audio/wav','application/pdf','text/plain','text/csv','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document']);
+    for (const attachment of attachments) {
+      if (!attachment.storageKey.startsWith(currentUserId + '/message/') || attachment.storageKey.includes('..') || attachment.storageKey.startsWith('/')) {
+        throw new AppError('FORBIDDEN', 'Attachment storage path is invalid');
+      }
+      if (!allowedAttachmentTypes.has(attachment.contentType) || attachment.byteSize > 25 * 1024 * 1024) {
+        throw new AppError('BAD_REQUEST', 'Attachment type or size is not supported');
+      }
+    }
     const created = await withTransaction(this.pool, async client => {
       if (!await this.repository.isActiveMember(client, conversationId, currentUserId)) throw new AppError('NOT_FOUND', 'Conversation not found');
       await this.assertNotBlocked(client, currentUserId, conversationId);
       if (input.replyToMessageId && !await this.repository.replyBelongsToConversation(client, input.replyToMessageId, conversationId, currentUserId)) {
         throw new AppError('BAD_REQUEST', 'Reply target is not in this conversation');
       }
-      const messageId = await this.repository.createMessage(client, conversationId, currentUserId, body, input.replyToMessageId);
+      const messageId = await this.repository.createMessage(client, conversationId, currentUserId, body || ' ', input.replyToMessageId, attachments);
       if (!messageId) throw new AppError('NOT_FOUND', 'Conversation not found');
       const recipients = this.notifications ? await this.repository.getOtherParticipantIds(client, conversationId, currentUserId) : [];
       return { messageId, recipients };
@@ -84,7 +96,7 @@ export class ChatService {
             entityType: 'conversation',
             entityId: conversationId,
             title: 'New message',
-            body: body.length > 120 ? `${body.slice(0, 117)}…` : body,
+            body: body.length > 120 ? `${body.slice(0, 117)}…` : (body || 'Sent an attachment'),
             deepLink: `eazy://chat/${conversationId}`
           });
         } catch { /* message persistence is independent of push delivery */ }

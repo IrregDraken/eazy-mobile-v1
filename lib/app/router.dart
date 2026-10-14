@@ -10,6 +10,7 @@ import '../features/settings/settings_page.dart';
 import '../features/security/security_page.dart';
 import '../features/security/blocks_page.dart';
 import '../features/home/home_shell.dart';
+import '../features/profile/profile_page.dart';
 import '../features/marketplace/cart_page.dart';
 import '../features/onboarding/profile_setup_page.dart';
 import '../features/onboarding/discovery_page.dart';
@@ -62,7 +63,8 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
     ),
     GoRoute(path: '/discovery', builder: (_, __) => const DiscoveryPage()),
     GoRoute(path: '/cart', builder: (_, __) => const CartPage()),
-    GoRoute(path: '/home', builder: (_, __) => HomeShell(auth: auth)),
+    GoRoute(path: '/home', builder: (_, state) => HomeShell(auth: auth, initialTab: state.uri.queryParameters['tab'])),
+    GoRoute(path: '/profile/:username', builder: (_, state) => ProfilePage(auth: auth, username: state.pathParameters['username'])),
     GoRoute(path: '/assist', builder: (_, __) => const AssistPage()),
     GoRoute(path: '/translation', builder: (_, __) => const TranslationPage()),
     GoRoute(path: '/location', builder: (_, __) => const LocationPage()),

@@ -14,6 +14,8 @@ export interface PostProjection {
   saveCount: number;
   likedByViewer: boolean;
   savedByViewer: boolean;
+  isPinned: boolean;
+  taggedUsers: { username: string; displayName: string }[];
 }
 
 const projection = `p.id, p.content, p.visibility, p.created_at AS "createdAt",
@@ -23,7 +25,10 @@ const projection = `p.id, p.content, p.visibility, p.created_at AS "createdAt",
   (SELECT count(*)::int FROM comments c WHERE c.post_id = p.id AND c.deleted_at IS NULL) AS "commentCount",
   (SELECT count(*)::int FROM saves s WHERE s.post_id = p.id) AS "saveCount",
   EXISTS (SELECT 1 FROM likes viewer_like WHERE viewer_like.post_id = p.id AND viewer_like.user_id = $1) AS "likedByViewer",
-  EXISTS (SELECT 1 FROM saves viewer_save WHERE viewer_save.post_id = p.id AND viewer_save.user_id = $1) AS "savedByViewer"`;
+  EXISTS (SELECT 1 FROM saves viewer_save WHERE viewer_save.post_id = p.id AND viewer_save.user_id = $1) AS "savedByViewer",
+  p.is_pinned AS "isPinned",
+  COALESCE((SELECT json_agg(json_build_object('username', tag_profile.username, 'displayName', tag_profile.display_name) ORDER BY tag_profile.username)
+    FROM post_tags pt JOIN profiles tag_profile ON tag_profile.user_id=pt.user_id WHERE pt.post_id=p.id), '[]'::json) AS "taggedUsers"`;
 
 export class PostRepository {
   constructor(private readonly pool: Pool) {}
@@ -96,6 +101,23 @@ export class PostRepository {
        ORDER BY p.created_at DESC, p.id DESC
        LIMIT $2 OFFSET $3`,
       [userId, limit, (page - 1) * limit]
+    );
+    return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
+  async byUsername(viewerId: string | undefined, username: string, page: number, limit: number, type: 'grid' | 'reels' | 'tagged' = 'grid'): Promise<{ items: PostProjection[]; total: number }> {
+    const profile = await this.pool.query<{ user_id: string }>('SELECT user_id FROM profiles WHERE username=$1 LIMIT 1', [username.toLowerCase()]);
+    const authorId = profile.rows[0]?.user_id;
+    if (!authorId) return { items: [], total: 0 };
+    const targetFilter = type === 'tagged' ? 'EXISTS (SELECT 1 FROM post_tags pt WHERE pt.post_id=p.id AND pt.user_id=$2)' : type === 'reels' ? "p.author_id=$2 AND EXISTS (SELECT 1 FROM post_media reel_media WHERE reel_media.post_id=p.id AND reel_media.media_type='video')" : 'p.author_id=$2';
+    const where = `${targetFilter} AND p.status='published'
+      AND NOT EXISTS (SELECT 1 FROM blocks b WHERE ($1::uuid IS NOT NULL AND ((b.blocker_id=$1 AND b.blocked_id=p.author_id) OR (b.blocker_id=p.author_id AND b.blocked_id=$1))))
+      AND ($1::uuid IS NOT NULL AND p.author_id=$1 OR p.visibility='public' OR ($1::uuid IS NOT NULL AND p.visibility='followers' AND EXISTS (SELECT 1 FROM follows f WHERE f.follower_id=$1 AND f.followee_id=p.author_id)))`;
+    const count = await this.pool.query<{ count: string }>(`SELECT count(*)::text AS count FROM posts p WHERE ${where}`, [viewerId ?? null, authorId]);
+    const result = await this.pool.query<PostProjection>(
+      `SELECT ${projection} FROM posts p JOIN profiles author ON author.user_id=p.author_id
+       WHERE ${where} ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.created_at DESC, p.id DESC LIMIT $3 OFFSET $4`,
+      [viewerId ?? null, authorId, limit, (page - 1) * limit]
     );
     return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
   }

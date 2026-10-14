@@ -16,6 +16,17 @@ test('post input validates content, supported visibility, and unique media posit
   assert.throws(() => createPostSchema.parse({ content: 'Hello', visibility: 'friends' }));
 });
 
+test('post input permits media-only posts but rejects empty posts', () => {
+  const parsed = createPostSchema.parse({
+    content: '',
+    visibility: 'public',
+    media: [{ storageKey: 'user/path/clip.mp4', mediaType: 'video', position: 0 }]
+  });
+  assert.equal(parsed.content, '');
+  assert.equal(parsed.media[0]?.mediaType, 'video');
+  assert.throws(() => createPostSchema.parse({ content: '', visibility: 'public', media: [] }));
+});
+
 test('post service rejects duplicate media positions before database work', async () => {
   const repository = {} as PostRepository;
   const service = new PostService(fakePool(), repository);

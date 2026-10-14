@@ -101,6 +101,7 @@ const messageProjectionLateral = `
       'id', a.id,
       'contentType', a.content_type,
       'byteSize', a.byte_size,
+      'storageKey', a.storage_key,
       'createdAt', a.created_at
     ) ORDER BY a.created_at, a.id) AS items
     FROM message_attachments a WHERE a.message_id = m.id
@@ -281,7 +282,7 @@ export class ChatRepository {
     return Boolean(result.rows[0]?.exists);
   }
 
-  async createMessage(client: DbClient, conversationId: string, senderId: string, body: string, replyToMessageId?: string): Promise<string | null> {
+  async createMessage(client: DbClient, conversationId: string, senderId: string, body: string, replyToMessageId?: string, attachments: { storageKey: string; contentType: string; byteSize: number }[] = []): Promise<string | null> {
     const result = await client.query<{ id: string }>(
       `INSERT INTO messages (conversation_id, sender_id, body, reply_to_message_id)
        SELECT $1, $2, $3, $4
@@ -293,7 +294,15 @@ export class ChatRepository {
        RETURNING id`,
       [conversationId, senderId, body, replyToMessageId ?? null]
     );
-    return result.rows[0]?.id ?? null;
+    const messageId = result.rows[0]?.id;
+    if (!messageId) return null;
+    for (const attachment of attachments) {
+      await client.query(
+        'INSERT INTO message_attachments (message_id, storage_key, content_type, byte_size) VALUES ($1, $2, $3, $4)',
+        [messageId, attachment.storageKey, attachment.contentType, attachment.byteSize]
+      );
+    }
+    return messageId;
   }
 
   async getMessageAsSender(client: DbClient, messageId: string, senderId: string): Promise<Pick<ChatMessage, 'id' | 'status' | 'deletedAt'> | null> {

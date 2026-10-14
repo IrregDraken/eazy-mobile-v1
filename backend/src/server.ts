@@ -83,6 +83,7 @@ import { createEmailVerificationRouter } from './modules/auth/email-verification
 import { SupabaseStorageProvider } from './providers/supabase-storage.js';
 import { MediaService } from './modules/media/service.js';
 import { createMediaRouter } from './modules/media/routes.js';
+import { StoryService, createStoryRouter } from './modules/stories/routes.js';
 import { createResendInboundRouter } from './modules/email/resend-inbound-routes.js';
 
 const config = loadConfig();
@@ -113,8 +114,9 @@ if (pool) {
   authOptions.settingsRouter = createSettingsRouter(new SettingsService(new SettingsRepository(pool)));
 
   if (storageProvider) {
-    authOptions.mediaRouter = createMediaRouter(new MediaService(storageProvider));
+    authOptions.mediaRouter = createMediaRouter(new MediaService(storageProvider, pool));
   }
+  authOptions.storiesRouter = createStoryRouter(new StoryService(pool, storageProvider));
 
   const chatRepository = new ChatRepository(pool);
   const socialRepository = new SocialRepository(pool);

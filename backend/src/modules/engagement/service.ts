@@ -8,7 +8,8 @@ import { EngagementRepository } from './repository.js';
 import type { NotificationService } from '../notifications/service.js';
 import { notifyComment, notifyLike } from '../notifications/producers/social.js';
 
-export const commentSchema = z.object({ content: z.string().trim().min(1).max(2000) }).strict();
+export const commentSchema = z.object({ content: z.string().trim().min(1).max(2000), parentId: z.string().uuid().optional() }).strict();
+export const reportPostSchema = z.object({ reason: z.string().trim().min(3).max(1000) }).strict();
 export const postIdParamSchema = z.object({ postId: z.string().uuid() });
 export const commentIdParamSchema = z.object({ commentId: z.string().uuid() });
 
@@ -42,10 +43,12 @@ export class EngagementService {
     });
   }
 
-  async createComment(postId: string, userId: string, content: string) {
+  async createComment(postId: string, userId: string, content: string, parentId?: string) {
     const result = await withTransaction(this.pool, async client => {
       await this.assertAccessible(client, postId, userId);
-      const comment = await this.repository.createComment(client, postId, userId, content);
+      let comment: import('./repository.js').CommentProjection;
+      try { comment = await this.repository.createComment(client, postId, userId, content, parentId); }
+      catch (error) { if (error instanceof Error && error.message === 'COMMENT_PARENT_INACCESSIBLE') throw new AppError('NOT_FOUND', 'Reply target not found'); throw error; }
       let notificationId: string | null = null;
       let recipientId: string | null = null;
       if (this.notifications) {
@@ -65,6 +68,40 @@ export class EngagementService {
     await this.assertAccessible(this.pool, postId, userId);
     const result = await this.repository.listComments(postId, userId, pagination.page, pagination.limit);
     return { items: result.items, meta: paginationMeta(pagination, result.total) };
+  }
+
+  async likeComment(commentId: string, userId: string) {
+    try {
+      const created = await withTransaction(this.pool, client => this.repository.likeComment(client, commentId, userId));
+      return { liked: true, created };
+    } catch (error) {
+      if (error instanceof Error && error.message === 'COMMENT_NOT_FOUND') throw new AppError('NOT_FOUND', 'Comment not found');
+      throw error;
+    }
+  }
+
+  async unlikeComment(commentId: string, userId: string) {
+    return { liked: false, removed: await withTransaction(this.pool, client => this.repository.unlikeComment(client, commentId, userId)) };
+  }
+
+  async reportComment(commentId: string, userId: string, reason: string) {
+    const comment = await this.pool.query<{ post_id: string }>('SELECT post_id FROM comments WHERE id=$1 AND deleted_at IS NULL LIMIT 1', [commentId]);
+    if (!comment.rowCount) throw new AppError('NOT_FOUND', 'Comment not found');
+    await this.assertAccessible(this.pool, comment.rows[0]!.post_id, userId);
+    const result = await this.pool.query<{ id: string }>(
+      "INSERT INTO reports (reporter_id, resource_type, resource_id, reason) VALUES ($1,'comment',$2,$3) RETURNING id",
+      [userId, commentId, reason]
+    );
+    return { submitted: true, reportId: result.rows[0]!.id };
+  }
+
+  async reportPost(postId: string, userId: string, reason: string) {
+    await this.assertAccessible(this.pool, postId, userId);
+    const result = await this.pool.query<{ id: string }>(
+      "INSERT INTO reports (reporter_id, resource_type, resource_id, reason) VALUES ($1,'post',$2,$3) RETURNING id",
+      [userId, postId, reason]
+    );
+    return { submitted: true, reportId: result.rows[0]!.id };
   }
 
   async deleteComment(commentId: string, userId: string) {
