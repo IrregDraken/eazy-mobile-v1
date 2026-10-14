@@ -52,8 +52,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       context: context,
       initialDate: dob ?? DateTime(now.year - 18, now.month, now.day),
       firstDate: DateTime(1900),
-      lastDate: now,
-      helpText: 'Select your date of birth',
+      lastDate: DateTime(now.year - 18, now.month, now.day),
+      helpText: 'You must be 18 or older to use Eazy',
     );
     if (value != null) setState(() => dob = value);
   }
@@ -83,6 +83,16 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       setState(
         () => error = 'First name, username and date of birth are required.',
       );
+      return;
+    }
+    final today = DateTime.now();
+    var age = today.year - dob!.year;
+    if (today.month < dob!.month ||
+        (today.month == dob!.month && today.day < dob!.day)) {
+      age--;
+    }
+    if (age < 18) {
+      setState(() => error = 'You must be at least 18 years old to use Eazy.');
       return;
     }
     if (!RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(u)) {
