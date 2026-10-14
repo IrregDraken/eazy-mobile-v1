@@ -140,8 +140,6 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     return _items.where((c) {
       if (query.isNotEmpty && !_name(c).toLowerCase().contains(query) && !_preview(c).toLowerCase().contains(query)) return false;
       if (_filter == 'Unread' && _unread(c) == 0) return false;
-      // Groups and favourites are not represented by the current production API.
-      if (_filter == 'Groups' || _filter == 'Favourites') return false;
       return true;
     }).toList();
   }
