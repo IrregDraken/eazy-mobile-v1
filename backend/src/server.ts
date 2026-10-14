@@ -2,6 +2,7 @@ import { createApp, type AppOptions } from './app.js';
 import { loadConfig } from './config/env.js';
 import { createLogger } from './config/logger.js';
 import { createDbPool } from './database/client.js';
+import { runMigrations } from './database/migrate.js';
 import { FirebaseAuthProvider } from './providers/firebase-auth.js';
 import { AuthService } from './modules/auth/service.js';
 import { AccountDeletionService } from './modules/auth/account-deletion.js';
@@ -88,6 +89,7 @@ import { createResendInboundRouter } from './modules/email/resend-inbound-routes
 
 const config = loadConfig();
 const logger = createLogger(config);
+if (config.DATABASE_URL) await runMigrations(config, logger);
 let authOptions: AppOptions = {};
 const pool = config.DATABASE_URL ? createDbPool(config) : undefined;
 const storageProvider = config.SUPABASE_URL && config.SUPABASE_SERVICE_ROLE_KEY ? new SupabaseStorageProvider(config) : undefined;
