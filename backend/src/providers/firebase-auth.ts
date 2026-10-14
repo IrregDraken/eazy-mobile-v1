@@ -43,6 +43,16 @@ export class FirebaseAuthProvider implements Authenticator {
     return { userId: identity.firebaseUid, provider: 'firebase', claims: identity.claims };
   }
 
+  async emailExists(email: string): Promise<boolean> {
+    try {
+      await this.auth.getUserByEmail(email.trim().toLowerCase());
+      return true;
+    } catch (error) {
+      if ((error as { code?: string }).code === 'auth/user-not-found') return false;
+      throw new AppError('SERVICE_UNAVAILABLE', 'Unable to check email availability right now');
+    }
+  }
+
   /** Permanently removes the Firebase user. A user that is already gone counts as removed. */
   async deleteIdentity(firebaseUid: string): Promise<void> {
     try {
