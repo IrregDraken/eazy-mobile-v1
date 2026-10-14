@@ -213,8 +213,19 @@ class AuthController extends ChangeNotifier {
               email: email.trim().toLowerCase(),
               password: password,
             );
-        final user = credential.user;
-        if (user == null) throw const ApiException('We could not sign you in.');
+        final signedInUser = credential.user;
+        if (signedInUser == null) {
+          throw const ApiException('We could not sign you in.');
+        }
+
+        // Firebase may return a cached emailVerified value after a previous
+        // registration/verification session. Reload the signed-in identity
+        // before deciding whether this account is allowed to continue.
+        await signedInUser.reload();
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) {
+          throw const ApiException('Your sign-in session could not be restored.');
+        }
         if (!user.emailVerified) {
           throw const ApiException(
             'Verify your email address before signing in.',
