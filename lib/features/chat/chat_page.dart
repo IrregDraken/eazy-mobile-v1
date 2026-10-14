@@ -54,19 +54,32 @@ class _ConversationPageState extends State<ConversationPage> {
   StreamSubscription? subscription;
 
   String get id=>widget.conversation['id']?.toString() ?? '';
-  String get _conversationUsername {
+  Map<String, dynamic> get _otherParticipant {
     final participants = widget.conversation['participants'];
     if (participants is List) {
-      final people = participants.whereType<Map>().toList();
-      final other = people.firstWhere(
-        (person) => (person['username'] ?? '').toString().toLowerCase() != (currentUsername ?? '').toLowerCase(),
-        orElse: () => people.isEmpty ? <String, dynamic>{} : people.first,
-      );
-      final username = other['username']?.toString();
-      if (username != null && username.isNotEmpty) return '@$username';
+      final people = participants.whereType<Map>().map((person) => Map<String, dynamic>.from(person)).toList();
+      if (people.isNotEmpty) {
+        return people.firstWhere(
+          (person) => (person['username'] ?? '').toString().toLowerCase() != (currentUsername ?? '').toLowerCase(),
+          orElse: () => people.first,
+        );
+      }
     }
-    final username = widget.conversation['username']?.toString();
+    return <String, dynamic>{
+      'username': widget.conversation['username'],
+      'displayName': widget.conversation['displayName'] ?? widget.conversation['display_name'],
+    };
+  }
+
+  String get _conversationUsername {
+    final username = _otherParticipant['username']?.toString();
     return username == null || username.isEmpty ? 'Private conversation' : '@$username';
+  }
+
+  String get _conversationTitle {
+    final person = _otherParticipant;
+    final name = (person['displayName'] ?? person['display_name'] ?? person['name'] ?? person['username'])?.toString().trim();
+    return name == null || name.isEmpty ? 'Eazy Chat' : name;
   }
 
   @override void initState(){super.initState();media=EazyMediaService(widget.api);loadMessages();connectRealtime();loadMyProfile();}
@@ -309,7 +322,7 @@ class _ConversationPageState extends State<ConversationPage> {
   }
 
   @override Widget build(BuildContext context){
-    final title=(widget.conversation['displayName'] ?? widget.conversation['display_name'] ?? widget.conversation['username'] ?? 'Conversation').toString();
+    final title = _conversationTitle;
     return Scaffold(
       appBar:AppBar(title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(title,style:Theme.of(context).textTheme.titleMedium?.copyWith(fontSize:17,fontWeight:FontWeight.w900)),
