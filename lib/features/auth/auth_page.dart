@@ -179,11 +179,7 @@ class _AuthPageState extends State<AuthPage> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF031E13), Color(0xFF062B1B), Color(0xFF0B5C3C)],
-          ),
+          color: Color(0xFFF4F8F4),
         ),
         child: SafeArea(
           child: LayoutBuilder(
@@ -208,7 +204,7 @@ class _AuthPageState extends State<AuthPage> {
                                       : context.go('/welcome'),
                           icon: const Icon(
                             Icons.arrow_back_rounded,
-                            color: Colors.white,
+                            color: Color(0xFF0E7A4B),
                           ),
                         ),
                         const Spacer(),
