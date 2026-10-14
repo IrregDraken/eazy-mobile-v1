@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/server.ts",
-    "start": "node dist/src/server.js",
+    "start": "npm run db:migrate && node dist/src/server.js",
     "test": "tsx --test test/**/*.test.ts",
     "test:storage-integration": "tsx test/supabase_storage.integration.ts",
     "lint": "tsc --noEmit -p tsconfig.json",
