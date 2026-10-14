@@ -27,7 +27,7 @@ class _HomeShellState extends State<HomeShell>{
         IndexedStack(index:index,children:pages),
         Positioned(
           right:18,
-          bottom:94,
+          bottom:72,
           child:SafeArea(
             child:Tooltip(
               message:'Ask Eazy Assist',
@@ -69,7 +69,7 @@ class _HomeShellState extends State<HomeShell>{
           onDestinationSelected:(value)=>setState(()=>index=value),
           destinations:const[
             NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home_rounded),label:'Home'),
-            NavigationDestination(icon:Icon(Icons.storefront_outlined),selectedIcon:Icon(Icons.storefront_rounded),label:'Shop'),
+            NavigationDestination(icon:Icon(Icons.storefront_outlined),selectedIcon:Icon(Icons.storefront_rounded),label:'Discover'),
             NavigationDestination(icon:Icon(Icons.account_balance_wallet_outlined),selectedIcon:Icon(Icons.account_balance_wallet_rounded),label:'Wallet'),
             NavigationDestination(icon:Icon(Icons.chat_bubble_outline_rounded),selectedIcon:Icon(Icons.chat_bubble_rounded),label:'Chat'),
             NavigationDestination(icon:Icon(Icons.person_outline_rounded),selectedIcon:Icon(Icons.person_rounded),label:'You'),
