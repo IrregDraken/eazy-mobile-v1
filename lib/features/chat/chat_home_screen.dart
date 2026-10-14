@@ -64,7 +64,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
   }
 
   Future<void> _load({bool quiet = false}) async {
-    if (!quiet && mounted) setState(() { _loading = true; _error = null; });
+    if (!quiet && mounted) setState(() { if (_items.isEmpty) _loading = true; _error = null; });
     try {
       final result = await widget.api.get('chat/conversations?page=1&limit=100', auth: true);
       final values = (result['items'] as List? ?? const [])
@@ -336,7 +336,7 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = url == null || url!.isEmpty ? null : NetworkImage(url!);
-    return Container(width: 52, height: 52, decoration: BoxDecoration(color: EazyColors.surfaceRaised, borderRadius: BorderRadius.circular(17), border: Border.all(color: EazyColors.border), image: image == null ? null : DecorationImage(image: image, fit: BoxFit.cover)),
+    return Container(width: 52, height: 52, decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(17), border: Border.all(color: EazyColors.border), image: image == null ? null : DecorationImage(image: image, fit: BoxFit.cover)),
       alignment: Alignment.center, child: image == null ? Text(_initials(name), style: const TextStyle(color: EazyColors.green, fontWeight: FontWeight.w900, fontSize: 17, letterSpacing: -.5)) : null);
   }
 }
@@ -359,11 +359,11 @@ class _Skeletons extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: 13, width: 150, child: DecoratedBox(
-                decoration: BoxDecoration(color: EazyColors.surfaceRaised,
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.all(Radius.circular(8))))),
               SizedBox(height: 9),
               SizedBox(height: 10, width: 220, child: DecoratedBox(
-                decoration: BoxDecoration(color: EazyColors.border,
+                decoration: BoxDecoration(color: Theme.of(context).dividerColor,
                   borderRadius: BorderRadius.all(Radius.circular(8))))),
             ],
           )),

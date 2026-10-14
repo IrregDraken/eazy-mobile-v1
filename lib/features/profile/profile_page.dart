@@ -58,7 +58,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> load() async {
-    if (mounted) setState(() { loading = true; error = null; profilePage = 1; hasMoreProfilePosts = true; });
+    if (mounted) setState(() { if (profile.isEmpty) loading = true; error = null; profilePage = 1; hasMoreProfilePosts = true; });
     try {
       final requested = widget.username?.trim().toLowerCase();
       final currentUsername = widget.auth.profile?['username']?.toString().toLowerCase();
@@ -766,7 +766,7 @@ class ProfilePostTile extends StatelessWidget {
   }
 
   Widget _fallback(Map<String, dynamic> post, BuildContext context) => ColoredBox(
-    color: EazyColors.surfaceRaised,
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
     child: Center(child: Padding(padding: const EdgeInsets.all(8), child: Text(post['content']?.toString() ?? '', maxLines: 4, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface)))),
   );
 }

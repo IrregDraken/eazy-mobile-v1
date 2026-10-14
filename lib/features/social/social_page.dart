@@ -58,7 +58,7 @@ class _SocialPageState extends State<SocialPage> {
     final previousFirst = posts.isNotEmpty ? posts.first['id']?.toString() : null;
     final wasScrolled = scrollController.hasClients && scrollController.offset > 180;
     if (mounted) setState(() {
-      loading = true;
+      if (posts.isEmpty) loading = true;
       error = null;
       page = 1;
       hasMore = true;
@@ -336,12 +336,12 @@ class _SocialPageState extends State<SocialPage> {
           SliverToBoxAdapter(child: StoriesTray(api: api, media: media)),
           const SliverToBoxAdapter(child: Divider(height: 1, color: EazyColors.border)),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
-          if (loading)
+          if (loading && posts.isEmpty)
             const SliverFillRemaining(
               hasScrollBody: false,
               child: Center(child: CircularProgressIndicator()),
             ),
-          if (!loading && error != null)
+          if (!loading && error != null && posts.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: _State(error!, load),
@@ -354,8 +354,11 @@ class _SocialPageState extends State<SocialPage> {
                 compose,
               ),
             ),
-          if (!loading && posts.isNotEmpty)
-          if (loadingMore)
+          if (loading && posts.isNotEmpty)
+            const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
+          if (!loading && error != null && posts.isNotEmpty)
+            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), child: Text('Could not refresh feed: $error', style: const TextStyle(color: EazyColors.red)))),
+          if (posts.isNotEmpty && loadingMore)
             const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(22), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))),
           if (!loading && !hasMore && posts.isNotEmpty)
             const SliverToBoxAdapter(child: Padding(

@@ -24,7 +24,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
   @override void dispose() { search.dispose(); super.dispose(); }
 
   Future<void> load() async {
-    setState(() { loading = true; error = null; });
+    setState(() { if (products.isEmpty) loading = true; error = null; });
     try {
       final params = <String, String>{
         'status': 'active', 'limit': '30', 'page': '1', 'sort': sort,
@@ -166,13 +166,17 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 ),
               ),
             ),
-            if (loading)
-              const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator())),
-            if (!loading && error != null)
+            if (loading && products.isEmpty)
+              const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
+            if (loading && products.isNotEmpty)
+              const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
+            if (!loading && error != null && products.isEmpty)
               SliverFillRemaining(hasScrollBody: false, child: _State(error!, load)),
+            if (!loading && error != null && products.isNotEmpty)
+              SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text('Could not refresh listings: $error', style: const TextStyle(color: EazyColors.red))),
             if (!loading && error == null && products.isEmpty)
               const SliverFillRemaining(hasScrollBody: false, child: _State('No products match your search.', null)),
-            if (!loading && products.isNotEmpty)
+            if (products.isNotEmpty)
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                 sliver: SliverGrid.builder(
