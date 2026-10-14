@@ -726,11 +726,11 @@ class _PostState extends State<_Post> {
                             child: url != null
                                 ? (m['mediaType']?.toString() == 'video'
                                     ? EazyVideoMedia(url: url, fit: BoxFit.cover)
-                                    : Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(
-                                        color: EazyColors.surfaceRaised,
-                                        child: Center(child: Icon(Icons.broken_image_outlined)),
+                                    : Image.network(url, fit: BoxFit.cover, errorBuilder: (imageContext, _, __) => ColoredBox(
+                                        color: Theme.of(imageContext).colorScheme.surfaceContainerHighest,
+                                        child: const Center(child: Icon(Icons.broken_image_outlined)),
                                       )))
-                                : const ColoredBox(color: EazyColors.surfaceRaised, child: Center(child: Icon(Icons.image_outlined))),
+                                : ColoredBox(color: Theme.of(c).colorScheme.surfaceContainerHighest, child: const Center(child: Icon(Icons.image_outlined))),
                           );
                         },
                       ),

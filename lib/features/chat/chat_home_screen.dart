@@ -263,7 +263,7 @@ class _NewChatScreenState extends State<_NewChatScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-    appBar: AppBar(title: const Text('Find people on Eazy'), backgroundColor: EazyColors.canvas),
+    appBar: AppBar(title: const Text('Find people on Eazy'), backgroundColor: Theme.of(context).scaffoldBackgroundColor),
     body: Column(children: [
       Padding(padding: const EdgeInsets.all(16), child: TextField(controller: _query, autofocus: true, onChanged: _search,
         decoration: InputDecoration(hintText: 'Search name or username', prefixIcon: const Icon(Icons.search),
@@ -347,19 +347,19 @@ class _Skeletons extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView.builder(
     itemCount: 8,
-    itemBuilder: (_, index) => SizedBox(
+    itemBuilder: (context, index) => SizedBox(
       height: 76,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(children: [
-          Container(width: 52, height: 52, decoration: BoxDecoration(color: EazyColors.surfaceRaised, borderRadius: BorderRadius.all(Radius.circular(17)), border: Border.all(color: EazyColors.border))),
+          Container(width: 52, height: 52, decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.all(Radius.circular(17)), border: Border.all(color: Theme.of(context).dividerColor))),
           SizedBox(width: 13),
           Expanded(child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: 13, width: 150, child: DecoratedBox(
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                decoration: BoxDecoration(color: Theme.of(context).dividerColor,
                   borderRadius: BorderRadius.all(Radius.circular(8))))),
               SizedBox(height: 9),
               SizedBox(height: 10, width: 220, child: DecoratedBox(

@@ -39,11 +39,7 @@ class _SettingsPageState extends State<SettingsPage> {
           likes = n['likes'] != false;
           comments = n['comments'] != false;
         });
-      eazyThemeMode.value = switch (theme) {
-        'light' => ThemeMode.light,
-        'dark' => ThemeMode.dark,
-        _ => ThemeMode.light,
-      };
+      await setEazyThemeMode(theme == 'dark' ? ThemeMode.dark : ThemeMode.light);
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {

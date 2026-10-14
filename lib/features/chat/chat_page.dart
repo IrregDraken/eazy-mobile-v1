@@ -499,7 +499,7 @@ class _MessageBubble extends StatelessWidget {
                   child:Container(
                   margin:const EdgeInsets.only(bottom:5),
                   padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
-                  decoration:BoxDecoration(color:EazyColors.surfaceRaised,borderRadius:BorderRadius.circular(11),border:Border.all(color:EazyColors.border)),
+                  decoration:BoxDecoration(color:Theme.of(context).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(11),border:Border.all(color:Theme.of(context).dividerColor)),
                   child:Row(mainAxisSize:MainAxisSize.min,children:[
                     Icon(type.startsWith('image/')?Icons.image_outlined:type.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:EazyColors.green,size:18),
                     const SizedBox(width:7),
@@ -520,7 +520,7 @@ class _MessageBubble extends StatelessWidget {
             borderRadius:BorderRadius.circular(20),
             child:Container(
               padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-              decoration:BoxDecoration(color:EazyColors.surfaceRaised,borderRadius:BorderRadius.circular(10),border:Border.all(color:EazyColors.green.withValues(alpha:.22))),
+              decoration:BoxDecoration(color:Theme.of(context).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(10),border:Border.all(color:Theme.of(context).colorScheme.primary.withValues(alpha:.22))),
               child:Text(r['reaction'].toString() + ' ' + (r['count'] ?? 0).toString(),style:const TextStyle(fontSize:11)),
             ),
           )).toList(),

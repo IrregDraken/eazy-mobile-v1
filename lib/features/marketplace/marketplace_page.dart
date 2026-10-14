@@ -326,7 +326,7 @@ class _Product extends StatelessWidget {
 class _ProductPlaceholder extends StatelessWidget {
   const _ProductPlaceholder();
   @override Widget build(BuildContext context) => Container(
-    color: EazyColors.surfaceRaised,
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
     child: const Center(child: Icon(Icons.shopping_bag_outlined, size: 42, color: EazyColors.green)),
   );
 }

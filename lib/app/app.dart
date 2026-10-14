@@ -21,6 +21,7 @@ class _EazyAppState extends State<EazyApp> {
   @override
   void initState() {
     super.initState();
+    restoreEazyThemeMode();
     _router = buildRouter(widget.auth);
   }
 

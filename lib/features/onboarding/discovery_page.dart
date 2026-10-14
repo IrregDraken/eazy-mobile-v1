@@ -208,7 +208,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
     final username = _username(person);
     final name = _name(person);
     final key = username.toLowerCase();
-    final isFollowed = followed.contains(key);
+    final isFollowed = followed.contains(key) || person['isFollowing'] == true || person['is_following'] == true;
     final avatar = _avatar(person);
     return Column(children: [
       InkWell(
