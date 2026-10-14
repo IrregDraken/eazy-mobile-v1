@@ -15,7 +15,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final api = ApiClient();
-  String language = 'en', theme = 'system';
+  String language = 'en', theme = 'light';
   bool follows = true, likes = true, comments = true;
   bool loading = true;
   bool deleting = false;
@@ -34,7 +34,7 @@ class _SettingsPageState extends State<SettingsPage> {
       if (mounted)
         setState(() {
           language = s['languageCode']?.toString() ?? 'en';
-          theme = s['theme']?.toString() ?? 'system';
+          theme = s['theme']?.toString() == 'dark' ? 'dark' : 'light';
           follows = n['follows'] != false;
           likes = n['likes'] != false;
           comments = n['comments'] != false;
@@ -42,7 +42,7 @@ class _SettingsPageState extends State<SettingsPage> {
       eazyThemeMode.value = switch (theme) {
         'light' => ThemeMode.light,
         'dark' => ThemeMode.dark,
-        _ => ThemeMode.system,
+        _ => ThemeMode.light,
       };
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
@@ -192,7 +192,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     initialValue: theme,
                     decoration: const InputDecoration(labelText: 'Theme'),
                     items: const [
-                      DropdownMenuItem(value: 'system', child: Text('System')),
                       DropdownMenuItem(value: 'light', child: Text('Light')),
                       DropdownMenuItem(value: 'dark', child: Text('Dark')),
                     ],
@@ -275,6 +274,48 @@ class _SettingsPageState extends State<SettingsPage> {
                             'notifications': {'comments': v},
                           });
                         },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Your Eazy account',
+                  style: TextStyle(color: EazyColors.muted, fontWeight: FontWeight.w900),
+                ),
+                Card(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.person_outline_rounded),
+                        title: const Text('My profile'),
+                        subtitle: const Text('View your profile and posts'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.go('/home?tab=profile'),
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.notifications_outlined),
+                        title: const Text('Notifications'),
+                        subtitle: const Text('View your recent activity'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/notifications'),
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.shield_outlined),
+                        title: const Text('Security and sign-in'),
+                        subtitle: const Text('Manage account security'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/security'),
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.block_rounded),
+                        title: const Text('Blocked accounts'),
+                        subtitle: const Text('Manage people you have blocked'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/blocks'),
                       ),
                     ],
                   ),

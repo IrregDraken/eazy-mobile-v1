@@ -151,23 +151,23 @@ abstract final class EazyTheme {
       colorScheme: scheme.copyWith(
         primary: EazyColors.greenDeep,
         onPrimary: Colors.white,
-        surface: const Color(0xFFF8FCF9),
-        onSurface: const Color(0xFF10231A),
-        surfaceContainerHighest: const Color(0xFFE8F3EC),
+        surface: Colors.white,
+        onSurface: const Color(0xFF176B42),
+        surfaceContainerHighest: const Color(0xFFEAF6EE),
       ),
     );
     return base.copyWith(
-      scaffoldBackgroundColor: const Color(0xFFF5FAF7),
+      scaffoldBackgroundColor: Colors.white,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        foregroundColor: Color(0xFF10231A),
+        foregroundColor: Color(0xFF176B42),
       ),
       textTheme: base.textTheme
           .apply(
-            bodyColor: const Color(0xFF10231A),
-            displayColor: const Color(0xFF10231A),
+            bodyColor: const Color(0xFF176B42),
+            displayColor: const Color(0xFF176B42),
           )
           .copyWith(
             headlineLarge: const TextStyle(
@@ -189,7 +189,7 @@ abstract final class EazyTheme {
         fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
-          borderSide: const BorderSide(color: Color(0xFFD3E4D9)),
+          borderSide: const BorderSide(color: Color(0xFFCFE5D7)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
@@ -230,7 +230,7 @@ abstract final class EazyTheme {
         style: ButtonStyle(
           minimumSize: const WidgetStatePropertyAll(Size.fromHeight(54)),
           side: const WidgetStatePropertyAll(
-            BorderSide(color: Color(0xFFBFD8C9)),
+            BorderSide(color: Color(0xFFB7DCC4)),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
