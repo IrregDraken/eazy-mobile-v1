@@ -755,9 +755,9 @@ class ProfilePostTile extends StatelessWidget {
           if (mediaType == 'video')
             EazyVideoMedia(url: url, fit: BoxFit.cover, showControls: false)
           else
-            Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallback(post))
+            Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallback(post, context))
         else
-          _fallback(post),
+          _fallback(post, context),
         if (media.length > 1) const Positioned(right: 6, top: 6, child: Icon(Icons.collections_rounded, color: Colors.white, size: 18)),
         if (mediaType == 'video') const Positioned(right: 6, top: 6, child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20)),
         if (post['isPinned'] == true) const Positioned(left: 6, top: 6, child: Icon(Icons.push_pin_rounded, color: Colors.white, size: 18)),
@@ -765,7 +765,7 @@ class ProfilePostTile extends StatelessWidget {
     );
   }
 
-  Widget _fallback(Map<String, dynamic> post) => ColoredBox(
+  Widget _fallback(Map<String, dynamic> post, BuildContext context) => ColoredBox(
     color: EazyColors.surfaceRaised,
     child: Center(child: Padding(padding: const EdgeInsets.all(8), child: Text(post['content']?.toString() ?? '', maxLines: 4, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface)))),
   );
