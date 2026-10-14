@@ -275,8 +275,9 @@ class _SocialPageState extends State<SocialPage> {
                     ),
                   ),
                   IconButton(
-                    onPressed: load,
-                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'Notifications',
+                    onPressed: () => context.push('/notifications'),
+                    icon: const Icon(Icons.notifications_none_rounded),
                   ),
                   IconButton(
                     onPressed: posting ? null : compose,
