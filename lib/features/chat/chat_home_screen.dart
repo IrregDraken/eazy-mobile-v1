@@ -183,15 +183,15 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     final chats = _filtered;
     final unreadTotal = _items.fold<int>(0, (sum, c) => sum + _unread(c));
     return Scaffold(
-      backgroundColor: EazyColors.canvas, 
+      backgroundColor: EazyColors.canvas,
       body: SafeArea(child: Column(children: [
         Padding(padding: const EdgeInsets.fromLTRB(20, 12, 12, 10),
           child: Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [ Text('Eazy', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: EazyColors.green, fontWeight: FontWeight.w900, letterSpacing: 2.4)), const SizedBox(height: 2), Text('Chats', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 28, fontWeight: FontWeight.w900)), ])), 
-            IconButton(onPressed: _newChat, tooltip: 'New chat', style: IconButton.styleFrom(backgroundColor: EazyColors.green.withValues(alpha: .10), foregroundColor: EazyColors.green), icon: const Icon(Icons.edit_square)), 
-            IconButton(onPressed: _menu, tooltip: 'More options', icon: const Icon(Icons.tune_rounded, color: EazyColors.muted)), 
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [ Text('Eazy', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: EazyColors.green, fontWeight: FontWeight.w900, letterSpacing: 2.4)), const SizedBox(height: 2), Text('Chats', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 28, fontWeight: FontWeight.w900)), ])),
+            IconButton(onPressed: _newChat, tooltip: 'New chat', style: IconButton.styleFrom(backgroundColor: EazyColors.green.withValues(alpha: .10), foregroundColor: EazyColors.green), icon: const Icon(Icons.edit_square)),
+            IconButton(onPressed: _menu, tooltip: 'More options', icon: const Icon(Icons.tune_rounded, color: EazyColors.muted)),
           ])),
-        if (_connecting) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 8), child: Row(children: [Container(width: 7, height: 7, decoration: const BoxDecoration(color: EazyColors.amber, shape: BoxShape.circle)), const SizedBox(width: 8), Text('Reconnecting to Eazy', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: EazyColors.muted))])), 
+        if (_connecting) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 8), child: Row(children: [Container(width: 7, height: 7, decoration: const BoxDecoration(color: EazyColors.amber, shape: BoxShape.circle)), const SizedBox(width: 8), Text('Reconnecting to Eazy', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: EazyColors.muted))])),
         Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: TextField(controller: _search, onChanged: (_) => setState(() {}),
             style: const TextStyle(color: EazyColors.ink),
@@ -321,7 +321,7 @@ class _NewChatScreenState extends State<_NewChatScreen> {
           final c = _contacts[i]; final name = (c['displayName'] ?? c['fullName'] ?? c['username'] ?? 'Eazy user').toString();
           final avatar = c['avatarUrl']?.toString();
           return ListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5), leading: _Avatar(name: name, url: avatar), title: Text(name, style: const TextStyle(color: EazyColors.ink, fontWeight: FontWeight.w800)),
-            subtitle: Text('@${c['username'] ?? ''}', style: const TextStyle(color: EazyColors.muted)), 
+            subtitle: Text('@${c['username'] ?? ''}', style: const TextStyle(color: EazyColors.muted)),
             onTap: () => _select(c));
         })),
     ]));
