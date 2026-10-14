@@ -763,4 +763,3 @@ class ProfilePostTile extends StatelessWidget {
     child: Center(child: Padding(padding: const EdgeInsets.all(8), child: Text(post['content']?.toString() ?? '', maxLines: 4, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: EazyColors.ink)))),
   );
 }
-

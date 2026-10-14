@@ -373,7 +373,7 @@ class _MessageBubble extends StatelessWidget {
       ),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         if(!isMine&&sender['displayName']!=null&&!deleted)Padding(padding:const EdgeInsets.only(bottom:4),child:Text(sender['displayName'].toString(),style:const TextStyle(color:EazyColors.green,fontSize:10,fontWeight:FontWeight.w900,letterSpacing:.2))),
-        Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color:deleted?EazyColors.muted:EazyColors.ink,fontSize:14,height:1.45,fontStyle:deleted?FontStyle.italic:FontStyle.normal)), 
+        Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color:deleted?EazyColors.muted:EazyColors.ink,fontSize:14,height:1.45,fontStyle:deleted?FontStyle.italic:FontStyle.normal)),
         if(message['replyTo'] is Map)Padding(padding:const EdgeInsets.only(top:8),child:Text('↳ ' + ((message['replyTo']['body'] ?? 'Deleted message').toString()),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))),
         if(message['attachments'] is List && (message['attachments'] as List).isNotEmpty)
           Padding(
