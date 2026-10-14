@@ -173,7 +173,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
             if (!loading && error != null && products.isEmpty)
               SliverFillRemaining(hasScrollBody: false, child: _State(error!, load)),
             if (!loading && error != null && products.isNotEmpty)
-              SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text('Could not refresh listings: $error', style: const TextStyle(color: EazyColors.red))),
+              SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text('Could not refresh listings: $error', style: const TextStyle(color: EazyColors.red)))),
             if (!loading && error == null && products.isEmpty)
               const SliverFillRemaining(hasScrollBody: false, child: _State('No products match your search.', null)),
             if (products.isNotEmpty)
