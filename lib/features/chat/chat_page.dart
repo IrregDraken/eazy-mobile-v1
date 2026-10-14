@@ -2,9 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/media/media_service.dart';
+import 'chat_home_screen.dart';
 
 const _reactions = <String>['👍','❤️','😂','😮','😢','🙏','👏','🔥'];
 
@@ -15,118 +19,18 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final api = ApiClient();
-  final search = TextEditingController();
-  final username = TextEditingController();
-  bool loading = true, busy = false;
-  String? error;
-  List<Map<String,dynamic>> conversations = [];
 
-  @override void initState() { super.initState(); load(); }
-  @override void dispose() { search.dispose(); username.dispose(); super.dispose(); }
-
-  Future<void> load() async {
-    setState(() { loading = true; error = null; });
-    try {
-      final r = await api.get('chat/conversations?page=1&limit=50', auth:true);
-      conversations = (r['items'] as List? ?? const []).whereType<Map>()
-        .map((e) => Map<String,dynamic>.from(e)).toList();
-    } on ApiException catch (e) { if (mounted) setState(() => error = e.message); }
-    finally { if (mounted) setState(() => loading = false); }
+  Future<void> _openConversation(Map<String, dynamic> conversation) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ConversationPage(api: api, conversation: conversation),
+    ));
   }
 
-  Future<void> startChat() async {
-    final value = username.text.trim().replaceFirst('@','').toLowerCase();
-    if (!RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Enter a valid Eazy username.')));
-      return;
-    }
-    setState(() => busy = true);
-    try {
-      final r = await api.post('chat/conversations', auth:true, body:{'username':value});
-      username.clear();
-      await load();
-      final c = r['conversation'];
-      if (c is Map && mounted) {
-        await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ConversationPage(api:api, conversation:Map<String,dynamic>.from(c))));
-        await load();
-      }
-    } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.message)));
-    } finally { if (mounted) setState(() => busy = false); }
-  }
-
-  @override Widget build(BuildContext context) {
-    final q = search.text.trim().toLowerCase();
-    final filtered = conversations.where((c) {
-      if (q.isEmpty) return true;
-      final name = (c['displayName'] ?? c['display_name'] ?? c['username'] ?? '').toString().toLowerCase();
-      return name.contains(q);
-    }).toList();
-
-    return SafeArea(child:RefreshIndicator(onRefresh:load,child:ListView(
-      padding:const EdgeInsets.fromLTRB(20,18,20,110),children:[
-        Row(children:[
-          const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text('Chat',style:TextStyle(fontSize:30,fontWeight:FontWeight.w900,letterSpacing:-1)),
-            SizedBox(height:3),Text('Conversations that move with you',style:TextStyle(color:EazyColors.muted))
-          ])),
-          IconButton(onPressed:load,icon:const Icon(Icons.refresh_rounded))
-        ]),
-        const SizedBox(height:16),
-        Card(child:Padding(padding:const EdgeInsets.all(15),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          const Text('Start a conversation',style:TextStyle(fontWeight:FontWeight.w900)),
-          const SizedBox(height:10),
-          Row(children:[
-            Expanded(child:TextField(controller:username,autocorrect:false,decoration:const InputDecoration(
-              hintText:'@username',prefixIcon:Icon(Icons.person_search_outlined)))),
-            const SizedBox(width:9),
-            SizedBox(width:54,height:54,child:FilledButton(
-              onPressed:busy?null:startChat,
-              child:busy?const SizedBox(width:19,height:19,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.arrow_forward_rounded)))
-          ])
-        ]))),
-        const SizedBox(height:15),
-        TextField(controller:search,onChanged:(_) => setState((){}),decoration:const InputDecoration(
-          prefixIcon:Icon(Icons.search_rounded),hintText:'Search conversations')),
-        const SizedBox(height:18),
-        const Text('Messages',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900)),
-        const SizedBox(height:9),
-        if (loading) const Padding(padding:EdgeInsets.only(top:100),child:Center(child:CircularProgressIndicator()))
-        else if (error != null) _ChatState(error!,load)
-        else if (filtered.isEmpty) const _ChatState('No conversations yet. Start one above.')
-        else ...filtered.map((c) => _ConversationTile(c,onTap:() async {
-          await Navigator.of(context).push(MaterialPageRoute(builder:(_) => ConversationPage(api:api,conversation:c)));
-          await load();
-        }))
-      ])));
-  }
-}
-
-class _ConversationTile extends StatelessWidget {
-  const _ConversationTile(this.c,{required this.onTap});
-  final Map<String,dynamic> c;
-  final VoidCallback onTap;
-  @override Widget build(BuildContext context) {
-    final participants = c['participants'] is List ? c['participants'] as List : const[];
-    final p = participants.isNotEmpty && participants.first is Map ? Map<String,dynamic>.from(participants.first as Map) : <String,dynamic>{};
-    final name = (c['displayName'] ?? c['display_name'] ?? p['displayName'] ?? c['username'] ?? 'Eazy user').toString();
-    final latest = c['latestMessage'] is Map ? Map<String,dynamic>.from(c['latestMessage'] as Map) : <String,dynamic>{};
-    final unread = int.tryParse((c['unreadCount'] ?? c['unread_count'] ?? 0).toString()) ?? 0;
-    return Padding(padding:const EdgeInsets.only(bottom:8),child:Card(child:InkWell(onTap:onTap,
-      borderRadius:BorderRadius.circular(EazyRadius.lg),child:Padding(padding:const EdgeInsets.all(13),child:Row(children:[
-        CircleAvatar(radius:25,child:Text(name.characters.first.toUpperCase())),
-        const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text(name,style:const TextStyle(fontWeight:FontWeight.w900)),
-          const SizedBox(height:4),Text(latest['body']?.toString() ?? 'Start a conversation',
-            maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:12))
-        ])),
-        if(unread>0)Container(constraints:const BoxConstraints(minWidth:25),height:25,alignment:Alignment.center,
-          padding:const EdgeInsets.symmetric(horizontal:7),decoration:const BoxDecoration(color:EazyColors.green,shape:BoxShape.circle),
-          child:Text(unread.toString(),style:const TextStyle(color:EazyColors.canvas,fontSize:10,fontWeight:FontWeight.w900))),
-        const SizedBox(width:4),const Icon(Icons.chevron_right_rounded,color:EazyColors.muted)
-      ])))));
-  }
+  @override
+  Widget build(BuildContext context) => ChatHomeScreen(
+    api: api,
+    onOpen: _openConversation,
+  );
 }
 
 class ConversationPage extends StatefulWidget {
@@ -139,16 +43,31 @@ class ConversationPage extends StatefulWidget {
 class _ConversationPageState extends State<ConversationPage> {
   final draft=TextEditingController();
   final scroll=ScrollController();
+  late final EazyMediaService media;
+  final List<MediaUpload> pendingAttachments=[];
   List<Map<String,dynamic>> messages=[];
   Map<String,dynamic>? replying,editing;
   bool loading=true,sending=false;
   String? error;
+  String? currentUsername;
   WebSocket? socket;
   StreamSubscription? subscription;
 
   String get id=>widget.conversation['id']?.toString() ?? '';
 
-  @override void initState(){super.initState();loadMessages();connectRealtime();}
+  @override void initState(){super.initState();media=EazyMediaService(widget.api);loadMessages();connectRealtime();loadMyProfile();}
+  Future<void> loadMyProfile() async {
+    try {
+      final result = await widget.api.get('profiles/me', auth:true);
+      final profile = result['profile'];
+      if (mounted && profile is Map) setState(() => currentUsername = profile['username']?.toString());
+    } catch (_) {}
+  }
+  bool _isMine(Map<String,dynamic> message) {
+    final sender = message['sender'] is Map ? Map<String,dynamic>.from(message['sender'] as Map) : <String,dynamic>{};
+    final value = (sender['username'] ?? message['senderUsername'] ?? message['sender_username'])?.toString().toLowerCase();
+    return currentUsername != null && value == currentUsername!.toLowerCase();
+  }
   @override void dispose(){subscription?.cancel();socket?.close();draft.dispose();scroll.dispose();super.dispose();}
 
   Future<void> loadMessages() async {
@@ -204,7 +123,7 @@ class _ConversationPageState extends State<ConversationPage> {
 
   Future<void> send() async {
     final body=draft.text.trim();
-    if(body.isEmpty||sending)return;
+    if((body.isEmpty && pendingAttachments.isEmpty)||sending)return;
     setState(()=>sending=true);
     try{
       if(editing!=null){
@@ -214,11 +133,12 @@ class _ConversationPageState extends State<ConversationPage> {
         editing=null;
       }else{
         final r=await widget.api.post('chat/conversations/' + id + '/messages',auth:true,body:{
-          'body':body,if(replying!=null)'replyToMessageId':replying!['id']
+          if(body.isNotEmpty)'body':body,if(replying!=null)'replyToMessageId':replying!['id'],if(pendingAttachments.isNotEmpty)'attachments':pendingAttachments.map((a)=>{'storageKey':a.path,'contentType':a.contentType,'byteSize':a.byteSize}).toList()
         });
         final m=r['message'];
         if(m is Map && !messages.any((x)=>x['id']==m['id']))messages.add(Map<String,dynamic>.from(m));
         replying=null;
+        pendingAttachments.clear();
       }
       draft.clear();setState((){});await markRead();
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -250,6 +170,84 @@ class _ConversationPageState extends State<ConversationPage> {
     }on ApiException catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.message)));}
   }
 
+  Future<void> _pickAttachment() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(child: Wrap(children: [
+        ListTile(leading: const Icon(Icons.photo_library_outlined, color: EazyColors.green), title: const Text('Photo'), subtitle: const Text('Choose an image'), onTap: () => Navigator.pop(sheet, 'photo')),
+        ListTile(leading: const Icon(Icons.video_library_outlined, color: EazyColors.green), title: const Text('Video'), subtitle: const Text('Choose a video'), onTap: () => Navigator.pop(sheet, 'video')),
+        ListTile(leading: const Icon(Icons.attach_file_rounded, color: EazyColors.green), title: const Text('File or document'), subtitle: const Text('PDF, Word, TXT or CSV, up to 25 MB'), onTap: () => Navigator.pop(sheet, 'file')),
+        const SizedBox(height: 8),
+      ])),
+    );
+    if (choice == null || !mounted) return;
+    try {
+      final upload = switch (choice) {
+        'photo' => await media.pickAndUpload(kind: 'message'),
+        'video' => await media.pickAndUploadVideo(kind: 'message'),
+        _ => await media.pickAndUploadDocument(kind: 'message'),
+      };
+      if (upload != null && mounted) setState(() => pendingAttachments.add(upload));
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not attach that file. Please try again.')));
+    }
+  }
+
+  Future<void> _openAttachment(Map<String, dynamic> attachment) async {
+    final path = attachment['storageKey']?.toString();
+    if (path == null || path.isEmpty) return;
+    try {
+      final result = await widget.api.post('media/signed-message-attachment-url', auth: true, body: {'path': path});
+      final url = result['signedUrl']?.toString();
+      if (url == null || url.isEmpty) throw const ApiException('The attachment could not be opened.');
+      final type = attachment['contentType']?.toString() ?? '';
+      if (type.startsWith('image/')) {
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => Dialog(
+            backgroundColor: EazyColors.canvas,
+            insetPadding: const EdgeInsets.all(16),
+            child: InteractiveViewer(
+              child: Image.network(url, fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text('This image could not be loaded.'),
+                ),
+              ),
+            ),
+          ),
+        );
+      } else {
+        final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        if (!opened && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No app could open this attachment.')));
+      }
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open this attachment. Please try again.')));
+    }
+  }
+
+  Future<void> _translateDraft() async {
+    final text = draft.text.trim();
+    if (text.isEmpty) {
+      if (mounted) context.push('/translation');
+      return;
+    }
+    try {
+      final result = await widget.api.post('translation', auth: true, body: {'text': text, 'targetLanguage': 'en'});
+      final translated = (result['translatedText'] ?? result['text'])?.toString();
+      if (translated == null || translated.trim().isEmpty) throw const ApiException('No translated text was returned.');
+      if (mounted) setState(() { draft.text = translated; draft.selection = TextSelection.collapsed(offset: translated.length); });
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> deleteMessage(Map<String,dynamic> m) async {
     try{await widget.api.delete('chat/messages/' + m['id'].toString(),auth:true);await loadMessages();}
     on ApiException catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.message)));}
@@ -266,6 +264,7 @@ class _ConversationPageState extends State<ConversationPage> {
     final status=m['status']?.toString() ?? 'sent';
     showModalBottomSheet(context:context,showDragHandle:true,builder:(ctx)=>SafeArea(child:Wrap(children:[
       ListTile(leading:const Icon(Icons.reply_rounded),title:const Text('Reply'),onTap:(){Navigator.pop(ctx);setState(()=>replying=m);}),
+      if(status!='deleted')ListTile(leading:const Icon(Icons.add_reaction_outlined),title:const Text('React'),onTap:(){Navigator.pop(ctx);chooseReaction(m);}),
       if(status!='deleted')ListTile(leading:const Icon(Icons.translate_rounded),title:const Text('Translate to English'),onTap:(){Navigator.pop(ctx);translate(m);}),
       if(status!='deleted')ListTile(leading:const Icon(Icons.flag_outlined),title:const Text('Report'),onTap:(){Navigator.pop(ctx);report(m,'Other inappropriate content');}),
       if(status!='deleted')ListTile(leading:const Icon(Icons.edit_outlined),title:const Text('Edit'),onTap:(){Navigator.pop(ctx);setState(() { editing=m; draft.text=m['body']?.toString() ?? ''; });}),
@@ -274,26 +273,70 @@ class _ConversationPageState extends State<ConversationPage> {
     ])));
   }
 
+  void chooseReaction(Map<String,dynamic> message) {
+    showModalBottomSheet<void>(
+      context:context,
+      showDragHandle:true,
+      builder:(ctx)=>SafeArea(
+        child:Padding(
+          padding:const EdgeInsets.all(18),
+          child:Wrap(
+            alignment:WrapAlignment.spaceEvenly,
+            spacing:8,
+            runSpacing:8,
+            children:_reactions.map((reaction)=>IconButton(
+              onPressed:(){Navigator.pop(ctx);reactTo(message,reaction);},
+              icon:Text(reaction,style:const TextStyle(fontSize:26)),
+            )).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override Widget build(BuildContext context){
     final title=(widget.conversation['displayName'] ?? widget.conversation['display_name'] ?? widget.conversation['username'] ?? 'Conversation').toString();
     return Scaffold(
       appBar:AppBar(title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text(title,style:const TextStyle(fontSize:16,fontWeight:FontWeight.w900)),
-        Text('Eazy chat',style:const TextStyle(fontSize:10,color:EazyColors.muted))
-      ]),actions:[IconButton(onPressed:loadMessages,icon:const Icon(Icons.refresh_rounded))]),
+        Text(title,style:Theme.of(context).textTheme.titleMedium?.copyWith(fontSize:17,fontWeight:FontWeight.w900)),
+        Text('EAZY CONVERSATION',style:const TextStyle(fontSize:9,color:EazyColors.green,fontWeight:FontWeight.w900,letterSpacing:1.35))
+      ]),actions:[IconButton(onPressed:loadMessages,tooltip:'Refresh conversation',icon:const Icon(Icons.refresh_rounded,color:EazyColors.green))]),
       body:Column(children:[
         if(replying!=null)_ContextBar(label:'REPLYING',value:replying!['body']?.toString() ?? '',onClose:()=>setState(()=>replying=null)),
         if(editing!=null)_ContextBar(label:'EDITING',value:editing!['body']?.toString() ?? '',onClose:()=>setState(() { editing=null; draft.clear(); })),
         Expanded(child:loading?const Center(child:CircularProgressIndicator()):error!=null?_ChatState(error!,loadMessages):messages.isEmpty
           ?const _ChatState('No messages yet. Start the conversation.')
           :ListView.builder(controller:scroll,padding:const EdgeInsets.fromLTRB(16,12,16,16),itemCount:messages.length,itemBuilder:(_,i){
-            return _MessageBubble(message:messages[i],onLongPress:()=>actions(messages[i]),onReaction:(r)=>reactTo(messages[i],r),onTranslate:()=>translate(messages[i]));
+            return _MessageBubble(message:messages[i],isMine:_isMine(messages[i]),onLongPress:()=>actions(messages[i]),onReaction:(r)=>reactTo(messages[i],r),onTranslate:()=>translate(messages[i]),onOpenAttachment:_openAttachment);
           })),
-        SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(12,6,12,10),child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
+        if(pendingAttachments.isNotEmpty)
+          SizedBox(height:54,child:ListView.separated(
+            scrollDirection:Axis.horizontal,
+            padding:const EdgeInsets.fromLTRB(14,4,14,4),
+            itemCount:pendingAttachments.length,
+            separatorBuilder:(_,__)=>const SizedBox(width:8),
+            itemBuilder:(context,index){
+              final item=pendingAttachments[index];
+              return Container(
+                constraints:const BoxConstraints(maxWidth:220),
+                padding:const EdgeInsets.only(left:10,right:4),
+                decoration:BoxDecoration(color:EazyColors.surface,borderRadius:BorderRadius.circular(14),border:Border.all(color:EazyColors.border)),
+                child:Row(mainAxisSize:MainAxisSize.min,children:[
+                  Icon(item.contentType.startsWith('image/')?Icons.image_outlined:item.contentType.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:EazyColors.green,size:18),
+                  const SizedBox(width:6),
+                  Flexible(child:Text(item.fileName,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:11))),
+                  IconButton(visualDensity:VisualDensity.compact,iconSize:17,onPressed:()=>setState(()=>pendingAttachments.removeAt(index)),icon:const Icon(Icons.close_rounded)),
+                ]),
+              );
+            },
+          )),
+        SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(8,6,8,10),child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
+          IconButton(tooltip:'Attach photo, video or document',onPressed:sending?null:_pickAttachment,style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:const Icon(Icons.add_circle_outline_rounded,size:29)),
           Expanded(child:TextField(controller:draft,maxLines:5,minLines:1,decoration:InputDecoration(
-            hintText:editing!=null?'Edit message…':replying!=null?'Write a reply…':'Write a message…',
-            prefixIcon:Icon(editing!=null?Icons.edit_outlined:replying!=null?Icons.reply_rounded:Icons.chat_bubble_outline_rounded)))),
-          const SizedBox(width:8),SizedBox(width:54,height:54,child:FilledButton(onPressed:sending?null:send,child:sending?const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2)):Icon(editing!=null?Icons.check_rounded:Icons.send_rounded)))
+            hintText:editing!=null?'Edit message…':replying!=null?'Write a reply…':'Message on Eazy…'))),
+          IconButton(tooltip:'Open Eazy Assist',onPressed:()=>context.push('/assist'),style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:Image.asset('assets/images/eazy_logo_mark.png',width:23,height:23,errorBuilder:(_,__,___)=>const Icon(Icons.auto_awesome_rounded))),
+          IconButton(tooltip:'Translate draft to English',onPressed:_translateDraft,style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:const Icon(Icons.translate_rounded)),
+          SizedBox(width:48,height:52,child:FilledButton(onPressed:sending?null:send,style:FilledButton.styleFrom(padding:EdgeInsets.zero),child:sending?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):Icon(editing!=null?Icons.check_rounded:Icons.send_rounded)))
         ])))
       ])
     );
@@ -301,22 +344,67 @@ class _ConversationPageState extends State<ConversationPage> {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message,required this.onLongPress,required this.onReaction,required this.onTranslate});
+  const _MessageBubble({required this.message,required this.isMine,required this.onLongPress,required this.onReaction,required this.onTranslate,required this.onOpenAttachment});
   final Map<String,dynamic> message;
+  final bool isMine;
   final VoidCallback onLongPress;
   final ValueChanged<String> onReaction;
   final VoidCallback onTranslate;
+  final ValueChanged<Map<String,dynamic>> onOpenAttachment;
   @override Widget build(BuildContext context){
     final sender=message['sender'] is Map?Map<String,dynamic>.from(message['sender'] as Map):<String,dynamic>{};
     final deleted=message['status']=='deleted';
     final reactions=(message['reactions'] as List? ?? const[]).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();
-    return GestureDetector(onLongPress:onLongPress,child:Container(
+    return Align(
+      alignment:isMine?Alignment.centerRight:Alignment.centerLeft,
+      child:ConstrainedBox(
+        constraints:BoxConstraints(maxWidth:MediaQuery.sizeOf(context).width*.80),
+        child:GestureDetector(onLongPress:onLongPress,child:Container(
       margin:const EdgeInsets.only(bottom:9),padding:const EdgeInsets.fromLTRB(13,10,10,9),
-      decoration:BoxDecoration(color:deleted?EazyColors.surfaceRaised:EazyColors.surface,borderRadius:BorderRadius.circular(19),border:Border.all(color:EazyColors.border)),
+      decoration:BoxDecoration(
+        color:deleted?EazyColors.surfaceRaised:(isMine?const Color(0xFF173D2B):EazyColors.surface),
+        borderRadius:BorderRadius.only(
+          topLeft:const Radius.circular(20),
+          topRight:const Radius.circular(20),
+          bottomLeft:Radius.circular(isMine?20:7),
+          bottomRight:Radius.circular(isMine?7:20),
+        ),
+        border:Border.all(color:isMine?EazyColors.green.withValues(alpha:.24):EazyColors.border),
+      ),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        if(sender['displayName']!=null&&!deleted)Text(sender['displayName'].toString(),style:const TextStyle(color:EazyColors.muted,fontSize:10,fontWeight:FontWeight.w800)),
-        Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color:deleted?EazyColors.muted:EazyColors.ink,fontSize:14,height:1.35,fontStyle:deleted?FontStyle.italic:FontStyle.normal)),
+        if(!isMine&&sender['displayName']!=null&&!deleted)Padding(padding:const EdgeInsets.only(bottom:4),child:Text(sender['displayName'].toString(),style:const TextStyle(color:EazyColors.green,fontSize:10,fontWeight:FontWeight.w900,letterSpacing:.2))),
+        Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color:deleted?EazyColors.muted:EazyColors.ink,fontSize:14,height:1.45,fontStyle:deleted?FontStyle.italic:FontStyle.normal)), 
         if(message['replyTo'] is Map)Padding(padding:const EdgeInsets.only(top:8),child:Text('↳ ' + ((message['replyTo']['body'] ?? 'Deleted message').toString()),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))),
+        if(message['attachments'] is List && (message['attachments'] as List).isNotEmpty)
+          Padding(
+            padding:const EdgeInsets.only(top:8),
+            child:Column(
+              crossAxisAlignment:CrossAxisAlignment.start,
+              children:(message['attachments'] as List).whereType<Map>().map<Widget>((raw){
+                final attachment=Map<String,dynamic>.from(raw);
+                final type=attachment['contentType']?.toString() ?? '';
+                final bytes=int.tryParse(attachment['byteSize']?.toString() ?? '') ?? 0;
+                final label=type.startsWith('image/')?'Photo':type.startsWith('video/')?'Video':type.startsWith('audio/')?'Audio':'Document';
+                final size=bytes>=1024*1024?'${(bytes/(1024*1024)).toStringAsFixed(1)} MB':'${(bytes/1024).round()} KB';
+                return InkWell(
+                  onTap:()=>onOpenAttachment(attachment),
+                  borderRadius:BorderRadius.circular(11),
+                  child:Container(
+                  margin:const EdgeInsets.only(bottom:5),
+                  padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
+                  decoration:BoxDecoration(color:EazyColors.surfaceRaised,borderRadius:BorderRadius.circular(11),border:Border.all(color:EazyColors.border)),
+                  child:Row(mainAxisSize:MainAxisSize.min,children:[
+                    Icon(type.startsWith('image/')?Icons.image_outlined:type.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:EazyColors.green,size:18),
+                    const SizedBox(width:7),
+                    Text('${label} attachment',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
+                    const SizedBox(width:7),
+                    Text(size,style:const TextStyle(fontSize:10,color:EazyColors.muted)),
+                  ]),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
         if(message['_translation']!=null)Padding(padding:const EdgeInsets.only(top:8),child:Text(message['_translation'].toString(),style:const TextStyle(color:EazyColors.mint,fontSize:12,height:1.35))),
         if(reactions.isNotEmpty)Padding(padding:const EdgeInsets.only(top:7),child:Wrap(
           spacing:4,
@@ -325,19 +413,17 @@ class _MessageBubble extends StatelessWidget {
             borderRadius:BorderRadius.circular(20),
             child:Container(
               padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-              decoration:BoxDecoration(color:EazyColors.green.withValues(alpha:.08),borderRadius:BorderRadius.circular(20),border:Border.all(color:EazyColors.border)),
+              decoration:BoxDecoration(color:EazyColors.surfaceRaised,borderRadius:BorderRadius.circular(10),border:Border.all(color:EazyColors.green.withValues(alpha:.22))),
               child:Text(r['reaction'].toString() + ' ' + (r['count'] ?? 0).toString(),style:const TextStyle(fontSize:11)),
             ),
           )).toList(),
         )),
-        if(!deleted)SizedBox(height:28,child:ListView(scrollDirection:Axis.horizontal,children:_reactions.map((r)=>IconButton(
-          padding:EdgeInsets.zero,constraints:const BoxConstraints(minWidth:30),onPressed:()=>onReaction(r),icon:Text(r,style:const TextStyle(fontSize:16)))).toList())),
-        Row(children:[
+         Row(children:[
           Expanded(child:Text(_time(message['createdAt'] ?? message['created_at']),style:const TextStyle(color:EazyColors.muted,fontSize:9))),
-          if(!deleted)TextButton(onPressed:onTranslate,child:const Text('Translate',style:TextStyle(fontSize:10)))
+          if(!deleted)TextButton.icon(onPressed:onTranslate, icon:const Icon(Icons.translate_rounded,size:13), label:const Text('Translate',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800)), style:TextButton.styleFrom(foregroundColor:EazyColors.green,visualDensity:VisualDensity.compact,padding:const EdgeInsets.symmetric(horizontal:6)))
         ])
       ])
-    ));
+        ))));
   }
   String _time(dynamic value){
     final d=DateTime.tryParse(value?.toString() ?? '');if(d==null)return '';
@@ -350,8 +436,8 @@ class _ContextBar extends StatelessWidget{
   const _ContextBar({required this.label,required this.value,required this.onClose});
   final String label,value;final VoidCallback onClose;
   @override Widget build(BuildContext context)=>Container(margin:const EdgeInsets.fromLTRB(12,6,12,0),padding:const EdgeInsets.symmetric(horizontal:12,vertical:9),
-    decoration:BoxDecoration(color:EazyColors.surfaceRaised,borderRadius:BorderRadius.circular(15),border:Border.all(color:EazyColors.border)),child:Row(children:[
-      Container(width:3,height:31,decoration:BoxDecoration(color:EazyColors.green,borderRadius:BorderRadius.circular(4))),const SizedBox(width:9),
+    decoration:BoxDecoration(color:EazyColors.surface,borderRadius:BorderRadius.circular(EazyRadius.md),border:Border.all(color:EazyColors.border)),child:Row(children:[
+      Container(width:3,height:31,decoration:BoxDecoration(gradient:const LinearGradient(colors:[EazyColors.green,EazyColors.mint],begin:Alignment.topCenter,end:Alignment.bottomCenter),borderRadius:BorderRadius.circular(4))),const SizedBox(width:9),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(label,style:const TextStyle(color:EazyColors.green,fontSize:9,fontWeight:FontWeight.w900,letterSpacing:1)),
         Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))
@@ -362,7 +448,7 @@ class _ContextBar extends StatelessWidget{
 class _ChatState extends StatelessWidget{
   const _ChatState(this.message,[this.action]);final String message;final Future<void> Function()? action;
   @override Widget build(BuildContext context)=>Padding(padding:const EdgeInsets.symmetric(vertical:70,horizontal:24),child:Column(children:[
-    const Icon(Icons.forum_outlined,size:44,color:EazyColors.green),const SizedBox(height:12),
+    Container(width:68,height:68,decoration:BoxDecoration(color:EazyColors.green.withValues(alpha:.08),borderRadius:BorderRadius.circular(22),border:Border.all(color:EazyColors.border)),child:const Icon(Icons.forum_outlined,size:32,color:EazyColors.green)),const SizedBox(height:12),
     Text(message,textAlign:TextAlign.center,style:const TextStyle(color:EazyColors.muted,height:1.4)),
     if(action!=null)...[const SizedBox(height:14),OutlinedButton(onPressed:action,child:const Text('Try again'))]
   ]));

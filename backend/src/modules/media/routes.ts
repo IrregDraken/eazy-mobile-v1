@@ -10,5 +10,6 @@ export function createMediaRouter(service: MediaService): Router {
   router.get('/capabilities', controller.capabilities);
   router.post('/upload-url', validate('body', mediaUploadSchema), controller.upload);
   router.post('/signed-url', validate('body', mediaPathSchema), controller.sign);
+  router.post('/signed-message-attachment-url', validate('body', mediaPathSchema), controller.signMessageAttachment);
   return router;
 }

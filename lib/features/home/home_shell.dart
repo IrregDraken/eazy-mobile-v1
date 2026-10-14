@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
 import '../chat/chat_page.dart';
@@ -8,18 +9,57 @@ import '../social/social_page.dart';
 import '../wallet/wallet_page.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key,required this.auth});
+  const HomeShell({super.key,required this.auth, this.initialTab});
   final AuthController auth;
+  final String? initialTab;
   @override State<HomeShell> createState()=>_HomeShellState();
 }
 class _HomeShellState extends State<HomeShell>{
   int index=0;
+  @override void initState(){super.initState(); index = switch(widget.initialTab){'shop'=>1,'wallet'=>2,'chat'=>3,'profile'=>4,_=>0};}
   late final pages=<Widget>[
     SocialPage(auth:widget.auth),const MarketplacePage(),const WalletPage(),const ChatPage(),ProfilePage(auth:widget.auth)
   ];
   @override Widget build(BuildContext context)=>Scaffold(
     extendBody:true,
-    body:IndexedStack(index:index,children:pages),
+    body:Stack(
+      children:[
+        IndexedStack(index:index,children:pages),
+        Positioned(
+          right:18,
+          bottom:94,
+          child:SafeArea(
+            child:Tooltip(
+              message:'Ask Eazy Assist',
+              child:Material(
+                color:EazyColors.green,
+                elevation:10,
+                shape:const CircleBorder(),
+                child:InkWell(
+                  customBorder:const CircleBorder(),
+                  onTap:()=>context.push('/assist'),
+                  child:Container(
+                    width:58,
+                    height:58,
+                    padding:const EdgeInsets.all(13),
+                    decoration:BoxDecoration(
+                      shape:BoxShape.circle,
+                      border:Border.all(color:EazyColors.mint.withValues(alpha:.75),width:1.5),
+                      boxShadow:[BoxShadow(color:EazyColors.green.withValues(alpha:.30),blurRadius:20,spreadRadius:1)],
+                    ),
+                    child:Image.asset(
+                      'assets/images/eazy_logo_mark.png',
+                      fit:BoxFit.contain,
+                      errorBuilder:(_,__,___)=>const Icon(Icons.auto_awesome_rounded,color:EazyColors.canvas,size:28),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
     bottomNavigationBar:Padding(
       padding:const EdgeInsets.fromLTRB(12,0,12,12),
       child:ClipRRect(

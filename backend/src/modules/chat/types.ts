@@ -69,8 +69,9 @@ export interface ChatReadInput {
 }
 
 export interface ChatCreateMessageInput {
-  body: string;
+  body?: string;
   replyToMessageId?: string;
+  attachments?: { storageKey: string; contentType: string; byteSize: number }[];
 }
 
 export interface ChatEditMessageInput {
@@ -143,7 +144,7 @@ export interface ChatRepositoryContract {
   listMessages(userId: string, conversationId: string, page: number, limit: number): Promise<ChatPageResult<ChatMessage>>;
   getMessageForMember(client: import('pg').Pool | import('pg').PoolClient, messageId: string, userId: string): Promise<ChatMessage | null>;
   replyBelongsToConversation(client: import('pg').Pool | import('pg').PoolClient, replyId: string, conversationId: string, userId: string): Promise<boolean>;
-  createMessage(client: import('pg').PoolClient, conversationId: string, senderId: string, body: string, replyToMessageId?: string): Promise<string | null>;
+  createMessage(client: import('pg').PoolClient, conversationId: string, senderId: string, body: string, replyToMessageId?: string, attachments?: { storageKey: string; contentType: string; byteSize: number }[]): Promise<string | null>;
   getMessageAsSender(client: import('pg').PoolClient, messageId: string, senderId: string): Promise<Pick<ChatMessage, 'id' | 'status' | 'deletedAt'> | null>;
   softDeleteMessage(client: import('pg').PoolClient, messageId: string, senderId: string): Promise<boolean>;
   editMessage(client: import('pg').PoolClient, messageId: string, senderId: string, body: string): Promise<boolean>;

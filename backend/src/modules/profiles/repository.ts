@@ -57,6 +57,29 @@ export class ProfileRepository {
     return result.rows[0] ?? null;
   }
 
+  async searchPublic(query: string, viewerId: string, limit = 15): Promise<PublicProfileRecord[]> {
+    const normalized = query.trim().toLowerCase();
+    const pattern = `%${normalized}%`;
+    const result = await this.pool.query<PublicProfileRecord>(
+      `SELECT p.user_id, p.username, p.display_name, p.first_name, p.last_name, p.bio, p.avatar_url, p.onboarding_status
+       FROM profiles p JOIN users u ON u.id = p.user_id AND u.status = 'active'
+       WHERE p.user_id <> $1
+         AND (
+           p.username ILIKE $2 OR p.display_name ILIKE $2
+           OR concat_ws(' ', p.first_name, p.last_name) ILIKE $2
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM blocks b
+           WHERE (b.blocker_id = $1 AND b.blocked_id = p.user_id)
+              OR (b.blocker_id = p.user_id AND b.blocked_id = $1)
+         )
+       ORDER BY CASE WHEN lower(p.username) = $3 THEN 0 ELSE 1 END, p.display_name
+       LIMIT $4`,
+      [viewerId, pattern, normalized, limit]
+    );
+    return result.rows;
+  }
+
   async getStats(userId: string): Promise<ProfileStats> {
     const result = await this.pool.query<ProfileStats>(
       `SELECT

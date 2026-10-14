@@ -96,14 +96,22 @@ class WelcomePage extends StatelessWidget {
                         const SizedBox(height: 8),
                         SizedBox(
                           width: double.infinity,
-                          height: 42,
-                          child: TextButton(
+                          height: 50,
+                          child: FilledButton(
                             onPressed: () => context.go('/auth?mode=login'),
-                            style: TextButton.styleFrom(
-                              foregroundColor:
-                                  dark ? Colors.white : EazyColors.greenDeep,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: EazyColors.green,
+                              foregroundColor: EazyColors.canvas,
+                              disabledBackgroundColor: EazyColors.green.withValues(alpha: .45),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              elevation: 0,
                             ),
-                            child: const Text('I ALREADY HAVE AN ACCOUNT'),
+                            child: const Text(
+                              'LOG IN',
+                              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: .5),
+                            ),
                           ),
                         ),
                       ],

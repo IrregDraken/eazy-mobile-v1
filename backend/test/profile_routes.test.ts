@@ -9,6 +9,7 @@ const config = { NODE_ENV: 'test', PORT: 3000, LOG_LEVEL: 'silent', DATABASE_URL
 
 const fakeService = {
   getPublic: async (username: string) => ({ username, displayName: 'Public', firstName: null, lastName: null, bio: null, avatarUrl: null }),
+  searchPublic: async (query: string) => [{ username: 'ada_okafor', displayName: 'Ada Okafor', firstName: 'Ada', lastName: 'Okafor', avatarUrl: null }],
   isUsernameAvailable: async (username: string) => ({ username, available: true }),
   getMe: async () => { throw new Error('should not be called without auth'); },
   update: async () => { throw new Error('should not be called without auth'); },
@@ -25,6 +26,20 @@ test('profile routes require authentication for current-user operations', async 
     const body = await response.json();
     assert.equal(response.status, 401);
     assert.equal(body.error.code, 'UNAUTHORIZED');
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+});
+
+test('recipient search requires an authenticated Eazy session', async () => {
+  const app = createApp(config, createLogger(config), { profileRouter: createProfileRouter(fakeService) });
+  const server = app.listen(0);
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const response = await fetch(`http://127.0.0.1:${address.port}/v1/profiles/search?q=Ada`);
+    assert.equal(response.status, 401);
+    assert.equal((await response.json()).error.code, 'UNAUTHORIZED');
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }

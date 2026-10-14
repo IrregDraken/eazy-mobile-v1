@@ -44,6 +44,21 @@ export class ProfileService {
     return { username: profile.username, displayName: profile.display_name, firstName: profile.first_name, lastName: profile.last_name, bio: profile.bio, avatarUrl: await this.resolveAvatar(profile.user_id, profile.avatar_url) };
   }
 
+  async searchPublic(query: string, viewerId: string) {
+    const normalized = query.trim();
+    if (normalized.length < 2 || normalized.length > 80) {
+      throw new AppError('VALIDATION_ERROR', 'Search must contain 2 to 80 characters');
+    }
+    const profiles = await this.repository.searchPublic(normalized, viewerId, 15);
+    return Promise.all(profiles.map(async profile => ({
+      username: profile.username,
+      displayName: profile.display_name,
+      firstName: profile.first_name,
+      lastName: profile.last_name,
+      avatarUrl: await this.resolveAvatar(profile.user_id, profile.avatar_url)
+    })));
+  }
+
   async getStats(userId: string) {
     return this.repository.getStats(userId);
   }

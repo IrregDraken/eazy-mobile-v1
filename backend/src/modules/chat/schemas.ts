@@ -9,7 +9,16 @@ export const createConversationSchema = z.object({ username: usernameSchema }).s
 export const chatPaginationSchema = paginationQuerySchema.omit({ cursor: true }).strict();
 export const conversationParamsSchema = z.object({ conversationId: uuidSchema }).strict();
 export const messageParamsSchema = z.object({ messageId: uuidSchema }).strict();
-export const createMessageSchema = z.object({ body: textBodySchema, replyToMessageId: uuidSchema.optional() }).strict();
+const attachmentSchema = z.object({
+  storageKey: z.string().trim().min(1).max(1024),
+  contentType: z.string().trim().min(1).max(100),
+  byteSize: z.number().int().nonnegative().max(25 * 1024 * 1024)
+}).strict();
+export const createMessageSchema = z.object({
+  body: textBodySchema.optional(),
+  replyToMessageId: uuidSchema.optional(),
+  attachments: z.array(attachmentSchema).max(10).optional()
+}).strict().refine(value => Boolean(value.body?.trim()) || Boolean(value.attachments?.length), 'Message needs text or at least one attachment');
 export const editMessageSchema = z.object({ body: textBodySchema }).strict();
 export const reportMessageSchema = z.object({ reason: z.string().trim().min(3).max(1000) }).strict();
 export const readStateSchema = z.object({ lastReadMessageId: uuidSchema.optional() }).strict().default({});
