@@ -157,21 +157,6 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     }
   }
 
-  void _notAvailable(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('$feature is not available in the current production backend.')));
-  }
-
-  void _menu() {
-    showModalBottomSheet<void>(context: context, showDragHandle: true,
-      backgroundColor: EazyColors.surface, builder: (sheet) => SafeArea(child: Column(
-        mainAxisSize: MainAxisSize.min, children: [
-          ListTile(leading: const Icon(Icons.chat_bubble_outline_rounded), title: const Text('New conversation'),
-            onTap: () { Navigator.pop(sheet); _newChat(); }),
-          const SizedBox(height: 8),
-        ])));
-  }
-
   @override
   Widget build(BuildContext context) {
     final chats = _filtered;
@@ -183,7 +168,6 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
           child: Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [ Text('Eazy', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: EazyColors.green, fontWeight: FontWeight.w900, letterSpacing: 2.4)), const SizedBox(height: 2), Text('Chats', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 28, fontWeight: FontWeight.w900)), ])),
             IconButton(onPressed: _newChat, tooltip: 'New chat', style: IconButton.styleFrom(backgroundColor: EazyColors.green.withValues(alpha: .10), foregroundColor: EazyColors.green), icon: const Icon(Icons.edit_square)),
-            IconButton(onPressed: _menu, tooltip: 'More options', icon: const Icon(Icons.tune_rounded, color: EazyColors.muted)),
           ])),
         if (_connecting) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 8), child: Row(children: [Container(width: 7, height: 7, decoration: const BoxDecoration(color: EazyColors.amber, shape: BoxShape.circle)), const SizedBox(width: 8), Text('Reconnecting to Eazy', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: EazyColors.muted))])),
         Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -199,12 +183,6 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
           const SizedBox(width: 8),
           _Chip(unreadTotal > 0 ? 'Unread  ${unreadTotal > 99 ? '99+' : unreadTotal}' : 'Unread', _filter == 'Unread',
             () => setState(() => _filter = _filter == 'Unread' ? 'All' : 'Unread')),
-          const SizedBox(width: 8),
-          _Chip('Groups', _filter == 'Groups', () => setState(() => _filter = _filter == 'Groups' ? 'All' : 'Groups')),
-          const SizedBox(width: 8),
-          _Chip('Favourites', _filter == 'Favourites', () { setState(() => _filter = 'Favourites'); _notAvailable('Favourite lists'); }),
-          const SizedBox(width: 8),
-          _Chip('+', false, () => _notAvailable('Custom lists')),
         ])),
         const SizedBox(height: 5),
         Expanded(child: _loading ? const _Skeletons() : _error != null
@@ -221,18 +199,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
                 return _ChatRow(name: _name(c), preview: _preview(c), unread: unread,
                   timestamp: _time(_activity(c)), avatarUrl: p['avatarUrl']?.toString(),
                   onTap: () => widget.onOpen(c),
-                  onLongPress: () {
-                    HapticFeedback.selectionClick();
-                    showModalBottomSheet<void>(context: context, showDragHandle: true,
-                      builder: (sheet) => SafeArea(child: Wrap(children: [
-                        ListTile(leading: const Icon(Icons.mark_chat_unread_outlined), title: const Text('Mark as unread'),
-                          onTap: () { Navigator.pop(sheet); _notAvailable('Mark as unread'); }),
-                        ListTile(leading: const Icon(Icons.push_pin_outlined), title: const Text('Pin chat'),
-                          onTap: () { Navigator.pop(sheet); _notAvailable('Pinned chats'); }),
-                        ListTile(leading: const Icon(Icons.archive_outlined), title: const Text('Archive'),
-                          onTap: () { Navigator.pop(sheet); _notAvailable('Chat archive'); }),
-                      ])));
-                  });
+                  onLongPress: () {});
               })),
       ])),
       floatingActionButton: AnimatedSlide(duration: const Duration(milliseconds: 200),
