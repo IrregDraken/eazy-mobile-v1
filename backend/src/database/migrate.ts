@@ -1,5 +1,5 @@
 import { access, readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { loadConfig } from '../config/env.js';
@@ -42,9 +42,7 @@ const hostedMigrationNames: Record<string, string> = {
   '023_social_interactions.sql': 'social_interactions'
 };
 
-async function main() {
-  const config = loadConfig();
-  const logger = createLogger(config);
+export async function runMigrations(config = loadConfig(), logger = createLogger(config)) {
   if (!config.DATABASE_URL) {
     throw new Error('DATABASE_URL is required to run migrations');
   }
@@ -99,9 +97,11 @@ async function main() {
   }
 }
 
-main().catch(error => {
-  const config = loadConfig();
-  const logger = createLogger(config);
-  logger.error({ event: 'migration.failed', error: error instanceof Error ? { name: error.name, message: error.message } : { name: 'UnknownError', message: 'Unknown error' } }, 'migration failed');
-  process.exitCode = 1;
-});
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  runMigrations().catch(error => {
+    const config = loadConfig();
+    const logger = createLogger(config);
+    logger.error({ event: 'migration.failed', error: error instanceof Error ? { name: error.name, message: error.message } : { name: 'UnknownError', message: 'Unknown error' } }, 'migration failed');
+    process.exitCode = 1;
+  });
+}
