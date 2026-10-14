@@ -20,4 +20,4 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/migrations ./migrations
 
 EXPOSE 3000
-CMD ["sh", "-c", "node dist/src/database/migrate.js && node dist/src/server.js"]
+CMD ["node", "dist/src/server.js"]
