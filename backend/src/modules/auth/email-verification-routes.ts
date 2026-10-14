@@ -17,7 +17,11 @@ export function createEmailVerificationRouter(service: EmailVerificationService,
 
   router.post('/email-verification/request-code', requestLimit, validate('body', requestSchema), async (request, response, next) => {
     try {
-      sendSuccess(response, await service.requestCode((request.body as { email: string }).email));
+      const email = (request.body as { email: string }).email.trim().toLowerCase();
+      if (await firebaseProvider.emailExists(email)) {
+        throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
+      }
+      sendSuccess(response, await service.requestCode(email));
     } catch (error) { next(error); }
   });
 
