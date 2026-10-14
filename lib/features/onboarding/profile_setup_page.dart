@@ -50,7 +50,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     final now = DateTime.now();
     final value = await showDatePicker(
       context: context,
-      initialDate: dob != null && !dob!.isAfter(DateTime(now.year - 18, now.month, now.day)) ? dob! : DateTime(now.year - 18, now.month, now.day),
+      initialDate: dob ?? DateTime(now.year - 18, now.month, now.day),
       firstDate: DateTime(1900),
       lastDate: DateTime(now.year - 18, now.month, now.day),
       helpText: 'You must be 18 or older to use Eazy',
@@ -268,14 +268,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 }
 ), '');
     if (candidate.length >= 3) {
+      final text = candidate.length > 32 ? candidate.substring(0, 32) : candidate;
       username.value = TextEditingValue(
-        text: candidate.length > 32 ? candidate.substring(0, 32) : candidate,
-        selection: TextSelection.collapsed(offset: candidate.length > 32 ? 32 : candidate.length),
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
       );
       available = null;
     }
   }
-
   Future<void> checkUsername() async {
     final value = username.text.trim().toLowerCase();
     if (!RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value)) {
