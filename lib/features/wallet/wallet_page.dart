@@ -71,8 +71,11 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       '$prefix-${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}';
 
   Future<void> load() async {
+    // Keep an already-rendered wallet visible during refreshes and post-action
+    // reconciliation. Only the first load needs a full-page loading state.
+    final firstLoad = wallet == null;
     setState(() {
-      loading = true;
+      if (firstLoad) loading = true;
       error = null;
     });
     try {
