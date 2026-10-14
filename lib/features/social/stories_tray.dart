@@ -168,7 +168,7 @@ class _StoryAvatar extends StatelessWidget {
             child: Stack(children: [
               CircleAvatar(
                 radius: 27,
-                backgroundColor: EazyColors.surfaceRaised,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 backgroundImage: imageUrl != null && imageUrl!.startsWith('http') ? NetworkImage(imageUrl!) : null,
                 child: imageUrl == null || !imageUrl!.startsWith('http') ? const Icon(Icons.person_rounded, color: EazyColors.green, size: 28) : null,
               ),

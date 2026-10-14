@@ -231,7 +231,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           const SizedBox(height: 12),
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 18),
-            tileColor: EazyColors.surface,
+            tileColor: Theme.of(context).colorScheme.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(EazyRadius.md),
               side: const BorderSide(color: EazyColors.border),

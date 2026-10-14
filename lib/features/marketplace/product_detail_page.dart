@@ -32,4 +32,4 @@ class _ProductDetailPageState extends State<ProductDetailPage>{
  ]));
  }
 }
-class _Placeholder extends StatelessWidget{const _Placeholder();@override Widget build(BuildContext context)=>Container(decoration:BoxDecoration(color:EazyColors.surfaceRaised,borderRadius:BorderRadius.circular(24)),child:const Center(child:Icon(Icons.shopping_bag_outlined,size:72,color:EazyColors.green)));}
+class _Placeholder extends StatelessWidget{const _Placeholder();@override Widget build(BuildContext context)=>Container(decoration:BoxDecoration(color:Theme.of(context).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(24)),child:const Center(child:Icon(Icons.shopping_bag_outlined,size:72,color:EazyColors.green)));}

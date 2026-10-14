@@ -16,7 +16,7 @@ class EazyArtwork extends StatelessWidget {
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: EazyColors.surface,
+          color: Theme.of(context).colorScheme.surface,
           border: Border.all(color: EazyColors.border),
           borderRadius: BorderRadius.circular(EazyRadius.xl),
         ),
@@ -50,7 +50,7 @@ class _ArtworkCaption extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: EazyColors.canvas.withValues(alpha: .68),
+        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: .68),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: EazyColors.border.withValues(alpha: .72)),
       ),
@@ -158,7 +158,7 @@ class _EazyArtworkPainter extends CustomPainter {
 
   void _glassCard(Canvas canvas, Offset offset, Size size, IconData icon) {
     final r = RRect.fromRectAndRadius(offset & size, const Radius.circular(17));
-    final fill = Paint()..color = EazyColors.surfaceRaised.withValues(alpha: .72);
+    final fill = Paint()..color = const Color(0xFFEAF6EE).withValues(alpha: .72);
     canvas.drawRRect(r, fill);
     final border = Paint()
       ..color = EazyColors.green.withValues(alpha: .30)
