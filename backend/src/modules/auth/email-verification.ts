@@ -20,6 +20,14 @@ export class EmailVerificationService {
 
   async requestCode(emailInput: string): Promise<EmailVerificationStart> {
     const email = normalizeEmail(emailInput);
+    const existing = await this.pool.query<{ id: string }>(
+      'SELECT id FROM users WHERE lower(email) = $1 AND status <> \'deleted\' LIMIT 1',
+      [email]
+    );
+    if (existing.rowCount) {
+      throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
+    }
+
     const ttlMinutes = this.config.OTP_TTL_MINUTES ?? 10;
     const maxAttempts = this.config.OTP_MAX_ATTEMPTS ?? 5;
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
