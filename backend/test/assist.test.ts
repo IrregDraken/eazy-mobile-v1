@@ -145,7 +145,7 @@ test('OpenAI-compatible provider sends fixed server configuration and validates 
     assert.equal(requestInit?.redirect, 'error');
     const body = JSON.parse(String(requestInit?.body));
     assert.equal(body.model, 'test-model');
-    assert.equal(body.max_completion_tokens, 512);
+    assert.equal(body.max_tokens, 512);
     assert.equal(body.stream, false);
     assert.deepEqual(body.response_format, { type: 'json_object' });
     assert.deepEqual(body.messages, messages);
