@@ -70,6 +70,13 @@ class _ProfilePageState extends State<ProfilePage> {
       nextProfile['displayName'] ??= nextProfile['display_name'];
       nextProfile['firstName'] ??= nextProfile['first_name'];
       nextProfile['lastName'] ??= nextProfile['last_name'];
+      final firstName = nextProfile['firstName']?.toString().trim() ?? '';
+      final middleName = (nextProfile['middleName'] ?? nextProfile['middle_name'])?.toString().trim() ?? '';
+      final lastName = nextProfile['lastName']?.toString().trim() ?? '';
+      final composedName = [firstName, middleName, lastName].where((part) => part.isNotEmpty).join(' ');
+      if (composedName.isNotEmpty && (nextProfile['displayName'] == null || nextProfile['displayName'].toString().trim().isEmpty || nextProfile['displayName'].toString().trim().toLowerCase() == 'eazy user')) {
+        nextProfile['displayName'] = composedName;
+      }
       nextProfile['avatarUrl'] ??= nextProfile['avatar_url'];
       nextProfile['userId'] ??= nextProfile['user_id'];
       final actualUsername = (nextProfile['username'] ?? nextProfile['user_name'])?.toString().toLowerCase();
