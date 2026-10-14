@@ -65,7 +65,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Marketplace', style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                          Text('Discover', style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, letterSpacing: -1)),
                           SizedBox(height: 3),
                           Text('Discover things worth having', style: TextStyle(color: EazyColors.muted)),
                         ],
