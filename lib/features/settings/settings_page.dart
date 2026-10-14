@@ -194,11 +194,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     onChanged: (v) {
                       if (v == null) return;
                       setState(() => theme = v);
-                      eazyThemeMode.value = switch (v) {
-                        'light' => ThemeMode.light,
-                        'dark' => ThemeMode.dark,
-                        _ => ThemeMode.system,
-                      };
+                      setEazyThemeMode(v == 'dark' ? ThemeMode.dark : ThemeMode.light);
                       save({'theme': v});
                     },
                   ),
