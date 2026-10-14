@@ -6,7 +6,7 @@ const maxResponseBytes = 64 * 1024;
 const maxOutputCharacters = 12_000;
 
 export class OpenAICompatibleProvider implements AIProvider {
-  private readonly baseUrl: URL;
+  private readonly endpoint: URL;
   private readonly apiKey: string;
   private readonly model: string;
 
@@ -15,7 +15,15 @@ export class OpenAICompatibleProvider implements AIProvider {
     const key = config.AI_PROVIDER_API_KEY;
     const model = config.AI_PROVIDER_MODEL;
     if (!base || !key || !model) throw new Error('AI provider must be fully configured');
-    this.baseUrl = new URL(`${base.replace(/\/+$/, '')}/`);
+    const parsed = new URL(base);
+    if (parsed.protocol !== 'https:') throw new Error('AI provider endpoint must use HTTPS');
+    // Accept either a provider base URL (/v1) or the full chat-completions URL.
+    if (/\/chat\/completions\/?$/.test(parsed.pathname)) {
+      parsed.pathname = parsed.pathname.replace(/\/+$/, '');
+    } else {
+      parsed.pathname = `${parsed.pathname.replace(/\/+$/, '')}/chat/completions`;
+    }
+    this.endpoint = parsed;
     this.apiKey = key;
     this.model = model;
   }
@@ -32,7 +40,7 @@ export class OpenAICompatibleProvider implements AIProvider {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.AI_PROVIDER_TIMEOUT_MS ?? 15_000);
     try {
-      const endpoint = new URL('chat/completions', this.baseUrl);
+      const endpoint = new URL(this.endpoint.toString());
       const headers = { authorization: `Bearer ${this.apiKey}`, 'content-type': 'application/json' };
       const common = { model: this.model, messages, stream: false };
       let response = await fetch(endpoint, {
