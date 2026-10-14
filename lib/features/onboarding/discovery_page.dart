@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../chat/chat_page.dart';
 
 class DiscoveryPage extends StatefulWidget {
   const DiscoveryPage({super.key});
@@ -125,8 +126,16 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
     if (username.isEmpty || messageBusy != null) return;
     setState(() => messageBusy = username);
     try {
-      await api.post('chat/conversations', auth: true, body: {'username': username});
-      if (mounted) context.go('/home?tab=chat');
+      final result = await api.post('chat/conversations', auth: true, body: {'username': username});
+      final conversation = result['conversation'];
+      if (mounted && conversation is Map) {
+        await Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => ConversationPage(
+            api: api,
+            conversation: Map<String, dynamic>.from(conversation),
+          ),
+        ));
+      }
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
