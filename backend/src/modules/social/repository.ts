@@ -6,6 +6,7 @@ export interface SocialProfile {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  isFollowing?: boolean;
 }
 
 export class SocialRepository {
@@ -101,7 +102,9 @@ export class SocialRepository {
       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = $1 AND b.blocked_id = p.user_id) OR (b.blocker_id = p.user_id AND b.blocked_id = $1))`;
     const count = await client.query<{ count: string }>(`SELECT count(*)::text AS count FROM users u JOIN profiles p ON p.user_id = u.id WHERE ${where}`, [userId, pattern]);
     const result = await client.query<SocialProfile>(
-      `SELECT p.username, p.display_name AS "displayName", p.avatar_url AS "avatarUrl" FROM users u JOIN profiles p ON p.user_id = u.id
+      `SELECT p.username, p.display_name AS "displayName", p.avatar_url AS "avatarUrl",
+         EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = $1 AND f.followee_id = p.user_id) AS "isFollowing"
+       FROM users u JOIN profiles p ON p.user_id = u.id
        WHERE ${where} ORDER BY p.username ASC LIMIT $3 OFFSET $4`,
       [userId, pattern, limit, (page - 1) * limit]
     );
