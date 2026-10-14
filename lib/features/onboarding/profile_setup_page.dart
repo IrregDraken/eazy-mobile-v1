@@ -50,7 +50,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     final now = DateTime.now();
     final value = await showDatePicker(
       context: context,
-      initialDate: dob ?? DateTime(now.year - 18, now.month, now.day),
+      initialDate: dob != null && !dob!.isAfter(DateTime(now.year - 18, now.month, now.day)) ? dob! : DateTime(now.year - 18, now.month, now.day),
       firstDate: DateTime(1900),
       lastDate: DateTime(now.year - 18, now.month, now.day),
       helpText: 'You must be 18 or older to use Eazy',
