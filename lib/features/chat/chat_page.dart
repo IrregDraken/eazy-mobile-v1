@@ -321,13 +321,85 @@ class _ConversationPageState extends State<ConversationPage> {
     );
   }
 
+  Future<void> _handleRecipientAction(String action) async {
+    final username = _otherParticipant['username']?.toString().trim() ?? '';
+    if (username.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Recipient details are unavailable.')));
+      return;
+    }
+    if (action == 'block') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Block this account?'),
+          content: Text('You will no longer receive messages from @$username.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Block')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      final messenger = ScaffoldMessenger.of(context);
+      try {
+        await widget.api.post('social/block/$username', auth: true);
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        messenger.showSnackBar(const SnackBar(content: Text('Account blocked.')));
+      } on ApiException catch (e) {
+        if (mounted) messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      }
+      return;
+    }
+    if (action == 'report') {
+      final reasonController = TextEditingController();
+      final reason = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Report account'),
+          content: TextField(
+            controller: reasonController,
+            minLines: 2,
+            maxLines: 4,
+            maxLength: 1000,
+            decoration: const InputDecoration(labelText: 'What should Eazy review?', hintText: 'Describe the issue'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(onPressed: () {
+              final value = reasonController.text.trim();
+              if (value.length >= 3) Navigator.pop(dialogContext, value);
+            }, child: const Text('Submit report')),
+          ],
+        ),
+      );
+      reasonController.dispose();
+      if (reason == null) return;
+      try {
+        await widget.api.post('social/report/$username', body: {'reason': reason}, auth: true);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report submitted for review.')));
+      } on ApiException catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
   @override Widget build(BuildContext context){
     final title = _conversationTitle;
     return Scaffold(
+      backgroundColor: EazyColors.canvas,
       appBar:AppBar(title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(title,style:Theme.of(context).textTheme.titleMedium?.copyWith(fontSize:17,fontWeight:FontWeight.w900)),
         Text(_conversationUsername,style:const TextStyle(fontSize:11,color:EazyColors.muted,fontWeight:FontWeight.w600))
-      ]),actions:[IconButton(onPressed:loadMessages,tooltip:'Refresh conversation',icon:const Icon(Icons.refresh_rounded,color:EazyColors.green))]),
+      ]),actions:[
+        PopupMenuButton<String>(
+          tooltip: 'Conversation options',
+          onSelected: _handleRecipientAction,
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'block', child: Row(children: [Icon(Icons.block_rounded), SizedBox(width: 10), Text('Block account')])),
+            PopupMenuItem(value: 'report', child: Row(children: [Icon(Icons.flag_outlined), SizedBox(width: 10), Text('Report account')])),
+          ],
+        ),
+      ]),
       body:Column(children:[
         if(replying!=null)_ContextBar(label:'REPLYING',value:replying!['body']?.toString() ?? '',onClose:()=>setState(()=>replying=null)),
         if(editing!=null)_ContextBar(label:'EDITING',value:editing!['body']?.toString() ?? '',onClose:()=>setState(() { editing=null; draft.clear(); })),
