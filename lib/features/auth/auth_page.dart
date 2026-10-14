@@ -361,6 +361,8 @@ class _AuthPageState extends State<AuthPage> {
               ),
             ),
             const SizedBox(height: 10),
+            _PasswordRequirements(controller: password),
+            const SizedBox(height: 10),
             _EntryField(
               controller: confirmPassword,
               label: 'Confirm password',
@@ -557,6 +559,71 @@ class _Toggle extends StatelessWidget {
         ),
       ),
     ),
+  );
+}
+
+class _PasswordRequirements extends StatelessWidget {
+  const _PasswordRequirements({required this.controller});
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: controller,
+    builder: (context, _) {
+      final value = controller.text;
+      final rules = <(String, bool)>[
+        ('8 to 124 characters', value.length >= 8 && value.length <= 124),
+        ('One uppercase letter', RegExp(r'[A-Z]').hasMatch(value)),
+        ('One lowercase letter', RegExp(r'[a-z]').hasMatch(value)),
+        ('One number', RegExp(r'[0-9]').hasMatch(value)),
+        ('One symbol', RegExp(r'[^A-Za-z0-9]').hasMatch(value)),
+      ];
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F7F2),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFDCE9DF)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'PASSWORD REQUIREMENTS',
+              style: TextStyle(
+                color: Color(0xFF40534A),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final rule in rules)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Icon(
+                      rule.$2 ? Icons.check_circle_rounded : Icons.circle_outlined,
+                      size: 16,
+                      color: rule.$2 ? const Color(0xFF0E9D61) : const Color(0xFF91A097),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      rule.$1,
+                      style: TextStyle(
+                        color: rule.$2 ? const Color(0xFF087A4A) : const Color(0xFF68776F),
+                        fontSize: 12,
+                        fontWeight: rule.$2 ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+    },
   );
 }
 
