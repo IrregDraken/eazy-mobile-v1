@@ -70,10 +70,19 @@ class _AuthPageState extends State<AuthPage> {
           await widget.auth.verifyEmailRegistration(challenge!, code.text);
           if (mounted) setState(() => registerStage = 2);
         } else {
-          if (password.text.length < 6)
+          if (password.text.length < 8 || password.text.length > 124) {
             throw const ApiException(
-              'Choose a password with at least 6 characters.',
+              'Password must be 8 to 124 characters long.',
             );
+          }
+          if (!RegExp(r'[A-Z]').hasMatch(password.text) ||
+              !RegExp(r'[a-z]').hasMatch(password.text) ||
+              !RegExp(r'[0-9]').hasMatch(password.text) ||
+              !RegExp(r'[^A-Za-z0-9]').hasMatch(password.text)) {
+            throw const ApiException(
+              'Password must include an uppercase letter, a lowercase letter, a number, and a symbol.',
+            );
+          }
           if (password.text != confirmPassword.text)
             throw const ApiException('Your passwords do not match.');
           await widget.auth.registerEmailAfterVerification(
@@ -402,6 +411,8 @@ class _AuthPageState extends State<AuthPage> {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF0E9D61),
                 foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFF0E9D61),
+                disabledForegroundColor: Colors.white,
               ),
               child:
                   busy
@@ -428,6 +439,10 @@ class _AuthPageState extends State<AuthPage> {
             Center(
               child: TextButton(
                 onPressed: busy ? null : resend,
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF087A4A),
+                  disabledForegroundColor: const Color(0xFF718179),
+                ),
                 child: const Text('Resend code'),
               ),
             ),
