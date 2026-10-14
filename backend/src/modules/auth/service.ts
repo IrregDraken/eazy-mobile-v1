@@ -141,9 +141,13 @@ export class AuthService {
   private async ensureProfile(client: DbClient, userId: string, firebaseUid: string, claims: Record<string, unknown>) {
     const existing = await client.query<{ user_id: string; username: string; display_name: string }>('SELECT user_id, username, display_name FROM profiles WHERE user_id = $1 LIMIT 1', [userId]);
     if (existing.rows[0]) return existing.rows[0] ?? null;
-    const base = `user_${firebaseUid.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 24) || randomUUID().replace(/-/g, '').slice(0, 24)}`;
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      const username = `${base.slice(0, 31 - String(attempt).length)}${attempt || ''}`;
+    const email = stringClaim(claims, 'email') ?? '';
+    const preferred = stringClaim(claims, 'name') ?? email.split('@')[0] ?? '';
+    const normalized = preferred.toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const base = (normalized.length >= 3 ? normalized : `eazy_${firebaseUid.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16)}`).slice(0, 28);
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const suffix = attempt === 0 ? '' : `_${attempt + 1}`;
+      const username = `${base.slice(0, 32 - suffix.length)}${suffix}`;
       try {
         const created = await client.query<{ user_id: string; username: string; display_name: string }>(
           `INSERT INTO profiles (user_id, username, display_name) VALUES ($1, $2, $3) RETURNING user_id, username, display_name`,
