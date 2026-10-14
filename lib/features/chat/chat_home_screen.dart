@@ -166,14 +166,8 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     showModalBottomSheet<void>(context: context, showDragHandle: true,
       backgroundColor: EazyColors.surface, builder: (sheet) => SafeArea(child: Column(
         mainAxisSize: MainAxisSize.min, children: [
-          ListTile(leading: const Icon(Icons.group_add_outlined), title: const Text('New group'),
-            onTap: () { Navigator.pop(sheet); _notAvailable('Group conversations'); }),
-          ListTile(leading: const Icon(Icons.star_outline_rounded), title: const Text('Starred messages'),
-            onTap: () { Navigator.pop(sheet); _notAvailable('Starred messages'); }),
-          ListTile(leading: const Icon(Icons.devices_outlined), title: const Text('Linked devices'),
-            onTap: () { Navigator.pop(sheet); _notAvailable('Linked devices'); }),
-          ListTile(leading: const Icon(Icons.settings_outlined), title: const Text('Settings'),
-            onTap: () { Navigator.pop(sheet); _notAvailable('Settings'); }),
+          ListTile(leading: const Icon(Icons.chat_bubble_outline_rounded), title: const Text('New conversation'),
+            onTap: () { Navigator.pop(sheet); _newChat(); }),
           const SizedBox(height: 8),
         ])));
   }
