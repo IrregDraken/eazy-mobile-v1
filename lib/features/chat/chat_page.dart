@@ -441,7 +441,6 @@ class _ConversationPageState extends State<ConversationPage> {
           IconButton(tooltip:'Attach photo, video or document',onPressed:sending?null:_pickAttachment,style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:const Icon(Icons.add_circle_outline_rounded,size:29)),
           Expanded(child:TextField(controller:draft,maxLines:5,minLines:1,decoration:InputDecoration(
             hintText:editing!=null?'Edit message…':replying!=null?'Write a reply…':'Message on Eazy…'))),
-          IconButton(tooltip:'Open Eazy Assist',onPressed:()=>context.push('/assist'),style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:Image.asset('assets/images/eazy_logo_mark.png',width:23,height:23,errorBuilder:(_,__,___)=>const Icon(Icons.auto_awesome_rounded))),
           IconButton(tooltip:'Translate draft to English',onPressed:_translateDraft,style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:const Icon(Icons.translate_rounded)),
           SizedBox(width:48,height:52,child:FilledButton(onPressed:sending?null:send,style:FilledButton.styleFrom(padding:EdgeInsets.zero),child:Icon(editing!=null?Icons.check_rounded:Icons.send_rounded)))
         ])))

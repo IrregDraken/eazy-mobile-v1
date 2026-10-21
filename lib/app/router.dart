@@ -63,7 +63,14 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
     ),
     GoRoute(path: '/discovery', builder: (_, __) => const DiscoveryPage()),
     GoRoute(path: '/cart', builder: (_, __) => const CartPage()),
-    GoRoute(path: '/home', builder: (_, state) => HomeShell(auth: auth, initialTab: state.uri.queryParameters['tab'])),
+    GoRoute(
+      path: '/home',
+      builder: (_, state) => HomeShell(
+        auth: auth,
+        initialTab: state.uri.queryParameters['tab'],
+        initialAction: state.uri.queryParameters['action'],
+      ),
+    ),
     GoRoute(path: '/profile/:username', builder: (_, state) => ProfilePage(auth: auth, username: state.pathParameters['username'])),
     GoRoute(path: '/assist', builder: (_, __) => const AssistPage()),
     GoRoute(path: '/translation', builder: (_, __) => const TranslationPage()),
