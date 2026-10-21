@@ -9,16 +9,21 @@ import '../social/social_page.dart';
 import '../wallet/wallet_page.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key,required this.auth, this.initialTab});
+  const HomeShell({super.key, required this.auth, this.initialTab, this.initialAction});
   final AuthController auth;
   final String? initialTab;
+  final String? initialAction;
   @override State<HomeShell> createState()=>_HomeShellState();
 }
 class _HomeShellState extends State<HomeShell>{
   int index=0;
   @override void initState(){super.initState(); index = switch(widget.initialTab){'shop'=>1,'wallet'=>2,'chat'=>3,'profile'=>4,_=>0};}
   late final pages=<Widget>[
-    SocialPage(auth:widget.auth),const MarketplacePage(),const WalletPage(),const ChatPage(),ProfilePage(auth:widget.auth)
+    SocialPage(auth: widget.auth, openComposerOnStart: widget.initialAction == 'create'),
+    const MarketplacePage(),
+    const WalletPage(),
+    const ChatPage(),
+    ProfilePage(auth: widget.auth)
   ];
   @override Widget build(BuildContext context)=>Scaffold(
     extendBody:true,

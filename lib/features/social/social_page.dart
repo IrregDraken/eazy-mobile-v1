@@ -11,8 +11,9 @@ import 'stories_tray.dart';
 import 'video_media.dart';
 
 class SocialPage extends StatefulWidget {
-  const SocialPage({super.key, required this.auth});
+  const SocialPage({super.key, required this.auth, this.openComposerOnStart = false});
   final AuthController auth;
+  final bool openComposerOnStart;
   @override
   State<SocialPage> createState() => _SocialPageState();
 }
@@ -38,6 +39,11 @@ class _SocialPageState extends State<SocialPage> {
     media = EazyMediaService(api);
     scrollController.addListener(_onScroll);
     load();
+    if (widget.openComposerOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) compose();
+      });
+    }
   }
 
   @override

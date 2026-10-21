@@ -384,7 +384,7 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(width: 4),
               const Icon(Icons.keyboard_arrow_down_rounded, size: 22),
             ])),
-            IconButton(tooltip: 'Create a post', onPressed: () => context.go('/home'), icon: const Icon(Icons.add_box_outlined)),
+            IconButton(tooltip: 'Create a post', onPressed: () => context.go('/home?action=create'), icon: const Icon(Icons.add_box_outlined)),
             IconButton(tooltip: 'Settings', onPressed: () => context.push('/settings'), icon: const Icon(Icons.menu_rounded)),
           ]),
         )),
