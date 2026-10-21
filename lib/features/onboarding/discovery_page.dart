@@ -126,13 +126,33 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
     if (username.isEmpty || messageBusy != null) return;
     setState(() => messageBusy = username);
     try {
-      final result = await api.post('chat/conversations', auth: true, body: {'username': username});
-      final conversation = result['conversation'];
-      if (mounted && conversation is Map) {
+      final result = await api.post(
+        'chat/conversations',
+        auth: true,
+        body: {'username': username},
+      );
+      final rawConversation = result['conversation'];
+      if (rawConversation is! Map) {
+        throw const ApiException(
+          'The conversation was created, but Eazy could not open it. Please open Chat and try again.',
+        );
+      }
+      final conversation = Map<String, dynamic>.from(rawConversation);
+      final conversationId =
+          (conversation['id'] ?? conversation['conversationId'] ?? conversation['conversation_id'])
+              ?.toString()
+              .trim();
+      if (conversationId == null || conversationId.isEmpty) {
+        throw const ApiException(
+          'The conversation response was incomplete. Please open Chat and try again.',
+        );
+      }
+      conversation['id'] ??= conversationId;
+      if (mounted) {
         await Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => ConversationPage(
             api: api,
-            conversation: Map<String, dynamic>.from(conversation),
+            conversation: conversation,
           ),
         ));
       }
