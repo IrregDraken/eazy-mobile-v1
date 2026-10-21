@@ -30,7 +30,9 @@ class _HomeShellState extends State<HomeShell>{
     body:Stack(
       children:[
         IndexedStack(index:index,children:pages),
-        if (index == 1 || index == 4)
+        // Keep the Assist entry point on the Home feed and most primary tabs.
+        // Hide it only where it competes with task-specific controls.
+        if (index != 2 && index != 3)
           Positioned(
             right: 18,
             bottom: 72,
