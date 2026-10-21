@@ -1085,58 +1085,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             Text(error!, style: const TextStyle(color: EazyColors.red)),
           ],
           const SizedBox(height: 22),
-          Card(
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => context.push('/assist'),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: EazyColors.green.withValues(alpha: .14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: EazyColors.green,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Easy Access',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Tap to open Eazy Assist and get help with your wallet.',
-                            style: TextStyle(
-                              color: EazyColors.muted,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: EazyColors.muted,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
           const SizedBox(height: 22),
           Row(children: [
             const Expanded(child: Text('Transaction history', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
