@@ -411,6 +411,10 @@ class _AuthPageState extends State<AuthPage> {
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: const Color(0xFF0E9D61),
                 disabledForegroundColor: Colors.white,
+                overlayColor: const WidgetStatePropertyAll(
+                  Color(0x260E9D61),
+                ),
+                elevation: const WidgetStatePropertyAll(0),
               ),
               child:
                   busy
@@ -440,6 +444,7 @@ class _AuthPageState extends State<AuthPage> {
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF087A4A),
                   disabledForegroundColor: const Color(0xFF718179),
+                  overlayColor: const Color(0x1F0E9D61),
                 ),
                 child: const Text('Resend code'),
               ),
@@ -464,6 +469,10 @@ class _AuthPageState extends State<AuthPage> {
           Center(
             child: TextButton(
               onPressed: busy ? null : () => switchMode(!register),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF087A4A),
+                overlayColor: const Color(0x1F0E9D61),
+              ),
               child: Text(
                 register
                     ? 'Already have an account? Sign in'
