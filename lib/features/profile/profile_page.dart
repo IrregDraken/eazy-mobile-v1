@@ -397,7 +397,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: EazyColors.green.withValues(alpha: .75), width: 2)),
                 child: CircleAvatar(
                   radius: 43,
-                  backgroundColor: EazyColors.surfaceRaised,
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
                   child: avatar == null || !avatar.startsWith('http') ? const Icon(Icons.person_rounded, size: 42, color: EazyColors.green) : null,
                 ),
@@ -624,7 +624,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               final name = person['displayName']?.toString() ?? person['username']?.toString() ?? 'Eazy user';
                               final handle = person['username']?.toString() ?? '';
                               return ListTile(
-                                leading: CircleAvatar(backgroundColor: EazyColors.surfaceRaised, backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null, child: avatar == null || !avatar.startsWith('http') ? const Icon(Icons.person_rounded, color: EazyColors.green) : null),
+                                leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest, backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null, child: avatar == null || !avatar.startsWith('http') ? const Icon(Icons.person_rounded, color: EazyColors.green) : null),
                                 title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
                                 subtitle: Text('@$handle'),
                                 onTap: handle.isEmpty ? null : () { Navigator.pop(ctx); context.push('/profile/$handle'); },
@@ -660,7 +660,7 @@ class _HighlightsRow extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: EazyColors.border, width: 1.5)),
-              child: const CircleAvatar(radius: 27, backgroundColor: EazyColors.surfaceRaised, child: Icon(Icons.add_rounded, size: 28)),
+              child: const CircleAvatar(radius: 27, backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest, child: Icon(Icons.add_rounded, size: 28)),
             ),
             const SizedBox(height: 5),
             const Text('New', style: TextStyle(fontSize: 11)),
@@ -678,7 +678,7 @@ class _HighlightsRow extends StatelessWidget {
                 decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: EazyColors.border, width: 1.5)),
                 child: CircleAvatar(
                   radius: 27,
-                  backgroundColor: EazyColors.surfaceRaised,
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   backgroundImage: cover != null && cover.startsWith('http') ? NetworkImage(cover) : null,
                   child: cover == null || !cover.startsWith('http') ? const Icon(Icons.auto_awesome_rounded, color: EazyColors.green) : null,
                 ),
