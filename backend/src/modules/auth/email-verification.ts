@@ -18,15 +18,36 @@ export interface EmailVerificationResult {
 export class EmailVerificationService {
   constructor(private readonly pool: Pool, private readonly provider: EmailProvider, private readonly config: AppConfig) {}
 
-  async requestCode(emailInput: string): Promise<EmailVerificationStart> {
+  async requestCode(
+    emailInput: string,
+    options: { allowExistingUnverified?: boolean } = {}
+  ): Promise<EmailVerificationStart> {
     const email = normalizeEmail(emailInput);
-    const existing = await this.pool.query<{ id: string }>(
-      'SELECT id FROM users WHERE lower(email) = $1 AND status <> \'deleted\' LIMIT 1',
+    const existing = await this.pool.query<{
+      id: string;
+      status: string;
+      email_verified_at: Date | string | null;
+    }>(
+      'SELECT id, status, email_verified_at FROM users WHERE lower(email) = $1 AND status <> \'deleted\' LIMIT 1',
       [email]
     );
     if (existing.rowCount) {
-      throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
+      const account = existing.rows[0];
+      const canResend = options.allowExistingUnverified === true
+        && account?.status === 'active'
+        && account.email_verified_at === null;
+      if (!canResend) {
+        throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
+      }
+    } else if (options.allowExistingUnverified) {
+      throw new AppError('UNAUTHORIZED', 'Sign in again before requesting another verification code');
     }
+
+    // A resend invalidates older outstanding codes so only the latest code can be used.
+    await this.pool.query(
+      'DELETE FROM email_verification_challenges WHERE lower(email) = $1 AND verified_at IS NULL',
+      [email]
+    );
 
     const ttlMinutes = this.config.OTP_TTL_MINUTES ?? 10;
     const maxAttempts = this.config.OTP_MAX_ATTEMPTS ?? 5;
