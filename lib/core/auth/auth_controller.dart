@@ -16,9 +16,11 @@ class EmailVerificationChallenge {
   const EmailVerificationChallenge({
     required this.challengeId,
     required this.expiresInSeconds,
+    this.accountAlreadyCreated = false,
   });
   final String challengeId;
   final int expiresInSeconds;
+  final bool accountAlreadyCreated;
 }
 
 class AuthController extends ChangeNotifier {
@@ -52,6 +54,12 @@ class AuthController extends ChangeNotifier {
       if (!firebaseReady) return;
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
+      if (_requiresEmailVerification(user) && !user.emailVerified) {
+        await api.clearToken();
+        _firebaseUser = null;
+        _profile = null;
+        return;
+      }
       await _syncFirebaseUser(user, forceRefresh: true);
     } catch (_) {
       await api.clearToken();
@@ -64,27 +72,53 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<EmailVerificationChallenge> requestEmailVerificationCode(
-    String email,
-  ) async {
+    String email, {
+    bool authenticated = false,
+  }) async {
     final result = await api.post(
       'auth/email-verification/request-code',
+      auth: authenticated,
       body: {'email': email.trim().toLowerCase()},
     );
     return EmailVerificationChallenge(
       challengeId: result['challengeId']?.toString() ?? '',
       expiresInSeconds:
           int.tryParse(result['expiresInSeconds']?.toString() ?? '') ?? 600,
+      accountAlreadyCreated: authenticated,
     );
   }
 
-  Future<EmailVerificationChallenge> beginEmailRegistration(String email) {
-    return requestEmailVerificationCode(email);
+  Future<EmailVerificationChallenge> beginEmailRegistration(String email) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final current = FirebaseAuth.instance.currentUser;
+    if (current != null && current.email != null) {
+      if (current.email!.trim().toLowerCase() != normalizedEmail) {
+        throw const ApiException(
+          'Sign out of the current account before creating another Eazy account.',
+        );
+      }
+      if (current.emailVerified) {
+        throw const ApiException(
+          'This email is already verified. Please sign in instead.',
+        );
+      }
+      await _syncFirebaseUser(current, forceRefresh: true);
+      return requestEmailVerificationCode(
+        normalizedEmail,
+        authenticated: true,
+      );
+    }
+    return requestEmailVerificationCode(normalizedEmail);
   }
 
   Future<void> verifyEmailRegistration(
     EmailVerificationChallenge challenge,
     String code,
   ) async {
+    if (challenge.accountAlreadyCreated) {
+      await verifyEmailCode(challenge, code);
+      return;
+    }
     await api.post(
       'auth/email-verification/verify-code',
       body: {'challengeId': challenge.challengeId, 'code': code.trim()},
@@ -227,8 +261,11 @@ class AuthController extends ChangeNotifier {
           throw const ApiException('Your sign-in session could not be restored.');
         }
         if (!user.emailVerified) {
+          await api.clearToken();
+          _firebaseUser = null;
+          _profile = null;
           throw const ApiException(
-            'Verify your email address before signing in.',
+            'Verify your email address before signing in. Choose Create Account to resend your code.',
             statusCode: 403,
             kind: ApiErrorKind.forbidden,
           );
@@ -355,6 +392,11 @@ class AuthController extends ChangeNotifier {
     _firebaseUser = null;
     _profile = null;
     notifyListeners();
+  }
+
+  bool _requiresEmailVerification(User user) {
+    return user.email != null &&
+        user.providerData.any((provider) => provider.providerId == 'password');
   }
 
   Future<void> _syncFirebaseUser(User user, {bool forceRefresh = false}) async {
