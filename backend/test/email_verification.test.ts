@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import test from 'node:test';
 import type { Pool } from 'pg';
 
@@ -14,6 +14,7 @@ import { createEmailVerificationRouter } from '../src/modules/auth/email-verific
 
 const email = 'person@example.com';
 const challengeId = '00000000-0000-4000-8000-000000000001';
+const testOtpHmacSecret = 'eazy-non-production-only-otp-hmac-secret';
 
 function createHarness(options: {
   identity?: FirebaseIdentity;
@@ -239,7 +240,7 @@ test('resending is limited to an active unverified account and invalidates older
 
 test('an already verified challenge can only be finalized for its matching authenticated email', async () => {
   const code = '123456';
-  const digest = createHash('sha256')
+  const digest = createHmac('sha256', testOtpHmacSecret)
     .update(`${challengeId}:${code}`)
     .digest('hex');
   const clientCalls: string[] = [];
