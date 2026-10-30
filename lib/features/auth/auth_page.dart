@@ -25,6 +25,7 @@ class _AuthPageState extends State<AuthPage> {
   int registerStage = 0;
   bool obscure = true;
   bool remember = true;
+  bool emailCodeVerified = false;
   bool busy = false;
   String? error;
   EmailVerificationChallenge? challenge;
@@ -67,7 +68,10 @@ class _AuthPageState extends State<AuthPage> {
           challenge = await widget.auth.beginEmailRegistration(identifier.text);
           if (mounted) setState(() => registerStage = 1);
         } else if (registerStage == 1) {
-          await widget.auth.verifyEmailRegistration(challenge!, code.text);
+          if (!emailCodeVerified) {
+            await widget.auth.verifyEmailRegistration(challenge!, code.text);
+            emailCodeVerified = true;
+          }
           if (mounted) {
             if (challenge!.accountAlreadyCreated) {
               context.go('/onboarding');
@@ -154,6 +158,7 @@ class _AuthPageState extends State<AuthPage> {
         challenge = await widget.auth.beginEmailRegistration(identifier.text);
       }
       if (mounted) {
+        emailCodeVerified = false;
         code.clear();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -177,6 +182,7 @@ class _AuthPageState extends State<AuthPage> {
     code.clear();
     challenge = null;
     phoneVerificationId = null;
+    emailCodeVerified = false;
   });
 
   void switchInput(bool nextPhone) => setState(() {
