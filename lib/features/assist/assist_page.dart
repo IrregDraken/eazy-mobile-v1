@@ -119,7 +119,7 @@ class _AssistPageState extends State<AssistPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Eazy Assist', style: TextStyle(fontWeight: FontWeight.w900)),
@@ -283,7 +283,7 @@ class _EmptyAssist extends StatelessWidget {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Get help with your Eazy experience when the AI provider is available.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
