@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import 'discover_categories.dart';
 import 'product_detail_page.dart';
 
 class MarketplacePage extends StatefulWidget {
@@ -16,10 +17,11 @@ class _MarketplacePageState extends State<MarketplacePage> {
   final search = TextEditingController();
   bool loading = true;
   String? error;
-  String? categoryId;
+  String? selectedParentSlug;
   String sort = 'newest';
   List<Map<String, dynamic>> products = [];
   List<Map<String, dynamic>> categories = [];
+  bool categoriesLoaded = false;
 
   @override
   void initState() {
@@ -39,13 +41,39 @@ class _MarketplacePageState extends State<MarketplacePage> {
       error = null;
     });
     try {
+      if (!categoriesLoaded) {
+        final categoryResponse = await api.get(
+          'marketplace/categories?page=1&limit=50',
+        );
+        categories =
+            (categoryResponse['items'] as List? ?? const [])
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+        categoriesLoaded = true;
+      }
+      if (!mounted) return;
+
       final params = <String, String>{
         'status': 'active',
         'limit': '30',
         'page': '1',
         'sort': sort,
       };
-      if (categoryId != null) params['categoryId'] = categoryId!;
+      if (selectedParentSlug != null) {
+        final parent = discoverParentCategories.firstWhere(
+          (category) => category.slug == selectedParentSlug,
+        );
+        final categoryIds = resolveBackendCategoryIdsForParent(
+          parent,
+          categories,
+        );
+        if (categoryIds.isEmpty) {
+          products = [];
+          return;
+        }
+        params['categoryIds'] = categoryIds.join(',');
+      }
       if (search.text.trim().length >= 2) params['q'] = search.text.trim();
       final qs = params.entries
           .map(
@@ -54,17 +82,10 @@ class _MarketplacePageState extends State<MarketplacePage> {
           )
           .join('&');
 
-      final r = await Future.wait([
-        api.get('marketplace/products?$qs'),
-        api.get('marketplace/categories?page=1&limit=50'),
-      ]);
+      final r = await api.get('marketplace/products?$qs');
+      if (!mounted) return;
       products =
-          (r[0]['items'] as List? ?? const [])
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
-      categories =
-          (r[1]['items'] as List? ?? const [])
+          (r['items'] as List? ?? const [])
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
@@ -139,42 +160,42 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 ),
               ),
             ),
-            if (categories.isNotEmpty)
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 104,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: categories.length + 1,
-                    separatorBuilder: (_, _) => const SizedBox(width: 10),
-                    itemBuilder: (c, i) {
-                      if (i == 0) {
-                        return _CategoryTile(
-                          name: 'All',
-                          icon: Icons.grid_view_rounded,
-                          selected: categoryId == null,
-                          onTap: () {
-                            setState(() => categoryId = null);
-                            load();
-                          },
-                        );
-                      }
-                      final x = categories[i - 1];
-                      final id = x['id']?.toString();
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 112,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: discoverParentCategories.length + 1,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
                       return _CategoryTile(
-                        name: x['name']?.toString() ?? 'Category',
-                        icon: _categoryIcon(x['name']?.toString()),
-                        selected: categoryId == id,
+                        name: 'All',
+                        icon: Icons.grid_view_rounded,
+                        assetPath: null,
+                        selected: selectedParentSlug == null,
                         onTap: () {
-                          setState(() => categoryId = id);
+                          setState(() => selectedParentSlug = null);
                           load();
                         },
                       );
-                    },
-                  ),
+                    }
+                    final parent = discoverParentCategories[index - 1];
+                    return _CategoryTile(
+                      name: parent.name,
+                      icon: parent.icon,
+                      assetPath: parent.assetPath,
+                      selected: selectedParentSlug == parent.slug,
+                      onTap: () {
+                        setState(() => selectedParentSlug = parent.slug);
+                        load();
+                      },
+                    );
+                  },
                 ),
               ),
+            ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
@@ -293,11 +314,13 @@ class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
     required this.name,
     required this.icon,
+    this.assetPath,
     required this.selected,
     required this.onTap,
   });
   final String name;
   final IconData icon;
+  final String? assetPath;
   final bool selected;
   final VoidCallback onTap;
 
@@ -305,7 +328,7 @@ class _CategoryTile extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: SizedBox(
-      width: 78,
+      width: 148,
       child: Column(
         children: [
           AnimatedContainer(
@@ -337,19 +360,36 @@ class _CategoryTile extends StatelessWidget {
                       ]
                       : null,
             ),
-            child: Icon(
-              icon,
-              color:
-                  selected
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : Theme.of(context).colorScheme.primary,
-              size: 25,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: assetPath != null
+                  ? Image.asset(
+                      assetPath!,
+                      fit: BoxFit.cover,
+                      width: 62,
+                      height: 62,
+                      errorBuilder: (_, _, _) => Icon(
+                        icon,
+                        color: selected
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.primary,
+                        size: 25,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      color: selected
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : Theme.of(context).colorScheme.primary,
+                      size: 25,
+                    ),
             ),
           ),
           const SizedBox(height: 7),
           Text(
             name,
-            maxLines: 1,
+            textAlign: TextAlign.center,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 11,
@@ -364,32 +404,6 @@ class _CategoryTile extends StatelessWidget {
       ),
     ),
   );
-}
-
-IconData _categoryIcon(String? value) {
-  final name = (value ?? '').toLowerCase();
-  if (name.contains('elect')) return Icons.devices_rounded;
-  if (name.contains('fashion') || name.contains('cloth')) {
-    return Icons.checkroom_rounded;
-  }
-  if (name.contains('home')) return Icons.weekend_rounded;
-  if (name.contains('beaut')) return Icons.auto_awesome_rounded;
-  if (name.contains('health')) return Icons.favorite_rounded;
-  if (name.contains('food') || name.contains('grocery')) {
-    return Icons.shopping_basket_rounded;
-  }
-  if (name.contains('auto') || name.contains('vehicle')) {
-    return Icons.directions_car_rounded;
-  }
-  if (name.contains('sport')) return Icons.sports_basketball_rounded;
-  if (name.contains('book')) return Icons.menu_book_rounded;
-  if (name.contains('game')) return Icons.sports_esports_rounded;
-  if (name.contains('pet')) return Icons.pets_rounded;
-  if (name.contains('baby') || name.contains('kid')) {
-    return Icons.child_friendly_rounded;
-  }
-  if (name.contains('tool')) return Icons.handyman_rounded;
-  return Icons.category_rounded;
 }
 
 class _Product extends StatelessWidget {

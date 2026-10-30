@@ -39,10 +39,9 @@ class _SplashPageState extends State<SplashPage>
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final background = dark ? EazyColors.canvas : const Color(0xFFF3FBF6);
-    final foreground = dark ? EazyColors.ink : const Color(0xFF10231A);
-    final muted = dark ? EazyColors.muted : const Color(0xFF5B6C63);
+    const background = EazyColors.canvas;
+    const foreground = EazyColors.ink;
+    const muted = EazyColors.muted;
 
     return Scaffold(
       backgroundColor: background,
@@ -51,18 +50,11 @@ class _SplashPageState extends State<SplashPage>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors:
-                dark
-                    ? const [
-                      Color(0xFF031E13),
-                      EazyColors.canvas,
-                      Color(0xFF020604),
-                    ]
-                    : const [
-                      Color(0xFFE1F8EA),
-                      Color(0xFFF8FFFA),
-                      Color(0xFFD5F4E2),
-                    ],
+            colors: const [
+              Color(0xFF031E13),
+              EazyColors.canvas,
+              Color(0xFF020604),
+            ],
           ),
         ),
         child: Center(
@@ -80,7 +72,7 @@ class _SplashPageState extends State<SplashPage>
                         height: 116,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: dark ? const Color(0xFF031E13) : Colors.white,
+                          color: const Color(0xFF031E13),
                           borderRadius: BorderRadius.circular(30),
                           border: Border.all(
                             color: EazyColors.green.withValues(alpha: .65),

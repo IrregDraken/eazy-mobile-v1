@@ -1,4 +1,4 @@
-import { createHash, randomInt, randomUUID } from 'node:crypto';
+import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Pool } from 'pg';
 import { AppError } from '../../middleware/errors.js';
 import type { EmailProvider } from '../../providers/resend-email.js';
@@ -18,11 +18,23 @@ export interface EmailVerificationResult {
 export class EmailVerificationService {
   constructor(private readonly pool: Pool, private readonly provider: EmailProvider, private readonly config: AppConfig) {}
 
-  async requestCode(emailInput: string): Promise<EmailVerificationStart> {
+  private otpHmacSecret(): string {
+    const configured = this.config.OTP_HMAC_SECRET;
+    if (configured && configured.length >= 32) return configured;
+    if (this.config.NODE_ENV !== 'production') {
+      return 'eazy-non-production-only-otp-hmac-secret';
+    }
+    throw new AppError('SERVICE_UNAVAILABLE', 'Email verification security is not configured');
+  }
+
+  async requestCode(emailInput: string, allowedFirebaseUid?: string): Promise<EmailVerificationStart> {
     const email = normalizeEmail(emailInput);
     const existing = await this.pool.query<{ id: string }>(
-      'SELECT id FROM users WHERE lower(email) = $1 AND status <> \'deleted\' LIMIT 1',
-      [email]
+      `SELECT id FROM users
+       WHERE lower(email) = $1 AND status <> 'deleted'
+         AND ($2::text IS NULL OR COALESCE(firebase_uid, '') <> $2)
+       LIMIT 1`,
+      [email, allowedFirebaseUid ?? null]
     );
     if (existing.rowCount) {
       throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
@@ -33,7 +45,7 @@ export class EmailVerificationService {
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const challengeId = randomUUID();
     const expiresAt = new Date(Date.now() + ttlMinutes * 60_000);
-    const digest = hashCode(challengeId, code);
+    const digest = hashCode(challengeId, code, this.otpHmacSecret());
     await this.pool.query(
       `INSERT INTO email_verification_challenges
          (id, email, code_digest, expires_at, max_attempts)
@@ -82,16 +94,28 @@ export class EmailVerificationService {
       );
       const challenge = result.rows[0];
       if (!challenge) throw new AppError('NOT_FOUND', 'Verification request not found');
-      if (challenge.verified_at) throw new AppError('CONFLICT', 'Verification code has already been used');
       if (new Date(challenge.expires_at).getTime() <= Date.now()) throw new AppError('VALIDATION_ERROR', 'Verification code has expired');
-      if (challenge.attempts >= challenge.max_attempts) throw new AppError('RATE_LIMITED', 'Too many verification attempts. Request a new code.');
-      const valid = hashCode(challenge.id, code) === challenge.code_digest;
+      if (challenge.attempts >= challenge.max_attempts) {
+        throw new AppError('RATE_LIMITED', 'Too many verification attempts. Request a new code.');
+      }
+      const actualDigest = Buffer.from(
+        hashCode(challenge.id, code, this.otpHmacSecret()),
+        'hex'
+      );
+      const storedDigest = Buffer.from(challenge.code_digest, 'hex');
+      const valid = actualDigest.length === storedDigest.length &&
+        timingSafeEqual(actualDigest, storedDigest);
       if (!valid) {
         await client.query('UPDATE email_verification_challenges SET attempts = attempts + 1 WHERE id = $1', [challenge.id]);
         await client.query('COMMIT');
         throw new AppError('UNAUTHORIZED', 'Incorrect verification code');
       }
-      await client.query('UPDATE email_verification_challenges SET verified_at = now() WHERE id = $1', [challenge.id]);
+      // The client first verifies the code before creating its Firebase identity.
+      // It then repeats this request with authentication so this verified challenge
+      // can be bound to that identity and Firebase can be marked emailVerified.
+      if (!challenge.verified_at) {
+        await client.query('UPDATE email_verification_challenges SET verified_at = now() WHERE id = $1', [challenge.id]);
+      }
       await client.query('COMMIT');
       return { challengeId: challenge.id, email: challenge.email, verified: true };
     } catch (error) {
@@ -109,8 +133,8 @@ function normalizeEmail(value: string): string {
   return email;
 }
 
-function hashCode(challengeId: string, code: string): string {
-  return createHash('sha256').update(`${challengeId}:${code}`).digest('hex');
+function hashCode(challengeId: string, code: string, key: string): string {
+  return createHmac('sha256', key).update(`${challengeId}:${code}`).digest('hex');
 }
 
 function verificationEmailHtml(code: string, ttlMinutes: number): string {

@@ -24,16 +24,20 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> load() async {
+    if (mounted) setState(() => error = '');
     try {
-      final r = await api.get('notifications?page=1&limit=30', auth: true),
-          c = await api.get('notifications/unread-count', auth: true);
+      final responses = await Future.wait([
+        api.get('notifications?page=1&limit=30', auth: true),
+        api.get('notifications/unread-count', auth: true),
+      ]);
+      final r = responses[0];
+      final c = responses[1];
       if (mounted) {
         setState(() {
-          items =
-              (r['items'] as List? ?? [])
-                  .whereType<Map>()
-                  .map((e) => Map<String, dynamic>.from(e))
-                  .toList();
+          items = (r['items'] as List? ?? [])
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
           unread = (c['unreadCount'] as num?)?.toInt() ?? 0;
         });
       }

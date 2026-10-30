@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import type { DbClient } from '../../database/client.js';
 
 export interface ProductMediaInput { storageKey: string; position: number; }
-export interface ProductFilters { q?: string; categoryId?: string; sellerId?: string; minPrice?: string; maxPrice?: string; currency?: string; availability?: 'in_stock' | 'out_of_stock'; status?: 'active' | 'sold_out'; sort: 'newest' | 'price_asc' | 'price_desc'; page: number; limit: number; viewerId?: string; }
+export interface ProductFilters { q?: string; categoryId?: string; categoryIds?: string[]; sellerId?: string; minPrice?: string; maxPrice?: string; currency?: string; availability?: 'in_stock' | 'out_of_stock'; status?: 'active' | 'sold_out'; sort: 'newest' | 'price_asc' | 'price_desc'; page: number; limit: number; viewerId?: string; }
 export interface ProductProjection {
   id: string;
   name: string;
@@ -41,7 +41,8 @@ export class MarketplaceRepository {
       const q = add(pattern);
       conditions.push(`(lower(p.name) LIKE ${q} OR lower(COALESCE(p.description, '')) LIKE ${q} OR lower(c.name) LIKE ${q} OR lower(c.slug) LIKE ${q})`);
     }
-    if (filters.categoryId) conditions.push(`p.category_id = ${add(filters.categoryId)}`);
+    if (filters.categoryIds?.length) conditions.push(`p.category_id = ANY(${add(filters.categoryIds)}::uuid[])`);
+    else if (filters.categoryId) conditions.push(`p.category_id = ${add(filters.categoryId)}`);
     if (filters.sellerId) conditions.push(`p.seller_id = ${add(filters.sellerId)}`);
     if (filters.minPrice) conditions.push(`p.price_amount >= ${add(filters.minPrice)}::numeric`);
     if (filters.maxPrice) conditions.push(`p.price_amount <= ${add(filters.maxPrice)}::numeric`);

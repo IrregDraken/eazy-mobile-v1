@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/media/media_service.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({super.key, required this.auth});
@@ -20,6 +23,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final username = TextEditingController(), bio = TextEditingController();
   DateTime? dob;
   bool busy = false, checking = false, usernameManuallyEdited = false;
+  bool avatarBusy = false;
+  String? avatarPath;
+  String? avatarLocalPath;
   bool? available;
   String? error;
 
@@ -49,14 +55,96 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
   Future<void> pickDob() async {
     final now = DateTime.now();
-    final value = await showDatePicker(
+    final latest = DateTime(now.year - 18, now.month, now.day);
+    final initial = dob == null || dob!.isAfter(latest) ? latest : dob!;
+    DateTime selected = initial;
+    final value = await showModalBottomSheet<DateTime>(
       context: context,
-      initialDate: dob ?? DateTime(now.year - 18, now.month, now.day),
-      firstDate: DateTime(1900),
-      lastDate: DateTime(now.year - 18, now.month, now.day),
-      helpText: 'You must be 18 or older to use Eazy',
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) => SafeArea(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: EazyColors.border),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: EazyColors.muted.withValues(alpha: .35),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'When were you born?',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'You must be at least 18 to use Eazy.',
+                      style: TextStyle(color: EazyColors.muted),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  CalendarDatePicker(
+                    initialDate: initial,
+                    firstDate: DateTime(1900),
+                    lastDate: latest,
+                    currentDate: latest,
+                    onDateChanged: (date) => setSheetState(() => selected = date),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(sheetContext).pop(selected),
+                      child: const Text('Confirm date of birth'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
     if (value != null) setState(() => dob = value);
+  }
+
+  Future<void> pickAvatar() async {
+    setState(() {
+      avatarBusy = true;
+      error = null;
+    });
+    try {
+      final upload = await EazyMediaService(ApiClient()).pickAndUpload(kind: 'avatar');
+      if (upload != null && mounted) {
+        setState(() {
+          avatarPath = upload.path;
+          avatarLocalPath = upload.localPath;
+        });
+      }
+    } on ApiException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } finally {
+      if (mounted) setState(() => avatarBusy = false);
+    }
   }
 
   void suggestUsername() {
@@ -133,7 +221,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       error = null;
     });
     try {
-      await widget.auth.completeOnboarding({
+      final profile = <String, dynamic>{
         'firstName': f,
         'middleName': middle.text.trim(),
         'lastName': last.text.trim(),
@@ -141,7 +229,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         'bio': bio.text.trim(),
         'dateOfBirth':
             '${dob!.year.toString().padLeft(4, '0')}-${dob!.month.toString().padLeft(2, '0')}-${dob!.day.toString().padLeft(2, '0')}',
-      });
+      };
+      if (avatarPath != null) profile['avatarUrl'] = avatarPath;
+      await widget.auth.completeOnboarding(profile);
       if (mounted) context.go('/discovery');
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
@@ -168,7 +258,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             'A few details unlock your social identity, wallet and marketplace experience.',
             style: TextStyle(color: EazyColors.muted, height: 1.5),
           ),
-          const SizedBox(height: 24),
           if (error != null)
             Container(
               padding: const EdgeInsets.all(14),
@@ -261,6 +350,38 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             decoration: const InputDecoration(
               labelText: 'Bio',
               hintText: 'Tell people a little about you',
+            ),
+          ),
+          const SizedBox(height: 18),
+          Center(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 42,
+                  backgroundColor: EazyColors.green.withValues(alpha: .10),
+                  backgroundImage: avatarLocalPath != null
+                      ? FileImage(File(avatarLocalPath!))
+                      : widget.auth.profile?['avatarUrl'] is String
+                          ? NetworkImage(widget.auth.profile!['avatarUrl'].toString())
+                          : null,
+                  child: avatarLocalPath != null || widget.auth.profile?['avatarUrl'] is String
+                      ? null
+                      : const Icon(Icons.person_rounded, size: 38, color: EazyColors.green),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: busy || avatarBusy ? null : pickAvatar,
+                  icon: avatarBusy
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.add_a_photo_outlined),
+                  label: Text(avatarBusy ? 'Uploading photo…' : avatarPath != null ? 'Photo uploaded' : 'Add profile photo'),
+                ),
+                const Text(
+                  'Add a clear photo so people can recognise you.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: EazyColors.muted, fontSize: 12),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),

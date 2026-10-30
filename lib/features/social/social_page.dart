@@ -72,33 +72,22 @@ class _SocialPageState extends State<SocialPage> {
       });
     }
     try {
+      // The current people-discovery endpoint requires a search query, so
+      // requesting an empty recommendation feed only adds a failed round trip.
+      // Keep the feed as the critical home-screen request.
       final result = await api.get(
         'home/feed?page=1&limit=20&mode=$mode',
         auth: true,
       );
+      suggestions = [];
       final raw = result['items'] as List? ?? const [];
-      final loaded =
-          raw
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
-      final total =
-          result['meta'] is Map
-              ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '')
-              : null;
-      try {
-        final people = await api.get(
-          'discover?type=people&page=1&limit=8',
-          auth: true,
-        );
-        suggestions =
-            (people['items'] as List? ?? const [])
-                .whereType<Map>()
-                .map((e) => Map<String, dynamic>.from(e))
-                .toList();
-      } catch (_) {
-        suggestions = [];
-      }
+      final loaded = raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      final total = result['meta'] is Map
+          ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '')
+          : null;
       if (mounted) {
         setState(() {
           if (wasScrolled &&
@@ -457,10 +446,7 @@ class _SocialPageState extends State<SocialPage> {
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           if (loading && posts.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: CircularProgressIndicator()),
-            ),
+            const SliverToBoxAdapter(child: _FeedLoadingSkeleton()),
           if (!loading && error != null && posts.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
@@ -1761,6 +1747,68 @@ class _SuggestedAccounts extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FeedLoadingSkeleton extends StatelessWidget {
+  const _FeedLoadingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surfaceContainerHighest;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+      child: Column(
+        children: List.generate(
+          3,
+          (index) => Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: EazyColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(backgroundColor: surface, radius: 19),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(width: 112, height: 10, decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(8))),
+                          const SizedBox(height: 7),
+                          Container(width: 76, height: 8, decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(8))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(height: 12, decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(8))),
+                const SizedBox(height: 8),
+                FractionallySizedBox(
+                  widthFactor: .68,
+                  child: Container(height: 12, decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(8))),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: surface,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

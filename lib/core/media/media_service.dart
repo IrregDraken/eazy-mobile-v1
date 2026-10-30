@@ -11,12 +11,14 @@ class MediaUpload {
     required this.kind,
     required this.byteSize,
     required this.fileName,
+    this.localPath,
   });
   final String path;
   final String contentType;
   final String kind;
   final int byteSize;
   final String fileName;
+  final String? localPath;
 }
 
 class EazyMediaService {
@@ -128,6 +130,7 @@ class EazyMediaService {
       kind: kind,
       byteSize: bytes.length,
       fileName: file.name,
+      localPath: file.path,
     );
   }
 

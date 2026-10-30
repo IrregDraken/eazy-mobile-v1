@@ -30,6 +30,7 @@ class AuthController extends ChangeNotifier {
   bool _busy = false;
   User? _firebaseUser;
   Map<String, dynamic>? _profile;
+  Future<void>? _googleInitialization;
 
   bool get isRestoring => _restoring;
   bool get isBusy => _busy;
@@ -88,10 +89,12 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<EmailVerificationChallenge> requestEmailVerificationCode(
-    String email,
-  ) async {
+    String email, {
+    bool auth = false,
+  }) async {
     final result = await api.post(
       'auth/email-verification/request-code',
+      auth: auth,
       body: {'email': email.trim().toLowerCase()},
     );
     return EmailVerificationChallenge(
@@ -118,24 +121,49 @@ class AuthController extends ChangeNotifier {
   Future<void> registerEmailAfterVerification(
     String email,
     String password,
+    EmailVerificationChallenge challenge,
+    String code,
   ) async {
     await _run(() async {
       _requireFirebase();
       try {
-        final credential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-              email: email.trim().toLowerCase(),
-              password: password,
-            );
+        final normalizedEmail = email.trim().toLowerCase();
+        UserCredential credential;
+        try {
+          credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            email: normalizedEmail,
+            password: password,
+          );
+        } on FirebaseAuthException catch (error) {
+          // Firebase creation can succeed even when the follow-up API call
+          // fails. Sign in to that same account and safely retry verification.
+          if (error.code != 'email-already-in-use') rethrow;
+          credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: normalizedEmail,
+            password: password,
+          );
+        }
         final user = credential.user;
         if (user == null) {
           throw const ApiException('Unable to create your Eazy account.');
         }
-        await _syncFirebaseUser(user, forceRefresh: true);
+        await user.reload();
+        final currentUser = FirebaseAuth.instance.currentUser ?? user;
+        final token = await currentUser.getIdToken(true);
+        if (token == null || token.isEmpty) {
+          throw const ApiException('Firebase did not return a session token.');
+        }
+        // The verification endpoint is mounted before normal API auth
+        // provisioning, so it can safely bind this unverified identity.
+        await api.saveToken(token);
       } on FirebaseAuthException catch (e) {
         throw ApiException(_firebaseMessage(e));
       }
     });
+
+    // Bind the already-verified challenge to the newly-created Firebase user.
+    // The authenticated backend request marks that exact identity as verified.
+    await verifyEmailCode(challenge, code);
   }
 
   Future<void> verifyEmailCode(
@@ -262,13 +290,19 @@ class AuthController extends ChangeNotifier {
     await _run(() async {
       _requireFirebase();
       final google = GoogleSignIn.instance;
-      await google.initialize(
+      final initialization = _googleInitialization ??= google.initialize(
         serverClientId: const String.fromEnvironment(
           'GOOGLE_SERVER_CLIENT_ID',
           defaultValue:
               '370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com',
         ),
       );
+      try {
+        await initialization;
+      } catch (_) {
+        _googleInitialization = null;
+        rethrow;
+      }
       final account = await google.authenticate();
       final idToken = account.authentication.idToken;
       if (idToken == null || idToken.isEmpty) {

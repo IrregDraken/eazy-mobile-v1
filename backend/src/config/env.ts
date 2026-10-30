@@ -35,6 +35,7 @@ const envSchema = z.object({
   RESEND_FROM_EMAIL: z.union([z.string().trim().email(), z.literal('')]).optional(),
   RESEND_REPLY_TO_EMAIL: z.union([z.string().trim().email(), z.literal('')]).optional(),
   RESEND_WEBHOOK_SECRET: z.union([z.string().trim().min(1).max(4096), z.literal('')]).optional(),
+  OTP_HMAC_SECRET: z.union([z.string().trim().min(32).max(4096), z.literal('')]).optional(),
   OTP_TTL_MINUTES: z.coerce.number().int().min(1).max(60).optional(),
   OTP_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).optional(),
   AI_PROVIDER_BASE_URL: z.union([z.string().trim().url(), z.literal('')]).optional(),
@@ -83,6 +84,18 @@ const envSchema = z.object({
   const resendPresent = Boolean(value.RESEND_API_KEY || value.RESEND_FROM_EMAIL || value.RESEND_REPLY_TO_EMAIL);
   if (resendPresent && (!value.RESEND_API_KEY || !value.RESEND_FROM_EMAIL)) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['RESEND_API_KEY'], message: 'Email verification requires both RESEND_API_KEY and RESEND_FROM_EMAIL.' });
+  }
+  if (
+    value.NODE_ENV === 'production' &&
+    value.RESEND_API_KEY &&
+    value.RESEND_FROM_EMAIL &&
+    !value.OTP_HMAC_SECRET
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['OTP_HMAC_SECRET'],
+      message: 'Production email verification requires a dedicated OTP_HMAC_SECRET of at least 32 characters.'
+    });
   }
   for (const [key, endpoint] of [
     ['TRANSLATION_PROVIDER_BASE_URL', value.TRANSLATION_PROVIDER_BASE_URL],

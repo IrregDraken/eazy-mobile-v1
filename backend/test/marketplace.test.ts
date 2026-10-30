@@ -52,6 +52,47 @@ test('product search validates bounded filters and deterministic sort options', 
   assert.throws(() => productSearchSchema.parse({ minPrice: '20.00', maxPrice: '1.00' }));
 });
 
+test('product search parses bounded comma-separated category UUIDs and keeps the legacy singular filter', () => {
+  const ids = [
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+  ];
+  const query = productSearchSchema.parse({ categoryIds: ids.join(',') });
+  assert.deepEqual(query.categoryIds, ids);
+  assert.equal(
+    productSearchSchema.parse({ categoryId: ids[0] }).categoryId,
+    ids[0],
+  );
+  assert.throws(() => productSearchSchema.parse({ categoryIds: `${ids[0]},not-a-uuid` }));
+  assert.throws(() => productSearchSchema.parse({ categoryIds: `${ids[0]},${ids[1]}`, categoryId: ids[0] }));
+  assert.throws(() => productSearchSchema.parse({ categoryIds: Array(51).fill(ids[0]).join(',') }));
+});
+
+test('multi-category search filters every requested category in count and product queries', async () => {
+  const ids = [
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000003',
+  ];
+  const calls: { sql: string; values: unknown[] }[] = [];
+  const pool = {
+    query: async (sql: string, values: unknown[] = []) => {
+      calls.push({ sql, values });
+      return { rows: sql.startsWith('SELECT count(*)') ? [{ count: '0' }] : [], rowCount: 0 };
+    }
+  };
+  const parsed = productSearchSchema.parse({ categoryIds: ids.join(',') });
+  const marketplace = new MarketplaceRepository(pool as never);
+  await marketplace.products({ categoryIds: parsed.categoryIds, sort: 'newest', page: 1, limit: 5 });
+
+  assert.equal(calls.length, 2);
+  for (const call of calls) {
+    assert.match(call.sql, /p\.category_id = ANY\(\$1::uuid\[\]\)/);
+    assert.deepEqual(call.values[0], ids);
+    assert.doesNotMatch(call.sql, new RegExp(ids[0]));
+  }
+});
+
 test('marketplace currency budget filter is parameterized for both count and product queries', async () => {
   const calls: { sql: string; values: unknown[] }[] = [];
   const pool = {

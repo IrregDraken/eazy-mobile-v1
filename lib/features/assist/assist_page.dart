@@ -80,10 +80,18 @@ class _AssistPageState extends State<AssistPage> {
     final content = composer.text.trim();
     final id = sessionId;
     if (content.isEmpty || id == null || sending) return;
+    final pendingId = 'pending-${DateTime.now().microsecondsSinceEpoch}';
     setState(() {
       sending = true;
       error = null;
+      messages.add({
+        'id': pendingId,
+        'role': 'user',
+        'content': content,
+      });
+      composer.clear();
     });
+    _scrollToEnd();
     try {
       final result = await api.post(
         'assist/sessions/$id/messages',
@@ -92,12 +100,18 @@ class _AssistPageState extends State<AssistPage> {
       );
       final user = result['userMessage'];
       final assistant = result['assistantMessage'];
+      messages.removeWhere((message) => message['id'] == pendingId);
       if (user is Map) messages.add(Map<String, dynamic>.from(user));
       if (assistant is Map) messages.add(Map<String, dynamic>.from(assistant));
-      composer.clear();
       _scrollToEnd();
     } on ApiException catch (e) {
-      if (mounted) setState(() => error = e.message);
+      messages.removeWhere((message) => message['id'] == pendingId);
+      if (mounted) {
+        setState(() {
+          if (composer.text.trim().isEmpty) composer.text = content;
+          error = e.message;
+        });
+      }
     } finally {
       if (mounted) setState(() => sending = false);
     }
@@ -165,10 +179,13 @@ class _AssistPageState extends State<AssistPage> {
                                 18,
                                 12,
                               ),
-                              itemCount: messages.length,
-                              itemBuilder:
-                                  (context, index) =>
-                                      _MessageBubble(message: messages[index]),
+                              itemCount: messages.length + (sending ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                if (sending && index == messages.length) {
+                                  return const _ThinkingBubble();
+                                }
+                                return _MessageBubble(message: messages[index]);
+                              },
                             ),
                   ),
                   SafeArea(
@@ -217,6 +234,36 @@ class _AssistPageState extends State<AssistPage> {
               ),
     );
   }
+}
+
+class _ThinkingBubble extends StatelessWidget {
+  const _ThinkingBubble();
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.centerLeft,
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 9),
+          Text('Eazy is thinking…', style: TextStyle(color: EazyColors.muted)),
+        ],
+      ),
+    ),
+  );
 }
 
 class _MessageBubble extends StatelessWidget {

@@ -24,7 +24,6 @@ class _AuthPageState extends State<AuthPage> {
   bool phoneMode = false;
   int registerStage = 0;
   bool obscure = true;
-  bool remember = true;
   bool busy = false;
   String? error;
   EmailVerificationChallenge? challenge;
@@ -89,6 +88,8 @@ class _AuthPageState extends State<AuthPage> {
           await widget.auth.registerEmailAfterVerification(
             identifier.text,
             password.text,
+            challenge!,
+            code.text,
           );
           if (mounted) context.go('/onboarding');
         }
@@ -145,10 +146,16 @@ class _AuthPageState extends State<AuthPage> {
           identifier.text,
         );
       } else {
-        challenge = await widget.auth.beginEmailRegistration(identifier.text);
+        challenge = await widget.auth.requestEmailVerificationCode(
+          identifier.text,
+          auth: registerStage >= 2,
+        );
       }
       if (mounted) {
-        code.clear();
+        setState(() {
+          code.clear();
+          if (register && registerStage >= 2) registerStage = 1;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('A new verification code is on its way.'),
@@ -182,9 +189,39 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(color: Color(0xFFF4F8F4)),
-        child: SafeArea(
+      backgroundColor: const Color(0xFF020B07),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 320),
+              child: Image.asset(
+                register
+                    ? 'assets/images/auth/signup_background.webp'
+                    : 'assets/images/auth/signin_background.webp',
+                key: ValueKey<bool>(register),
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x33020B07),
+                    Color(0x66020B07),
+                    Color(0x99020B07),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxHeight < 700;
@@ -239,6 +276,7 @@ class _AuthPageState extends State<AuthPage> {
             },
           ),
         ),
+      ],
       ),
     );
   }
@@ -328,16 +366,6 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 2),
             Row(
               children: [
-                Checkbox(
-                  value: remember,
-                  onChanged: (v) => setState(() => remember = v ?? true),
-                  activeColor: const Color(0xFF0E9D61),
-                  visualDensity: VisualDensity.compact,
-                ),
-                const Text(
-                  'Remember me',
-                  style: TextStyle(color: Color(0xFF40534A), fontSize: 12),
-                ),
                 const Spacer(),
                 TextButton(
                   onPressed: _resetPassword,
@@ -436,7 +464,7 @@ class _AuthPageState extends State<AuthPage> {
                       ),
             ),
           ),
-          if (register && registerStage == 1)
+          if (register && registerStage >= 1)
             Center(
               child: TextButton(
                 onPressed: busy ? null : resend,
@@ -444,7 +472,9 @@ class _AuthPageState extends State<AuthPage> {
                   foregroundColor: const Color(0xFF087A4A),
                   disabledForegroundColor: const Color(0xFF718179),
                 ),
-                child: const Text('Resend code'),
+                child: Text(
+                  registerStage >= 2 ? 'Code expired? Send a new one' : 'Resend code',
+                ),
               ),
             ),
           if (registerStage == 0) ...[
@@ -493,7 +523,7 @@ class _AuthPageState extends State<AuthPage> {
       await widget.auth.sendPasswordReset(identifier.text);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password reset email sent.')),
+          const SnackBar(content: Text('If this email is registered, check your inbox and spam folder for a reset link.')),
         );
       }
     } on ApiException catch (e) {
