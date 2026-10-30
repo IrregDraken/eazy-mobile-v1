@@ -43,19 +43,18 @@ void main() {
 }
 
 double _contrastRatio(Color foreground, Color background) {
-  double linearize(int channel) {
-    final value = channel / 255;
+  double linearize(double value) {
     return value <= 0.04045
         ? value / 12.92
         : pow((value + 0.055) / 1.055, 2.4).toDouble();
   }
 
-  final foregroundLuminance = 0.2126 * linearize(foreground.red) +
-      0.7152 * linearize(foreground.green) +
-      0.0722 * linearize(foreground.blue);
-  final backgroundLuminance = 0.2126 * linearize(background.red) +
-      0.7152 * linearize(background.green) +
-      0.0722 * linearize(background.blue);
+  final foregroundLuminance = 0.2126 * linearize(foreground.r) +
+      0.7152 * linearize(foreground.g) +
+      0.0722 * linearize(foreground.b);
+  final backgroundLuminance = 0.2126 * linearize(background.r) +
+      0.7152 * linearize(background.g) +
+      0.0722 * linearize(background.b);
   final lighter = foregroundLuminance > backgroundLuminance
       ? foregroundLuminance
       : backgroundLuminance;
