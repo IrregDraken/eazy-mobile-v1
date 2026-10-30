@@ -153,7 +153,10 @@ class _AuthPageState extends State<AuthPage> {
         );
       }
       if (mounted) {
-        code.clear();
+        setState(() {
+          code.clear();
+          if (register && registerStage >= 2) registerStage = 1;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('A new verification code is on its way.'),
@@ -454,7 +457,7 @@ class _AuthPageState extends State<AuthPage> {
                       ),
             ),
           ),
-          if (register && registerStage == 1)
+          if (register && registerStage >= 1)
             Center(
               child: TextButton(
                 onPressed: busy ? null : resend,
@@ -462,7 +465,9 @@ class _AuthPageState extends State<AuthPage> {
                   foregroundColor: const Color(0xFF087A4A),
                   disabledForegroundColor: const Color(0xFF718179),
                 ),
-                child: const Text('Resend code'),
+                child: Text(
+                  registerStage >= 2 ? 'Code expired? Send a new one' : 'Resend code',
+                ),
               ),
             ),
           if (registerStage == 0) ...[
