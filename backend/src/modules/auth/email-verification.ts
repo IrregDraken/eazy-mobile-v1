@@ -18,11 +18,14 @@ export interface EmailVerificationResult {
 export class EmailVerificationService {
   constructor(private readonly pool: Pool, private readonly provider: EmailProvider, private readonly config: AppConfig) {}
 
-  async requestCode(emailInput: string): Promise<EmailVerificationStart> {
+  async requestCode(emailInput: string, allowedFirebaseUid?: string): Promise<EmailVerificationStart> {
     const email = normalizeEmail(emailInput);
     const existing = await this.pool.query<{ id: string }>(
-      'SELECT id FROM users WHERE lower(email) = $1 AND status <> \'deleted\' LIMIT 1',
-      [email]
+      `SELECT id FROM users
+       WHERE lower(email) = $1 AND status <> 'deleted'
+         AND ($2::text IS NULL OR firebase_uid <> $2)
+       LIMIT 1`,
+      [email, allowedFirebaseUid ?? null]
     );
     if (existing.rowCount) {
       throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
