@@ -53,13 +53,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   Future<void> pickDob() async {
     final now = DateTime.now();
     final latest = DateTime(now.year - 18, now.month, now.day);
-    final initial = dob ?? latest;
+    final initial = dob == null || dob!.isAfter(latest) ? latest : dob!;
+    DateTime selected = initial;
     final value = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        DateTime selected = initial;
         return StatefulBuilder(
           builder: (context, setSheetState) => SafeArea(
             child: Container(
