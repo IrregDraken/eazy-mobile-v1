@@ -39,8 +39,6 @@ export class EmailVerificationService {
       if (!canResend) {
         throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
       }
-    } else if (!options.allowExistingUnverified) {
-      throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
     }
 
     // A resend invalidates older outstanding codes so only the latest code can be used.
