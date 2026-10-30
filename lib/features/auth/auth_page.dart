@@ -147,7 +147,10 @@ class _AuthPageState extends State<AuthPage> {
           identifier.text,
         );
       } else {
-        challenge = await widget.auth.beginEmailRegistration(identifier.text);
+        challenge = await widget.auth.requestEmailVerificationCode(
+          identifier.text,
+          auth: registerStage >= 2,
+        );
       }
       if (mounted) {
         code.clear();
