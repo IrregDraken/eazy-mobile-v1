@@ -208,7 +208,7 @@ abstract final class EazyTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
-          borderSide: const BorderSide(color: EazyColors.greenDeep, width: 1.4),
+          borderSide: const BorderSide(color: EazyColors.greenForegroundLight, width: 1.4),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,
