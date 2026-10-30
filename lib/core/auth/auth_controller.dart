@@ -63,53 +63,11 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<EmailVerificationChallenge> registerEmail(
-    String email,
-    String password,
-  ) async {
-    return _run(() async {
-      _requireFirebase();
-      final normalizedEmail = email.trim().toLowerCase();
-      final current = FirebaseAuth.instance.currentUser;
-      if (current != null) {
-        if (current.email?.trim().toLowerCase() != normalizedEmail) {
-          throw const ApiException(
-            'Sign out of the current account before creating another Eazy account.',
-          );
-        }
-        if (current.emailVerified) {
-          throw const ApiException(
-            'This email is already verified. Please sign in instead.',
-          );
-        }
-        await _syncFirebaseUser(current, forceRefresh: true);
-        return requestEmailVerificationCode(normalizedEmail);
-      }
-
-      try {
-        final credential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-              email: normalizedEmail,
-              password: password,
-            );
-        final user = credential.user;
-        if (user == null) {
-          throw const ApiException('Unable to create your Eazy account.');
-        }
-        await _syncFirebaseUser(user, forceRefresh: true);
-        return requestEmailVerificationCode(normalizedEmail);
-      } on FirebaseAuthException catch (e) {
-        throw ApiException(_firebaseMessage(e));
-      }
-    });
-  }
-
   Future<EmailVerificationChallenge> requestEmailVerificationCode(
     String email,
   ) async {
     final result = await api.post(
       'auth/email-verification/request-code',
-      auth: true,
       body: {'email': email.trim().toLowerCase()},
     );
     return EmailVerificationChallenge(
@@ -117,6 +75,66 @@ class AuthController extends ChangeNotifier {
       expiresInSeconds:
           int.tryParse(result['expiresInSeconds']?.toString() ?? '') ?? 600,
     );
+  }
+
+  Future<EmailVerificationChallenge> beginEmailRegistration(String email) {
+    return requestEmailVerificationCode(email);
+  }
+
+  Future<void> verifyEmailRegistration(
+    EmailVerificationChallenge challenge,
+    String code,
+  ) async {
+    await api.post(
+      'auth/email-verification/verify-code',
+      body: {'challengeId': challenge.challengeId, 'code': code.trim()},
+    );
+  }
+
+  Future<void> registerEmailAfterVerification(
+    String email,
+    String password,
+    EmailVerificationChallenge challenge,
+    String code,
+  ) async {
+    await _run(() async {
+      _requireFirebase();
+      final normalizedEmail = email.trim().toLowerCase();
+      final current = FirebaseAuth.instance.currentUser;
+      UserCredential? credential;
+
+      if (current != null) {
+        if (current.email?.trim().toLowerCase() != normalizedEmail) {
+          throw const ApiException(
+            'Sign out of the current account before creating another Eazy account.',
+          );
+        }
+        if (current.emailVerified) {
+          await _syncFirebaseUser(current, forceRefresh: true);
+          return;
+        }
+        await _syncFirebaseUser(current, forceRefresh: true);
+      } else {
+        try {
+          credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            email: normalizedEmail,
+            password: password,
+          );
+        } on FirebaseAuthException catch (e) {
+          throw ApiException(_firebaseMessage(e));
+        }
+        final user = credential.user;
+        if (user == null) {
+          throw const ApiException('Unable to create your Eazy account.');
+        }
+        await _syncFirebaseUser(user, forceRefresh: true);
+      }
+
+      // The code was verified before account creation. Re-submit that same
+      // challenge with the new Firebase identity so the backend can bind the
+      // verified email to this exact account.
+      await verifyEmailCode(challenge, code);
+    });
   }
 
   Future<void> verifyEmailCode(
