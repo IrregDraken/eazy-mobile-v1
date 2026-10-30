@@ -60,7 +60,7 @@ class _StoriesTrayState extends State<StoriesTray> {
           const SizedBox(height: 8),
         ])),
       );
-      if (choice == null) return;
+      if (choice == null || !mounted) return;
       final captionController = TextEditingController();
       final caption = await showDialog<String>(
         context: context,
@@ -298,10 +298,21 @@ class _StoryViewerState extends State<StoryViewer> {
               if (mine && widget.allowDelete) IconButton(onPressed: () async {
                 try {
                   await widget.api.delete('stories/${current['id']}', auth: true);
-                  if (widget.stories.length == 1) { if (context.mounted) Navigator.of(context).pop(); }
-                  else { setState(() { widget.stories.removeAt(index); index = index.clamp(0, widget.stories.length - 1).toInt(); }); _startTimer(); }
+                  if (!mounted) return;
+                  if (widget.stories.length == 1) {
+                    Navigator.of(context).pop();
+                  } else {
+                    setState(() {
+                      widget.stories.removeAt(index);
+                      index = index.clamp(0, widget.stories.length - 1).toInt();
+                    });
+                    _startTimer();
+                  }
                   await widget.onChanged();
-                } on ApiException catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message))); }
+                } on ApiException catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+                }
               }, icon: const Icon(Icons.delete_outline_rounded, color: Colors.white)),
               IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close_rounded, color: Colors.white)),
             ])),
