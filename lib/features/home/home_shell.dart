@@ -45,7 +45,7 @@ class _HomeShellState extends State<HomeShell> {
         IndexedStack(index: index, children: pages),
         Positioned(
           right: 18,
-          bottom: 72,
+          bottom: 60,
           child: SafeArea(
             child: Tooltip(
               message: 'Ask Eazy Assist',
