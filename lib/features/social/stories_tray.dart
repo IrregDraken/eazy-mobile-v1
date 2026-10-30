@@ -298,7 +298,7 @@ class _StoryViewerState extends State<StoryViewer> {
               if (mine && widget.allowDelete) IconButton(onPressed: () async {
                 try {
                   await widget.api.delete('stories/${current['id']}', auth: true);
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   if (widget.stories.length == 1) {
                     Navigator.of(context).pop();
                   } else {
@@ -310,7 +310,7 @@ class _StoryViewerState extends State<StoryViewer> {
                   }
                   await widget.onChanged();
                 } on ApiException catch (e) {
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
                 }
               }, icon: const Icon(Icons.delete_outline_rounded, color: Colors.white)),
