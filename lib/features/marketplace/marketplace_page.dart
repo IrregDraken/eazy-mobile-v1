@@ -75,6 +75,22 @@ class _MarketplacePageState extends State<MarketplacePage> {
     }
   }
 
+  String? _categoryImageUrl(String? id) {
+    for (final product in products) {
+      final category = product['category'];
+      if (id != null &&
+          (category is! Map || category['id']?.toString() != id)) {
+        continue;
+      }
+      final media = product['media'] as List? ?? const [];
+      for (final item in media.whereType<Map>()) {
+        final url = item['url']?.toString();
+        if (url != null && url.startsWith('http')) return url;
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -153,6 +169,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         return _CategoryTile(
                           name: 'All',
                           icon: Icons.grid_view_rounded,
+                          imageUrl: _categoryImageUrl(null),
                           selected: categoryId == null,
                           onTap: () {
                             setState(() => categoryId = null);
@@ -165,6 +182,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       return _CategoryTile(
                         name: x['name']?.toString() ?? 'Category',
                         icon: _categoryIcon(x['name']?.toString()),
+                        imageUrl: _categoryImageUrl(id),
                         selected: categoryId == id,
                         onTap: () {
                           setState(() => categoryId = id);
@@ -293,11 +311,13 @@ class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
     required this.name,
     required this.icon,
+    this.imageUrl,
     required this.selected,
     required this.onTap,
   });
   final String name;
   final IconData icon;
+  final String? imageUrl;
   final bool selected;
   final VoidCallback onTap;
 
@@ -337,13 +357,29 @@ class _CategoryTile extends StatelessWidget {
                       ]
                       : null,
             ),
-            child: Icon(
-              icon,
-              color:
-                  selected
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : Theme.of(context).colorScheme.primary,
-              size: 25,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl!,
+                      fit: BoxFit.cover,
+                      width: 62,
+                      height: 62,
+                      errorBuilder: (_, _, _) => Icon(
+                        icon,
+                        color: selected
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.primary,
+                        size: 25,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      color: selected
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : Theme.of(context).colorScheme.primary,
+                      size: 25,
+                    ),
             ),
           ),
           const SizedBox(height: 7),
