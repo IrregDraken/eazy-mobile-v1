@@ -148,10 +148,14 @@ class AuthController extends ChangeNotifier {
           throw const ApiException('Unable to create your Eazy account.');
         }
         await user.reload();
-        await _syncFirebaseUser(
-          FirebaseAuth.instance.currentUser ?? user,
-          forceRefresh: true,
-        );
+        final currentUser = FirebaseAuth.instance.currentUser ?? user;
+        final token = await currentUser.getIdToken(true);
+        if (token == null || token.isEmpty) {
+          throw const ApiException('Firebase did not return a session token.');
+        }
+        // The verification endpoint is mounted before normal API auth
+        // provisioning, so it can safely bind this unverified identity.
+        await api.saveToken(token);
       } on FirebaseAuthException catch (e) {
         throw ApiException(_firebaseMessage(e));
       }
