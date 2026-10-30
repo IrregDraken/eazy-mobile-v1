@@ -429,7 +429,7 @@ class _ConversationPageState extends State<ConversationPage> {
                 padding:const EdgeInsets.only(left:10,right:4),
                 decoration:BoxDecoration(color:Theme.of(context).colorScheme.surface,borderRadius:BorderRadius.circular(14),border:Border.all(color:Theme.of(context).dividerColor)),
                 child:Row(mainAxisSize:MainAxisSize.min,children:[
-                  Icon(item.contentType.startsWith('image/')?Icons.image_outlined:item.contentType.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:EazyColors.green,size:18),
+                  Icon(item.contentType.startsWith('image/')?Icons.image_outlined:item.contentType.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:Theme.of(context).colorScheme.primary,size:18),
                   const SizedBox(width:6),
                   Flexible(child:Text(item.fileName,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:11))),
                   IconButton(visualDensity:VisualDensity.compact,iconSize:17,onPressed:()=>setState(()=>pendingAttachments.removeAt(index)),icon:const Icon(Icons.close_rounded)),
@@ -476,10 +476,10 @@ class _MessageBubble extends StatelessWidget {
           bottomLeft:Radius.circular(isMine?20:7),
           bottomRight:Radius.circular(isMine?7:20),
         ),
-        border:Border.all(color:isMine?EazyColors.green.withValues(alpha:.24):EazyColors.border),
+        border:Border.all(color:isMine?Theme.of(context).colorScheme.primary.withValues(alpha:.24):EazyColors.border),
       ),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        if(!isMine&&sender['displayName']!=null&&!deleted)Padding(padding:const EdgeInsets.only(bottom:4),child:Text(sender['displayName'].toString(),style:const TextStyle(color:EazyColors.green,fontSize:10,fontWeight:FontWeight.w900,letterSpacing:.2))),
+        if(!isMine&&sender['displayName']!=null&&!deleted)Padding(padding:const EdgeInsets.only(bottom:4),child:Text(sender['displayName'].toString(),style:const TextStyle(color:Theme.of(context).colorScheme.primary,fontSize:10,fontWeight:FontWeight.w900,letterSpacing:.2))),
         Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color: deleted ? EazyColors.muted : (isMine ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface),fontSize:14,height:1.45,fontStyle:deleted?FontStyle.italic:FontStyle.normal)),
         if(message['replyTo'] is Map)Padding(padding:const EdgeInsets.only(top:8),child:Text('↳ ' + ((message['replyTo']['body'] ?? 'Deleted message').toString()),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))),
         if(message['attachments'] is List && (message['attachments'] as List).isNotEmpty)
@@ -512,7 +512,7 @@ class _MessageBubble extends StatelessWidget {
               }).toList(),
             ),
           ),
-        if(message['_translation']!=null)Padding(padding:const EdgeInsets.only(top:8),child:Text(message['_translation'].toString(),style:const TextStyle(color:EazyColors.mint,fontSize:12,height:1.35))),
+        if(message['_translation']!=null)Padding(padding:const EdgeInsets.only(top:8),child:Text(message['_translation'].toString(),style:TextStyle(color:Theme.of(context).colorScheme.primary,fontSize:12,height:1.35))),
         if(reactions.isNotEmpty)Padding(padding:const EdgeInsets.only(top:7),child:Wrap(
           spacing:4,
           children:reactions.map<Widget>((r) => InkWell(
@@ -544,7 +544,7 @@ class _ContextBar extends StatelessWidget{
   final String label,value;final VoidCallback onClose;
   @override Widget build(BuildContext context)=>Container(margin:const EdgeInsets.fromLTRB(12,6,12,0),padding:const EdgeInsets.symmetric(horizontal:12,vertical:9),
     decoration:BoxDecoration(color:Theme.of(context).colorScheme.surface,borderRadius:BorderRadius.circular(EazyRadius.md),border:Border.all(color:Theme.of(context).dividerColor)),child:Row(children:[
-      Container(width:3,height:31,decoration:BoxDecoration(gradient:const LinearGradient(colors:[EazyColors.green,EazyColors.mint],begin:Alignment.topCenter,end:Alignment.bottomCenter),borderRadius:BorderRadius.circular(4))),const SizedBox(width:9),
+      Container(width:3,height:31,decoration:BoxDecoration(gradient:const LinearGradient(colors:[Theme.of(context).colorScheme.primary,Theme.of(context).colorScheme.secondary],begin:Alignment.topCenter,end:Alignment.bottomCenter),borderRadius:BorderRadius.circular(4))),const SizedBox(width:9),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(label,style:const TextStyle(color:EazyColors.green,fontSize:9,fontWeight:FontWeight.w900,letterSpacing:1)),
         Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))
@@ -555,7 +555,7 @@ class _ContextBar extends StatelessWidget{
 class _ChatState extends StatelessWidget{
   const _ChatState(this.message,[this.action]);final String message;final Future<void> Function()? action;
   @override Widget build(BuildContext context)=>Padding(padding:const EdgeInsets.symmetric(vertical:70,horizontal:24),child:Column(children:[
-    Container(width:68,height:68,decoration:BoxDecoration(color:EazyColors.green.withValues(alpha:.08),borderRadius:BorderRadius.circular(22),border:Border.all(color:EazyColors.border)),child:const Icon(Icons.forum_outlined,size:32,color:EazyColors.green)),const SizedBox(height:12),
+    Container(width:68,height:68,decoration:BoxDecoration(color:EazyColors.green.withValues(alpha:.08),borderRadius:BorderRadius.circular(22),border:Border.all(color:Theme.of(context).dividerColor)),child:const Icon(Icons.forum_outlined,size:32,color:EazyColors.green)),const SizedBox(height:12),
     Text(message,textAlign:TextAlign.center,style:const TextStyle(color:EazyColors.muted,height:1.4)),
     if(action!=null)...[const SizedBox(height:14),OutlinedButton(onPressed:action,child:const Text('Try again'))]
   ]));
