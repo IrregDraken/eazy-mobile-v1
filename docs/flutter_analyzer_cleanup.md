@@ -2,7 +2,7 @@
 
 ## Scope and starting point
 
-This maintenance branch is based on `99c6d18fd3638d09f19505429cc345a2b4835361` (`main` at task start), on branch `maintenance/flutter-analyzer-cleanup`. The application identity, architecture, screens, navigation, backend contracts, platform configuration, package versions, and signing settings were preserved. No APK was built.
+This maintenance branch is based on `99c6d18fd3638d09f19505429cc345a2b4835361` (`main` at task start), on branch `maintenance/flutter-analyzer-cleanup`. The application identity, architecture, screens, navigation, backend contracts, platform configuration, package versions, and signing settings were preserved. No local APK or release build was run; the PR's Android CI build attempt was canceled before completion as described below.
 
 The baseline was measured with Flutter **3.47.9** and Dart **3.13.7** after `flutter pub get`. The complete, unedited output from `flutter analyze` on the starting commit is preserved in [the baseline analyzer log](flutter_analyzer_baseline.log), including every affected path, line, and column. The baseline had **123 informational diagnostics, 0 warnings, and 0 errors**:
 
