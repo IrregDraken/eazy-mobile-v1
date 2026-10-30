@@ -166,12 +166,12 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [ Text('Eazy', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 2.4)), const SizedBox(height: 2), Text('Chats', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 28, fontWeight: FontWeight.w900)), ])),
             IconButton(onPressed: _newChat, tooltip: 'New chat', style: IconButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: .10), foregroundColor: Theme.of(context).colorScheme.primary), icon: const Icon(Icons.edit_square)),
           ])),
-        if (_connecting) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 8), child: Row(children: [Container(width: 7, height: 7, decoration: const BoxDecoration(color: EazyColors.amber, shape: BoxShape.circle)), const SizedBox(width: 8), Text('Reconnecting to Eazy', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: EazyColors.muted))])),
+        if (_connecting) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 8), child: Row(children: [Container(width: 7, height: 7, decoration:  BoxDecoration(color: EazyColors.amber, shape: BoxShape.circle)), const SizedBox(width: 8), Text('Reconnecting to Eazy', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: EazyColors.muted))])),
         Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: TextField(controller: _search, onChanged: (_) => setState(() {}),
             style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             decoration: InputDecoration(hintText: 'Search conversations or people', prefixIcon: Icon(Icons.search_rounded, color: Theme.of(context).colorScheme.primary),
-              hintStyle: const TextStyle(color: EazyColors.muted), filled: true, fillColor: Theme.of(context).colorScheme.surface,
+              hintStyle:  TextStyle(color: EazyColors.muted), filled: true, fillColor: Theme.of(context).colorScheme.surface,
               contentPadding: const EdgeInsets.symmetric(vertical: 3),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: BorderSide(color: Theme.of(context).dividerColor)),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: BorderSide(color: Theme.of(context).dividerColor))))),
@@ -274,12 +274,12 @@ class _NewChatScreenState extends State<_NewChatScreen> {
         : _error != null ? Center(child: Text(_error!, textAlign: TextAlign.center))
         : _contacts.isEmpty ? Center(child: Padding(padding: const EdgeInsets.all(24),
             child: Text(_query.text.trim().length < 2 ? 'Search by name or Eazy username to find people.' : 'No matching Eazy users found.',
-              textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted))))
+              textAlign: TextAlign.center, style:  TextStyle(color: EazyColors.muted))))
         : ListView.builder(itemCount: _contacts.length, itemBuilder: (_, i) {
           final c = _contacts[i]; final name = (c['displayName'] ?? c['fullName'] ?? c['username'] ?? 'Eazy user').toString();
           final avatar = c['avatarUrl']?.toString();
           return ListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5), leading: _Avatar(name: name, url: avatar), title: Text(name, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w800)),
-            subtitle: Text('@${c['username'] ?? ''}', style: const TextStyle(color: EazyColors.muted)),
+            subtitle: Text('@${c['username'] ?? ''}', style:  TextStyle(color: EazyColors.muted)),
             onTap: () => _select(c));
         })),
     ]));
@@ -381,7 +381,7 @@ class _Empty extends StatelessWidget {
     child: Column(mainAxisSize: MainAxisSize.min, children: [
       Container(width: 76, height: 76, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: .09), borderRadius: BorderRadius.circular(25), border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: .25))), child: Icon(icon, size: 34, color: Theme.of(context).colorScheme.primary)), const SizedBox(height: 16),
       Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 19, fontWeight: FontWeight.w900)),
-      const SizedBox(height: 8), Text(detail, textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted, height: 1.5)),
+      const SizedBox(height: 8), Text(detail, textAlign: TextAlign.center, style:  TextStyle(color: EazyColors.muted, height: 1.5)),
       const SizedBox(height: 18), FilledButton(onPressed: action, child: Text(actionText)),
     ])));
 }
