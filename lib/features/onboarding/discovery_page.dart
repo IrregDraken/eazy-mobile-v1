@@ -477,35 +477,49 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
     );
   }
 
-  Widget _productTile(Map<String, dynamic> product) => Column(
-    children: [
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: EazyColors.greenDeep.withValues(alpha: .10),
+  Widget _productTile(Map<String, dynamic> product) {
+    final media = (product['media'] as List? ?? const [])
+        .whereType<Map>()
+        .toList();
+    final imageUrl = media.isEmpty ? null : media.first['url']?.toString();
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: ClipRRect(
             borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              width: 54,
+              height: 54,
+              child: imageUrl != null && imageUrl.startsWith('http')
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _productPlaceholder(),
+                    )
+                  : _productPlaceholder(),
+            ),
           ),
-          child: const Icon(
-            Icons.shopping_bag_outlined,
-            color: EazyColors.greenDeep,
+          title: Text(
+            product['name']?.toString() ?? 'Eazy listing',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          subtitle: Text(
+            '${product['currency'] ?? 'NGN'} ${product['priceAmount'] ?? ''}',
+            style: const TextStyle(
+              color: EazyColors.greenDeep,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
-        title: Text(
-          product['name']?.toString() ?? 'Eazy listing',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        subtitle: Text(
-          '${product['currency'] ?? 'NGN'} ${product['priceAmount'] ?? ''}',
-          style: const TextStyle(
-            color: EazyColors.greenDeep,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-      const Divider(height: 1),
-    ],
+        const Divider(height: 1),
+      ],
+    );
+  }
+
+  Widget _productPlaceholder() => Container(
+    color: EazyColors.greenDeep.withValues(alpha: .10),
+    alignment: Alignment.center,
+    child: const Icon(Icons.shopping_bag_outlined, color: EazyColors.greenDeep),
   );
 }
