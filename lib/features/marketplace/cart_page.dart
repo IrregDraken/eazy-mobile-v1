@@ -7,7 +7,7 @@ class CartPage extends StatefulWidget{const CartPage({super.key});@override Stat
 class _CartPageState extends State<CartPage>{
  final api=ApiClient();bool loading=true,busy=false;String? error;Map<String,dynamic> cart={};
  @override void initState(){super.initState();load();}
- Future<void> load()async{if(!mounted)return;setState(()=>{loading=true;error=null;});try{final result=await api.get('cart',auth:true);if(mounted)setState(()=>cart=result);}on ApiException catch(e){if(mounted)setState(()=>error=e.message);}finally{if(mounted)setState(()=>loading=false);}}
+ Future<void> load()async{if(!mounted)return;setState(() { loading = true; error = null; });try{final result=await api.get('cart',auth:true);if(mounted)setState(()=>cart=result);}on ApiException catch(e){if(mounted)setState(()=>error=e.message);}finally{if(mounted)setState(()=>loading=false);}}
  Future<void> remove(String productId)async{setState(()=>busy=true);try{await api.delete('cart/items/$productId',auth:true);if(mounted)await load();}on ApiException catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.message)));}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> updateQty(String productId,int quantity)async{setState(()=>busy=true);try{await api.patch('cart/items/$productId',auth:true,body:{'quantity':quantity});if(mounted)await load();}on ApiException catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.message)));}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> checkout()async{
