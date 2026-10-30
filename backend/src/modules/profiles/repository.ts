@@ -67,6 +67,12 @@ export class ProfileRepository {
          AND (
            p.username ILIKE $2 OR p.display_name ILIKE $2
            OR concat_ws(' ', p.first_name, p.last_name) ILIKE $2
+           OR lower(u.email) = $3
+           OR (
+             length(regexp_replace($3, '[^0-9]', '', 'g')) >= 7
+             AND regexp_replace(coalesce(u.phone, ''), '[^0-9]', '', 'g')
+               = regexp_replace($3, '[^0-9]', '', 'g')
+           )
          )
          AND NOT EXISTS (
            SELECT 1 FROM blocks b
