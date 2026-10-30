@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -17,16 +20,58 @@ class EazyApp extends StatefulWidget {
 
 class _EazyAppState extends State<EazyApp> {
   late final GoRouter _router;
+  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
+  StreamSubscription<RemoteMessage>? _foregroundMessages;
+  StreamSubscription<RemoteMessage>? _openedMessages;
 
   @override
   void initState() {
     super.initState();
     restoreEazyThemeMode();
     _router = buildRouter(widget.auth);
+    widget.auth.addListener(_attachMessagingListeners);
+    _attachMessagingListeners();
+  }
+
+  void _attachMessagingListeners() {
+    if (!widget.auth.firebaseReady || _foregroundMessages != null) return;
+    _foregroundMessages = FirebaseMessaging.onMessage.listen((message) {
+      final title = message.notification?.title ?? 'Eazy notification';
+      final body = message.notification?.body ?? 'You have a new update.';
+      _messengerKey.currentState
+        ?..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(body, maxLines: 2, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+            action: SnackBarAction(
+              label: 'View',
+              onPressed: () => _router.push('/notifications'),
+            ),
+          ),
+        );
+    });
+    _openedMessages = FirebaseMessaging.onMessageOpenedApp.listen((_) {
+      _router.push('/notifications');
+    });
+    unawaited(
+      FirebaseMessaging.instance.getInitialMessage().then((message) {
+        if (message != null) _router.go('/notifications');
+      }).catchError((_) {}),
+    );
   }
 
   @override
   void dispose() {
+    widget.auth.removeListener(_attachMessagingListeners);
+    unawaited(_foregroundMessages?.cancel());
+    unawaited(_openedMessages?.cancel());
     _router.dispose();
     super.dispose();
   }
@@ -43,6 +88,7 @@ class _EazyAppState extends State<EazyApp> {
             darkTheme: EazyTheme.dark(),
             themeMode: mode,
             routerConfig: _router,
+            scaffoldMessengerKey: _messengerKey,
           ),
     );
   }
