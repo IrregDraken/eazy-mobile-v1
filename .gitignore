@@ -18,3 +18,8 @@ node_modules/
 backend/dist/
 .DS_Store
 Thumbs.db
+
+# Android release signing material (never commit private keys or passwords)
+android/key.properties
+android/*.jks
+android/*.keystore
