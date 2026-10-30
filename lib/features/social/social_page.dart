@@ -564,9 +564,9 @@ class _PostState extends State<_Post> {
                           await refreshComments(setSheetState);
                           await widget.onChanged();
                         } on ApiException catch (e) {
-                          if (ctx.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+                          if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.message)));
                         } finally {
-                          setSheetState(() => sendingComment = false);
+                          if (ctx.mounted) setSheetState(() => sendingComment = false);
                         }
                       },
                       icon: sendingComment
@@ -661,7 +661,8 @@ class _PostState extends State<_Post> {
                         }
                       } else if (value == 'copy') {
                         await Clipboard.setData(ClipboardData(text: 'https://eazy.app/p/$id'));
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
                       } else if (value == 'pin') {
                         await mutate('post', 'posts/$id/pin');
                       } else if (value == 'unpin') {
@@ -776,7 +777,8 @@ class _PostState extends State<_Post> {
                     tooltip: 'Copy post link',
                     onPressed: () async {
                       await Clipboard.setData(ClipboardData(text: 'https://eazy.app/p/$id'));
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
                     },
                     icon: const Icon(Icons.send_outlined),
                   ),
