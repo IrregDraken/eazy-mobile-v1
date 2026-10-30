@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
+import 'theme_controller.dart';
 
 abstract final class EazyColors {
   static const ink = Color(0xFFF4F8F5);
-  static const muted = Color(0xFF9AA79F);
+  static const mutedDark = Color(0xFF9AA79F);
+  static const mutedLight = Color(0xFF586B60);
+  static Color get muted => eazyThemeMode.value == ThemeMode.dark ? mutedDark : mutedLight;
+  static const redDark = Color(0xFFFF746E);
+  static const redLight = Color(0xFFB42318);
+  static Color get red => eazyThemeMode.value == ThemeMode.dark ? redDark : redLight;
+  static const amberDark = Color(0xFFFFC96B);
+  static const amberLight = Color(0xFF805500);
+  static Color get amber => eazyThemeMode.value == ThemeMode.dark ? amberDark : amberLight;
+  static const greenForegroundLight = Color(0xFF087A4A);
+  static Color get greenForeground => eazyThemeMode.value == ThemeMode.dark ? green : greenForegroundLight;
   static const canvas = Color(0xFF06100B);
   static const surface = Color(0xFF0C1711);
   static const surfaceRaised = Color(0xFF122119);
@@ -34,6 +45,7 @@ abstract final class EazyTheme {
         surface: EazyColors.surface,
         onSurface: EazyColors.ink,
         surfaceContainerHighest: EazyColors.surfaceRaised,
+        onSurfaceVariant: EazyColors.mutedDark,
       ),
     );
     return base.copyWith(
@@ -149,10 +161,11 @@ abstract final class EazyTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: scheme.copyWith(
-        primary: EazyColors.greenDeep,
+        primary: EazyColors.greenForegroundLight,
         onPrimary: Colors.white,
         surface: Colors.white,
         onSurface: const Color(0xFF176B42),
+        onSurfaceVariant: EazyColors.mutedLight,
         surfaceContainerHighest: const Color(0xFFEAF6EE),
       ),
     );
