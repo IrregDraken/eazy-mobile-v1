@@ -1,4 +1,4 @@
-import { createHash, randomInt, randomUUID } from 'node:crypto';
+import { createHmac, randomInt, randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { AppError } from '../../middleware/errors.js';
 import type { EmailProvider } from '../../providers/resend-email.js';
@@ -17,6 +17,15 @@ export interface EmailVerificationResult {
 
 export class EmailVerificationService {
   constructor(private readonly pool: Pool, private readonly provider: EmailProvider, private readonly config: AppConfig) {}
+
+  private otpHmacSecret(): string {
+    const configured = this.config.OTP_HMAC_SECRET;
+    if (configured && configured.length >= 32) return configured;
+    if (this.config.NODE_ENV !== 'production') {
+      return 'eazy-non-production-only-otp-hmac-secret';
+    }
+    throw new AppError('SERVICE_UNAVAILABLE', 'Email verification security is not configured');
+  }
 
   async requestCode(
     emailInput: string,
@@ -52,7 +61,7 @@ export class EmailVerificationService {
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const challengeId = randomUUID();
     const expiresAt = new Date(Date.now() + ttlMinutes * 60_000);
-    const digest = hashCode(challengeId, code);
+    const digest = hashCode(challengeId, code, this.otpHmacSecret());
     await this.pool.query(
       `INSERT INTO email_verification_challenges
          (id, email, code_digest, expires_at, max_attempts)
@@ -117,7 +126,7 @@ export class EmailVerificationService {
       if (!challenge.verified_at && challenge.attempts >= challenge.max_attempts) {
         throw new AppError('RATE_LIMITED', 'Too many verification attempts. Request a new code.');
       }
-      const valid = hashCode(challenge.id, code) === challenge.code_digest;
+      const valid = hashCode(challenge.id, code, this.otpHmacSecret()) === challenge.code_digest;
       if (!valid) {
         await client.query('UPDATE email_verification_challenges SET attempts = attempts + 1 WHERE id = $1', [challenge.id]);
         await client.query('COMMIT');
@@ -148,8 +157,8 @@ function normalizeEmail(value: string): string {
   return email;
 }
 
-function hashCode(challengeId: string, code: string): string {
-  return createHash('sha256').update(`${challengeId}:${code}`).digest('hex');
+function hashCode(challengeId: string, code: string, secret: string): string {
+  return createHmac('sha256', secret).update(`${challengeId}:${code}`).digest('hex');
 }
 
 function verificationEmailHtml(code: string, ttlMinutes: number): string {
