@@ -21,8 +21,6 @@ abstract final class EazyColors {
   static const green = Color(0xFF48F59A);
   static const greenDeep = Color(0xFF18B96C);
   static const mint = Color(0xFFB9FFD9);
-  static const red = Color(0xFFFF746E);
-  static const amber = Color(0xFFFFC96B);
   static const blue = Color(0xFF75B9FF);
 }
 
@@ -90,7 +88,7 @@ abstract final class EazyTheme {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
-          borderSide: const BorderSide(color: EazyColors.red),
+          borderSide: BorderSide(color: EazyColors.red),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,
