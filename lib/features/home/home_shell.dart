@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
 import '../chat/chat_page.dart';
 import '../marketplace/marketplace_page.dart';
@@ -25,40 +23,6 @@ class _HomeShellState extends State<HomeShell>{
     body:Stack(
       children:[
         IndexedStack(index:index,children:pages),
-        if (index != 2 && index != 3)
-          Positioned(
-            right:18,
-            bottom:72,
-            child:SafeArea(
-              child:Tooltip(
-              message:'Ask Eazy Assist',
-              child:Material(
-                color:EazyColors.green,
-                elevation:10,
-                shape:const CircleBorder(),
-                child:InkWell(
-                  customBorder:const CircleBorder(),
-                  onTap:()=>context.push('/assist'),
-                  child:Container(
-                    width:58,
-                    height:58,
-                    padding:const EdgeInsets.all(13),
-                    decoration:BoxDecoration(
-                      shape:BoxShape.circle,
-                      border:Border.all(color:EazyColors.mint.withValues(alpha:.75),width:1.5),
-                      boxShadow:[BoxShadow(color:EazyColors.green.withValues(alpha:.30),blurRadius:20,spreadRadius:1)],
-                    ),
-                    child:Image.asset(
-                      'assets/images/eazy_logo_mark.png',
-                      fit:BoxFit.contain,
-                      errorBuilder:(_,__,___)=>const Icon(Icons.auto_awesome_rounded,color:EazyColors.canvas,size:28),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       ],
     ),
     bottomNavigationBar:Padding(
