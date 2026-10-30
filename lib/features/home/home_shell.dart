@@ -44,45 +44,68 @@ class _HomeShellState extends State<HomeShell> {
       children: [
         IndexedStack(index: index, children: pages),
         Positioned(
-          right: 18,
-          bottom: 60,
+          right: 16,
+          bottom: 88,
           child: SafeArea(
             child: Tooltip(
-              message: 'Ask Eazy Assist',
+              message: 'Open Eazy Assist',
               child: Material(
                 color: EazyColors.green,
-                elevation: 10,
-                shape: const CircleBorder(),
+                elevation: 12,
+                borderRadius: BorderRadius.circular(28),
                 child: InkWell(
-                  customBorder: const CircleBorder(),
+                  borderRadius: BorderRadius.circular(28),
                   onTap: () => context.push('/assist'),
                   child: Container(
-                    width: 58,
-                    height: 58,
-                    padding: const EdgeInsets.all(13),
+                    height: 54,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 17,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: EazyColors.mint.withValues(alpha: .75),
-                        width: 1.5,
+                        color: EazyColors.mint.withValues(alpha: .8),
+                        width: 1.4,
                       ),
                       boxShadow: [
                         BoxShadow(
                           color: EazyColors.green.withValues(alpha: .30),
-                          blurRadius: 20,
+                          blurRadius: 18,
                           spreadRadius: 1,
                         ),
                       ],
                     ),
-                    child: Image.asset(
-                      'assets/images/eazy_logo_mark.png',
-                      fit: BoxFit.contain,
-                      errorBuilder:
-                          (_, _, _) => const Icon(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/images/eazy_logo_mark.png',
+                          width: 25,
+                          height: 25,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) => const Icon(
                             Icons.auto_awesome_rounded,
                             color: EazyColors.canvas,
-                            size: 28,
+                            size: 23,
                           ),
+                        ),
+                        const SizedBox(width: 9),
+                        const Text(
+                          'Eazy Assist',
+                          style: TextStyle(
+                            color: EazyColors.canvas,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(
+                          Icons.arrow_outward_rounded,
+                          color: EazyColors.canvas,
+                          size: 15,
+                        ),
+                      ],
                     ),
                   ),
                 ),
