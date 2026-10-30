@@ -251,7 +251,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
               },
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search_rounded),
-                hintText: 'Search by name or username',
+                hintText: 'Search by name, username, email or phone',
                 suffixIcon: IconButton(
                   onPressed: () {
                     _debounce?.cancel();
