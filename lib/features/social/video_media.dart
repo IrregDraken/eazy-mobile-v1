@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 class EazyVideoMedia extends StatefulWidget {
-  const EazyVideoMedia({super.key, required this.url, this.fit = BoxFit.cover, this.autoPlay = true, this.showControls = true});
+  const EazyVideoMedia({
+    super.key,
+    required this.url,
+    this.fit = BoxFit.cover,
+    this.autoPlay = true,
+    this.showControls = true,
+  });
   final String url;
   final BoxFit fit;
   final bool autoPlay;
@@ -22,13 +28,16 @@ class _EazyVideoMediaState extends State<EazyVideoMedia> {
     super.initState();
     controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
     controller.setLooping(true);
-    controller.initialize().then((_) async {
-      await controller.setVolume(0);
-      if (widget.autoPlay) await controller.play();
-      if (mounted) setState(() {});
-    }).catchError((Object _) {
-      if (mounted) setState(() => error = 'Video could not be loaded');
-    });
+    controller
+        .initialize()
+        .then((_) async {
+          await controller.setVolume(0);
+          if (widget.autoPlay) await controller.play();
+          if (mounted) setState(() {});
+        })
+        .catchError((Object _) {
+          if (mounted) setState(() => error = 'Video could not be loaded');
+        });
   }
 
   @override
@@ -55,34 +64,77 @@ class _EazyVideoMediaState extends State<EazyVideoMedia> {
 
   @override
   Widget build(BuildContext context) {
-    if (error != null) return const ColoredBox(color: Colors.black, child: Center(child: Icon(Icons.videocam_off_rounded, color: Colors.white70, size: 34)));
-    if (!controller.value.isInitialized) return const ColoredBox(color: Colors.black, child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70)));
+    if (error != null) {
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Icon(
+            Icons.videocam_off_rounded,
+            color: Colors.white70,
+            size: 34,
+          ),
+        ),
+      );
+    }
+    if (!controller.value.isInitialized) {
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white70,
+          ),
+        ),
+      );
+    }
     final size = controller.value.size;
     return GestureDetector(
       onTap: togglePlayback,
-      child: Stack(fit: StackFit.expand, children: [
-        ColoredBox(
-          color: Colors.black,
-          child: FittedBox(
-            fit: widget.fit,
-            clipBehavior: Clip.hardEdge,
-            child: SizedBox(width: size.width, height: size.height, child: VideoPlayer(controller)),
-          ),
-        ),
-        if (widget.showControls && !controller.value.isPlaying)
-          const Center(child: CircleAvatar(backgroundColor: Colors.black45, child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 30))),
-        if (widget.showControls)
-          Positioned(
-            right: 8,
-            bottom: 8,
-            child: IconButton.filledTonal(
-              visualDensity: VisualDensity.compact,
-              style: IconButton.styleFrom(backgroundColor: Colors.black45, foregroundColor: Colors.white),
-              onPressed: toggleMute,
-              icon: Icon(muted ? Icons.volume_off_rounded : Icons.volume_up_rounded, size: 19),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ColoredBox(
+            color: Colors.black,
+            child: FittedBox(
+              fit: widget.fit,
+              clipBehavior: Clip.hardEdge,
+              child: SizedBox(
+                width: size.width,
+                height: size.height,
+                child: VideoPlayer(controller),
+              ),
             ),
           ),
-      ]),
+          if (widget.showControls && !controller.value.isPlaying)
+            const Center(
+              child: CircleAvatar(
+                backgroundColor: Colors.black45,
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+            ),
+          if (widget.showControls)
+            Positioned(
+              right: 8,
+              bottom: 8,
+              child: IconButton.filledTonal(
+                visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black45,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: toggleMute,
+                icon: Icon(
+                  muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                  size: 19,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -58,13 +58,18 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
 
   Future<void> _restorePrivacyPreference() async {
     final saved = await storage.read(key: 'eazy.wallet.balanceVisible');
-    if (mounted && saved != null) setState(() => balanceVisible = saved != 'false');
+    if (mounted && saved != null) {
+      setState(() => balanceVisible = saved != 'false');
+    }
   }
 
   Future<void> _toggleBalanceVisibility() async {
     final next = !balanceVisible;
     setState(() => balanceVisible = next);
-    await storage.write(key: 'eazy.wallet.balanceVisible', value: next.toString());
+    await storage.write(
+      key: 'eazy.wallet.balanceVisible',
+      value: next.toString(),
+    );
   }
 
   String idempotency(String prefix) =>
@@ -192,12 +197,18 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       final transaction = _map(result['transaction']);
       final status = transaction['status']?.toString().toLowerCase();
       if (status != 'succeeded') {
-        if (!silent) _showMessage('Payment is not confirmed yet. Your wallet has not been credited.');
+        if (!silent) {
+          _showMessage(
+            'Payment is not confirmed yet. Your wallet has not been credited.',
+          );
+        }
         return;
       }
       await storage.delete(key: 'eazy.pendingPayment');
       await load();
-      if (!silent && mounted) _showMessage('Payment verified and wallet updated.');
+      if (!silent && mounted) {
+        _showMessage('Payment verified and wallet updated.');
+      }
     } on ApiException catch (e) {
       if (!silent) _showError(e.message);
     } finally {
@@ -210,23 +221,31 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     final searchInput = TextEditingController();
     final query = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Find an Eazy user'),
-        content: TextField(
-          controller: searchInput,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Name or username',
-            hintText: 'e.g. Ada Okafor or ada_okafor',
-            prefixIcon: Icon(Icons.search_rounded),
-            helperText: 'Search by the person’s name or Eazy username.',
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Find an Eazy user'),
+            content: TextField(
+              controller: searchInput,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Name or username',
+                hintText: 'e.g. Ada Okafor or ada_okafor',
+                prefixIcon: Icon(Icons.search_rounded),
+                helperText: 'Search by the person’s name or Eazy username.',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed:
+                    () => Navigator.pop(dialogContext, searchInput.text.trim()),
+                child: const Text('Search'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, searchInput.text.trim()), child: const Text('Search')),
-        ],
-      ),
     );
     searchInput.dispose();
     if (query == null) return;
@@ -238,11 +257,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     List<Map<String, dynamic>> matches;
     setState(() => busy = true);
     try {
-      final result = await api.get('profiles/search?q=${Uri.encodeQueryComponent(query.trim())}', auth: true);
-      matches = (result['items'] as List? ?? const [])
-          .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
+      final result = await api.get(
+        'profiles/search?q=${Uri.encodeQueryComponent(query.trim())}',
+        auth: true,
+      );
+      matches =
+          (result['items'] as List? ?? const [])
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList();
     } on ApiException catch (e) {
       _showError(e.message);
       return;
@@ -251,49 +274,70 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     }
     if (!mounted) return;
     if (matches.isEmpty) {
-      _showError('No Eazy users matched “$query”. Check the spelling and try again.');
+      _showError(
+        'No Eazy users matched “$query”. Check the spelling and try again.',
+      );
       return;
     }
 
     final recipient = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Choose recipient'),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: (matches.length * 72.0).clamp(72.0, 360.0),
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: matches.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (_, index) {
-              final item = matches[index];
-              final name = (item['displayName'] ?? item['firstName'] ?? item['username'] ?? 'Eazy user').toString();
-              final handle = (item['username'] ?? '').toString();
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  child: Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase()),
-                ),
-                title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
-                subtitle: Text('@$handle'),
-                onTap: () => Navigator.pop(dialogContext, item),
-              );
-            },
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Choose recipient'),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: (matches.length * 72.0).clamp(72.0, 360.0),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: matches.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (_, index) {
+                  final item = matches[index];
+                  final name =
+                      (item['displayName'] ??
+                              item['firstName'] ??
+                              item['username'] ??
+                              'Eazy user')
+                          .toString();
+                  final handle = (item['username'] ?? '').toString();
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      child: Text(
+                        name.isEmpty
+                            ? 'E'
+                            : name.characters.first.toUpperCase(),
+                      ),
+                    ),
+                    title: Text(
+                      name,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    subtitle: Text('@$handle'),
+                    onTap: () => Navigator.pop(dialogContext, item),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-        ],
-      ),
     );
     if (recipient == null || !mounted) return;
-    final handle = (recipient['username'] ?? '').toString().trim().toLowerCase();
+    final handle =
+        (recipient['username'] ?? '').toString().trim().toLowerCase();
     if (!_validUsername(handle)) {
       _showError('The selected Eazy profile has an invalid username.');
       return;
     }
-    final displayName = (recipient['displayName'] ?? recipient['firstName'] ?? handle).toString();
+    final displayName =
+        (recipient['displayName'] ?? recipient['firstName'] ?? handle)
+            .toString();
 
     final amount = await _amountDialog(
       title: 'Send to $displayName',
@@ -303,51 +347,80 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Review transfer'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('You are sending to'),
-            const SizedBox(height: 8),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(child: Text(displayName.characters.first.toUpperCase())),
-              title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w900)),
-              subtitle: Text('@$handle'),
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Review transfer'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('You are sending to'),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    child: Text(displayName.characters.first.toUpperCase()),
+                  ),
+                  title: Text(
+                    displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text('@$handle'),
+                ),
+                const Divider(),
+                _Info('Amount', '$_currency $amount'),
+                _Info('Available balance', '$_currency $_balance'),
+                const SizedBox(height: 10),
+                const Text(
+                  'Your device will ask you to authenticate before this transfer is submitted.',
+                  style: TextStyle(
+                    color: EazyColors.muted,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
-            const Divider(),
-            _Info('Amount', '$_currency $amount'),
-            _Info('Available balance', '$_currency $_balance'),
-            const SizedBox(height: 10),
-            const Text('Your device will ask you to authenticate before this transfer is submitted.', style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.4)),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Continue securely')),
-        ],
-      ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Continue securely'),
+              ),
+            ],
+          ),
     );
     if (confirmed != true || !mounted) return;
 
     setState(() => busy = true);
     try {
-      final authenticated = await _authenticateTransfer('Authorize sending $_currency $amount to @$handle');
+      final authenticated = await _authenticateTransfer(
+        'Authorize sending $_currency $amount to @$handle',
+      );
       if (!authenticated) return;
       await api.post(
         'wallet/transfers',
         auth: true,
         headers: {'Idempotency-Key': idempotency('transfer')},
-        body: {'recipientUsername': handle, 'amount': amount, 'currency': _currency},
+        body: {
+          'recipientUsername': handle,
+          'amount': amount,
+          'currency': _currency,
+        },
       );
       await load();
-      _showMessage('Transfer submitted. Check wallet activity for its confirmed status.');
+      _showMessage(
+        'Transfer submitted. Check wallet activity for its confirmed status.',
+      );
     } on ApiException catch (e) {
       _showError(e.message);
     } catch (_) {
-      _showError('Authentication could not be completed. No transfer was submitted.');
+      _showError(
+        'Authentication could not be completed. No transfer was submitted.',
+      );
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -379,11 +452,12 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     setState(() => busy = true);
     try {
       final result = await api.get('banks?currency=$_currency', auth: true);
-      availableBanks = (result['banks'] as List? ?? const [])
-          .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
-          .where((item) => item['active'] != false)
-          .toList();
+      availableBanks =
+          (result['banks'] as List? ?? const [])
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) => item['active'] != false)
+              .toList();
     } on ApiException catch (e) {
       _showError(e.message);
       return;
@@ -392,7 +466,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     }
     if (!mounted) return;
     if (availableBanks.isEmpty) {
-      _showError('External bank transfers are unavailable because no supported banks were returned by the payment provider.');
+      _showError(
+        'External bank transfers are unavailable because no supported banks were returned by the payment provider.',
+      );
       return;
     }
 
@@ -400,49 +476,80 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     String? selectedBankCode;
     final details = await showDialog<Map<String, String>>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Choose bank recipient'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: selectedBankCode,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Bank'),
-                items: availableBanks.map((bank) => DropdownMenuItem<String>(
-                  value: bank['code'].toString(),
-                  child: Text(bank['name'].toString(), overflow: TextOverflow.ellipsis),
-                )).toList(),
-                onChanged: (value) => setDialogState(() => selectedBankCode = value),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: accountNumber,
-                keyboardType: TextInputType.number,
-                maxLength: 10,
-                decoration: const InputDecoration(labelText: '10-digit account number'),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Eazy will resolve and display the account name before you enter an amount.',
-                style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.35),
-              ),
-            ],
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (dialogContext, setDialogState) => AlertDialog(
+                  title: const Text('Choose bank recipient'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedBankCode,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Bank'),
+                        items:
+                            availableBanks
+                                .map(
+                                  (bank) => DropdownMenuItem<String>(
+                                    value: bank['code'].toString(),
+                                    child: Text(
+                                      bank['name'].toString(),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged:
+                            (value) =>
+                                setDialogState(() => selectedBankCode = value),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: accountNumber,
+                        keyboardType: TextInputType.number,
+                        maxLength: 10,
+                        decoration: const InputDecoration(
+                          labelText: '10-digit account number',
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Eazy will resolve and display the account name before you enter an amount.',
+                        style: TextStyle(
+                          color: EazyColors.muted,
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed:
+                          selectedBankCode == null
+                              ? null
+                              : () => Navigator.pop(dialogContext, {
+                                'accountNumber': accountNumber.text.trim(),
+                                'bankCode': selectedBankCode!,
+                                'bankName':
+                                    availableBanks
+                                        .firstWhere(
+                                          (bank) =>
+                                              bank['code'].toString() ==
+                                              selectedBankCode,
+                                        )['name']
+                                        .toString(),
+                              }),
+                      child: const Text('Resolve account'),
+                    ),
+                  ],
+                ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: selectedBankCode == null ? null : () => Navigator.pop(dialogContext, {
-                'accountNumber': accountNumber.text.trim(),
-                'bankCode': selectedBankCode!,
-                'bankName': availableBanks.firstWhere((bank) => bank['code'].toString() == selectedBankCode)['name'].toString(),
-              }),
-              child: const Text('Resolve account'),
-            ),
-          ],
-        ),
-      ),
     );
     accountNumber.dispose();
     if (details == null) return;
@@ -465,7 +572,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       );
       account = _map(resolved['account']);
       if ((account['accountName']?.toString() ?? '').trim().isEmpty) {
-        throw const ApiException('The bank did not return a verified account name.');
+        throw const ApiException(
+          'The bank did not return a verified account name.',
+        );
       }
     } on ApiException catch (e) {
       _showError(e.message);
@@ -484,38 +593,59 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Review bank transfer'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Verified recipient'),
-            const SizedBox(height: 8),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const CircleAvatar(child: Icon(Icons.account_balance_rounded)),
-              title: Text(accountName, style: const TextStyle(fontWeight: FontWeight.w900)),
-              subtitle: Text('$selectedBank · $number'),
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Review bank transfer'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Verified recipient'),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.account_balance_rounded),
+                  ),
+                  title: Text(
+                    accountName,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text('$selectedBank · $number'),
+                ),
+                const Divider(),
+                _Info('Amount', '$_currency $amount'),
+                _Info('Available balance', '$_currency $_balance'),
+                const SizedBox(height: 10),
+                const Text(
+                  'Authenticate on this device before submitting the transfer.',
+                  style: TextStyle(
+                    color: EazyColors.muted,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
-            const Divider(),
-            _Info('Amount', '$_currency $amount'),
-            _Info('Available balance', '$_currency $_balance'),
-            const SizedBox(height: 10),
-            const Text('Authenticate on this device before submitting the transfer.', style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.4)),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Continue securely')),
-        ],
-      ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Continue securely'),
+              ),
+            ],
+          ),
     );
     if (confirmed != true || !mounted) return;
 
     setState(() => busy = true);
     try {
-      final authenticated = await _authenticateTransfer('Authorize sending $_currency $amount to $accountName');
+      final authenticated = await _authenticateTransfer(
+        'Authorize sending $_currency $amount to $accountName',
+      );
       if (!authenticated) return;
       await api.post(
         'bank-transfers',
@@ -531,11 +661,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         },
       );
       await load();
-      _showMessage('Bank transfer submitted. Check wallet activity for its confirmed status.');
+      _showMessage(
+        'Bank transfer submitted. Check wallet activity for its confirmed status.',
+      );
     } on ApiException catch (e) {
       _showError(e.message);
     } catch (_) {
-      _showError('Authentication could not be completed. No transfer was submitted.');
+      _showError(
+        'Authentication could not be completed. No transfer was submitted.',
+      );
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -668,8 +802,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     );
     controller.dispose();
     if (result == null || !_validMoney(result)) {
-      if (result != null)
+      if (result != null) {
         _showError('Enter an amount with two decimal places.');
+      }
       return null;
     }
     return result;
@@ -712,17 +847,19 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   void _showError(String message) {
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 
   void _showMessage(String message) {
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 
   String get _currency => wallet?['currency']?.toString() ?? 'NGN';
@@ -740,15 +877,58 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(shrinkWrap: true, children: [
-          const ListTile(title: Text('Wallet tools', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('Manage payments and account activity.')),
-          ListTile(leading: const Icon(Icons.shopping_bag_outlined), title: const Text('Orders'), subtitle: const Text('View marketplace purchases'), onTap: () { Navigator.pop(sheetContext); _showOrders(); }),
-          ListTile(leading: const Icon(Icons.tune_rounded), title: const Text('Wallet settings'), subtitle: const Text('Privacy and payment security'), onTap: () { Navigator.pop(sheetContext); _showWalletSettings(); }),
-          ListTile(leading: const Icon(Icons.sync_rounded), title: const Text('Verify pending payment'), subtitle: const Text('Re-check a deposit with the payment provider'), onTap: () { Navigator.pop(sheetContext); verifyPending(); }),
-          ListTile(leading: const Icon(Icons.receipt_long_outlined), title: const Text('Transaction history'), onTap: () { Navigator.pop(sheetContext); _showAllTransactions(); }),
-        ]),
-      ),
+      builder:
+          (sheetContext) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const ListTile(
+                  title: Text(
+                    'Wallet tools',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text('Manage payments and account activity.'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.shopping_bag_outlined),
+                  title: const Text('Orders'),
+                  subtitle: const Text('View marketplace purchases'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showOrders();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.tune_rounded),
+                  title: const Text('Wallet settings'),
+                  subtitle: const Text('Privacy and payment security'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showWalletSettings();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.sync_rounded),
+                  title: const Text('Verify pending payment'),
+                  subtitle: const Text(
+                    'Re-check a deposit with the payment provider',
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    verifyPending();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: const Text('Transaction history'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showAllTransactions();
+                  },
+                ),
+              ],
+            ),
+          ),
     );
   }
 
@@ -756,25 +936,55 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) => SafeArea(
-          child: ListView(shrinkWrap: true, children: [
-            const ListTile(title: Text('Wallet settings', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('Your balance is always calculated by the server ledger.')),
-            SwitchListTile(
-              value: balanceVisible,
-              title: const Text('Show balance'),
-              subtitle: const Text('Hide amounts on this device when switched off.'),
-              onChanged: (value) async {
-                setState(() => balanceVisible = value);
-                setSheetState(() {});
-                await storage.write(key: 'eazy.wallet.balanceVisible', value: value.toString());
-              },
-            ),
-            const ListTile(leading: Icon(Icons.fingerprint_rounded), title: Text('Transfer authentication'), subtitle: Text('Device screen lock or biometrics are required before submitting a transfer.')),
-            const ListTile(leading: Icon(Icons.shield_outlined), title: Text('Payment confirmation'), subtitle: Text('Wallet deposits are credited only after server-side provider verification.')),
-          ]),
-        ),
-      ),
+      builder:
+          (sheetContext) => StatefulBuilder(
+            builder:
+                (sheetContext, setSheetState) => SafeArea(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      const ListTile(
+                        title: Text(
+                          'Wallet settings',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        subtitle: Text(
+                          'Your balance is always calculated by the server ledger.',
+                        ),
+                      ),
+                      SwitchListTile(
+                        value: balanceVisible,
+                        title: const Text('Show balance'),
+                        subtitle: const Text(
+                          'Hide amounts on this device when switched off.',
+                        ),
+                        onChanged: (value) async {
+                          setState(() => balanceVisible = value);
+                          setSheetState(() {});
+                          await storage.write(
+                            key: 'eazy.wallet.balanceVisible',
+                            value: value.toString(),
+                          );
+                        },
+                      ),
+                      const ListTile(
+                        leading: Icon(Icons.fingerprint_rounded),
+                        title: Text('Transfer authentication'),
+                        subtitle: Text(
+                          'Device screen lock or biometrics are required before submitting a transfer.',
+                        ),
+                      ),
+                      const ListTile(
+                        leading: Icon(Icons.shield_outlined),
+                        title: Text('Payment confirmation'),
+                        subtitle: Text(
+                          'Wallet deposits are credited only after server-side provider verification.',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          ),
     );
   }
 
@@ -783,27 +993,75 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: FutureBuilder<Map<String, dynamic>>(
-          future: api.get('orders?page=1&limit=20', auth: true),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(36), child: Center(child: CircularProgressIndicator()));
-            if (snapshot.hasError) return Padding(padding: const EdgeInsets.all(24), child: Text('Could not load orders: ${snapshot.error}'));
-            final orders = (snapshot.data?['items'] as List? ?? const []).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
-            if (orders.isEmpty) return const Padding(padding: EdgeInsets.all(28), child: Text('No orders yet. Marketplace purchases will appear here.'));
-            return SizedBox(height: MediaQuery.sizeOf(context).height * .65, child: ListView(padding: const EdgeInsets.all(16), children: [
-              const Text('Orders', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 12),
-              for (final order in orders) Card(child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.shopping_bag_outlined)),
-                title: Text('Order ${(order['id'] ?? '').toString().length > 8 ? (order['id'] as String).substring(0, 8) : order['id'] ?? 'Order'}'),
-                subtitle: Text('${order['status'] ?? 'pending'} · ${order['createdAt'] ?? ''}'),
-                trailing: Text('${order['currency'] ?? _currency} ${order['total'] ?? order['amount'] ?? '0.00'}', style: const TextStyle(fontWeight: FontWeight.w800)),
-              )),
-            ]));
-          },
-        ),
-      ),
+      builder:
+          (sheetContext) => SafeArea(
+            child: FutureBuilder<Map<String, dynamic>>(
+              future: api.get('orders?page=1&limit=20', auth: true),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Padding(
+                    padding: EdgeInsets.all(36),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Could not load orders: ${snapshot.error}'),
+                  );
+                }
+                final orders =
+                    (snapshot.data?['items'] as List? ?? const [])
+                        .whereType<Map>()
+                        .map((item) => Map<String, dynamic>.from(item))
+                        .toList();
+                if (orders.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(28),
+                    child: Text(
+                      'No orders yet. Marketplace purchases will appear here.',
+                    ),
+                  );
+                }
+                return SizedBox(
+                  height: MediaQuery.sizeOf(context).height * .65,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      const Text(
+                        'Orders',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      for (final order in orders)
+                        Card(
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.shopping_bag_outlined),
+                            ),
+                            title: Text(
+                              'Order ${(order['id'] ?? '').toString().length > 8 ? (order['id'] as String).substring(0, 8) : order['id'] ?? 'Order'}',
+                            ),
+                            subtitle: Text(
+                              '${order['status'] ?? 'pending'} · ${order['createdAt'] ?? ''}',
+                            ),
+                            trailing: Text(
+                              '${order['currency'] ?? _currency} ${order['total'] ?? order['amount'] ?? '0.00'}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
     );
   }
 
@@ -812,28 +1070,78 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: FutureBuilder<Map<String, dynamic>>(
-          future: api.get('wallet/transactions?page=1&limit=100', auth: true),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) return const Padding(padding: EdgeInsets.all(36), child: Center(child: CircularProgressIndicator()));
-            if (snapshot.hasError) return Padding(padding: const EdgeInsets.all(24), child: Text('Could not load transaction history: ${snapshot.error}'));
-            final entries = (snapshot.data?['items'] as List? ?? const []).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
-            if (entries.isEmpty) return const Padding(padding: EdgeInsets.all(28), child: Text('No transactions yet.'));
-            return SizedBox(height: MediaQuery.sizeOf(context).height * .7, child: ListView(padding: const EdgeInsets.all(16), children: [
-              const Text('Transaction history', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 12),
-              for (final entry in entries) ListTile(
-                leading: const Icon(Icons.receipt_long_rounded, color: EazyColors.green),
-                title: Text(entry['type']?.toString() ?? 'Transaction'),
-                subtitle: Text('${entry['status'] ?? 'unknown'} · ${entry['createdAt'] ?? ''}'),
-                trailing: Text(balanceVisible ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}' : '••••••', style: const TextStyle(fontWeight: FontWeight.w800)),
-                onTap: () => _showTransactionDetails(entry),
+      builder:
+          (sheetContext) => SafeArea(
+            child: FutureBuilder<Map<String, dynamic>>(
+              future: api.get(
+                'wallet/transactions?page=1&limit=100',
+                auth: true,
               ),
-            ]));
-          },
-        ),
-      ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Padding(
+                    padding: EdgeInsets.all(36),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'Could not load transaction history: ${snapshot.error}',
+                    ),
+                  );
+                }
+                final entries =
+                    (snapshot.data?['items'] as List? ?? const [])
+                        .whereType<Map>()
+                        .map((item) => Map<String, dynamic>.from(item))
+                        .toList();
+                if (entries.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(28),
+                    child: Text('No transactions yet.'),
+                  );
+                }
+                return SizedBox(
+                  height: MediaQuery.sizeOf(context).height * .7,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      const Text(
+                        'Transaction history',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      for (final entry in entries)
+                        ListTile(
+                          leading: const Icon(
+                            Icons.receipt_long_rounded,
+                            color: EazyColors.green,
+                          ),
+                          title: Text(
+                            entry['type']?.toString() ?? 'Transaction',
+                          ),
+                          subtitle: Text(
+                            '${entry['status'] ?? 'unknown'} · ${entry['createdAt'] ?? ''}',
+                          ),
+                          trailing: Text(
+                            balanceVisible
+                                ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}'
+                                : '••••••',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          onTap: () => _showTransactionDetails(entry),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
     );
   }
 
@@ -852,17 +1160,38 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     if (!mounted) return;
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Transaction details'),
-        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _Info('Type', detail['type']?.toString() ?? 'Transaction'),
-          _Info('Status', detail['status']?.toString() ?? 'unknown'),
-          _Info('Amount', balanceVisible ? '${detail['currency'] ?? _currency} ${detail['amount'] ?? '0.00'}' : '••••••'),
-          _Info('Reference', detail['reference']?.toString() ?? 'Not available'),
-          _Info('Date', detail['createdAt']?.toString() ?? 'Not available'),
-        ]),
-        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close'))],
-      ),
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Transaction details'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Info('Type', detail['type']?.toString() ?? 'Transaction'),
+                _Info('Status', detail['status']?.toString() ?? 'unknown'),
+                _Info(
+                  'Amount',
+                  balanceVisible
+                      ? '${detail['currency'] ?? _currency} ${detail['amount'] ?? '0.00'}'
+                      : '••••••',
+                ),
+                _Info(
+                  'Reference',
+                  detail['reference']?.toString() ?? 'Not available',
+                ),
+                _Info(
+                  'Date',
+                  detail['createdAt']?.toString() ?? 'Not available',
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
     );
   }
 
@@ -923,9 +1252,17 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   subtitle: Text('Receive from Eazy or an external bank.'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.add_card_rounded, color: EazyColors.green),
-                  title: const Text('Add money online', style: TextStyle(fontWeight: FontWeight.w900)),
-                  subtitle: const Text('Fund your wallet through secure Paystack checkout'),
+                  leading: const Icon(
+                    Icons.add_card_rounded,
+                    color: EazyColors.green,
+                  ),
+                  title: const Text(
+                    'Add money online',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: const Text(
+                    'Fund your wallet through secure Paystack checkout',
+                  ),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     deposit();
@@ -1016,7 +1353,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       tooltip: balanceVisible ? 'Hide balance' : 'Show balance',
                       onPressed: _toggleBalanceVisibility,
                       icon: Icon(
-                        balanceVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        balanceVisible
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
                         color: Colors.white70,
                       ),
                     ),
@@ -1024,7 +1363,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  loading || !balanceVisible ? '$_currency ••••••' : '$_currency $_balance',
+                  loading || !balanceVisible
+                      ? '$_currency ••••••'
+                      : '$_currency $_balance',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 38,
@@ -1033,9 +1374,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                const Text(
                   'Available for transfers and payments',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -1138,10 +1479,21 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             ),
           ),
           const SizedBox(height: 22),
-          Row(children: [
-            const Expanded(child: Text('Transaction history', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
-            TextButton.icon(onPressed: _showAllTransactions, icon: const Icon(Icons.arrow_forward_rounded, size: 17), label: const Text('See all')),
-          ]),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Transaction history',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _showAllTransactions,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 17),
+                label: const Text('See all'),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           if (transactions.isEmpty)
             const Card(
@@ -1174,7 +1526,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                     style: const TextStyle(color: EazyColors.muted),
                   ),
                   trailing: Text(
-                    balanceVisible ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}' : '••••••',
+                    balanceVisible
+                        ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}'
+                        : '••••••',
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                   onTap: () => _showTransactionDetails(entry),

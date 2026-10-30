@@ -34,8 +34,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         p?['username']?.toString().replaceFirst(RegExp(r'^user_'), '') ?? '';
     bio.text = p?['bio']?.toString() ?? '';
     final raw = p?['dateOfBirth']?.toString();
-    if (raw != null && raw.length >= 10)
+    if (raw != null && raw.length >= 10) {
       dob = DateTime.tryParse(raw.substring(0, 10));
+    }
   }
 
   @override
@@ -68,7 +69,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         .replaceAll(RegExp(r'_+'), '_')
         .replaceAll(RegExp(r'^_+|_+$'), '');
     if (candidate.length >= 3) {
-      final text = candidate.length > 32 ? candidate.substring(0, 32) : candidate;
+      final text =
+          candidate.length > 32 ? candidate.substring(0, 32) : candidate;
       username.value = TextEditingValue(
         text: text,
         selection: TextSelection.collapsed(offset: text.length),
@@ -76,6 +78,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       available = null;
     }
   }
+
   Future<void> checkUsername() async {
     final value = username.text.trim().toLowerCase();
     if (!RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value)) {
@@ -206,7 +209,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           TextField(
             controller: username,
             autocorrect: false,
-            onChanged: (_) => setState(() { usernameManuallyEdited = true; available = null; }),
+            onChanged:
+                (_) => setState(() {
+                  usernameManuallyEdited = true;
+                  available = null;
+                }),
             onEditingComplete: checkUsername,
             decoration: InputDecoration(
               labelText: 'Username',

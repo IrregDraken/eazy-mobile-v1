@@ -237,16 +237,25 @@ class _MessageBubble extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
         decoration: BoxDecoration(
-          color: isUser ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
+          color:
+              isUser
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isUser ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor,
+            color:
+                isUser
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).dividerColor,
           ),
         ),
         child: Text(
           message['content']?.toString() ?? message['body']?.toString() ?? '',
           style: TextStyle(
-            color: isUser ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
+            color:
+                isUser
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).colorScheme.onSurface,
             height: 1.4,
           ),
         ),
