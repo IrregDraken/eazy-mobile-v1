@@ -163,18 +163,18 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
       body: SafeArea(child: Column(children: [
         Padding(padding: const EdgeInsets.fromLTRB(20, 12, 12, 10),
           child: Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [ Text('Eazy', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: EazyColors.green, fontWeight: FontWeight.w900, letterSpacing: 2.4)), const SizedBox(height: 2), Text('Chats', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 28, fontWeight: FontWeight.w900)), ])),
-            IconButton(onPressed: _newChat, tooltip: 'New chat', style: IconButton.styleFrom(backgroundColor: EazyColors.green.withValues(alpha: .10), foregroundColor: EazyColors.green), icon: const Icon(Icons.edit_square)),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [ Text('Eazy', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 2.4)), const SizedBox(height: 2), Text('Chats', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 28, fontWeight: FontWeight.w900)), ])),
+            IconButton(onPressed: _newChat, tooltip: 'New chat', style: IconButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: .10), foregroundColor: Theme.of(context).colorScheme.primary), icon: const Icon(Icons.edit_square)),
           ])),
         if (_connecting) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 8), child: Row(children: [Container(width: 7, height: 7, decoration: const BoxDecoration(color: EazyColors.amber, shape: BoxShape.circle)), const SizedBox(width: 8), Text('Reconnecting to Eazy', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: EazyColors.muted))])),
         Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: TextField(controller: _search, onChanged: (_) => setState(() {}),
             style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-            decoration: InputDecoration(hintText: 'Search conversations or people', prefixIcon: const Icon(Icons.search_rounded, color: EazyColors.green),
+            decoration: InputDecoration(hintText: 'Search conversations or people', prefixIcon: Icon(Icons.search_rounded, color: Theme.of(context).colorScheme.primary),
               hintStyle: const TextStyle(color: EazyColors.muted), filled: true, fillColor: Theme.of(context).colorScheme.surface,
               contentPadding: const EdgeInsets.symmetric(vertical: 3),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: EazyColors.border)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: EazyColors.border))))),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: Theme.of(context).dividerColor)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: Theme.of(context).dividerColor))))),
         SizedBox(height: 42, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), children: [
           _Chip('All', _filter == 'All', () => setState(() => _filter = 'All')),
           const SizedBox(width: 8),
@@ -202,8 +202,8 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
       floatingActionButton: AnimatedSlide(duration: const Duration(milliseconds: 200),
         offset: _fabVisible ? Offset.zero : const Offset(0, 2),
         child: AnimatedOpacity(duration: const Duration(milliseconds: 200), opacity: _fabVisible ? 1 : 0,
-          child: FloatingActionButton(onPressed: _newChat, backgroundColor: EazyColors.green,
-            foregroundColor: EazyColors.canvas, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(EazyRadius.md)),
+          child: FloatingActionButton(onPressed: _newChat, backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(EazyRadius.md)),
             child: const Icon(Icons.edit_rounded)))),
     );
   }
@@ -268,7 +268,7 @@ class _NewChatScreenState extends State<_NewChatScreen> {
       Padding(padding: const EdgeInsets.all(16), child: TextField(controller: _query, autofocus: true, onChanged: _search,
         decoration: InputDecoration(hintText: 'Search name or username', prefixIcon: const Icon(Icons.search),
           filled: true, fillColor: Theme.of(context).colorScheme.surface,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: EazyColors.border))))),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: Theme.of(context).dividerColor))))),
       if (_busy) const LinearProgressIndicator(minHeight: 2),
       Expanded(child: _loading ? const Center(child: CircularProgressIndicator())
         : _error != null ? Center(child: Text(_error!, textAlign: TextAlign.center))
@@ -289,10 +289,10 @@ class _Chip extends StatelessWidget {
   const _Chip(this.label, this.selected, this.onTap);
   final String label; final bool selected; final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Material(color: selected ? EazyColors.green.withValues(alpha: .13) : Theme.of(context).colorScheme.surface,
+  Widget build(BuildContext context) => Material(color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: .13) : Theme.of(context).colorScheme.surface,
     borderRadius: BorderRadius.circular(EazyRadius.sm), child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(EazyRadius.sm),
-      child: Container(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10), decoration: BoxDecoration(borderRadius: BorderRadius.circular(EazyRadius.sm), border: Border.all(color: selected ? EazyColors.green.withValues(alpha: .5) : EazyColors.border)),
-        child: Text(label, style: TextStyle(color: selected ? EazyColors.green : EazyColors.muted,
+      child: Container(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10), decoration: BoxDecoration(borderRadius: BorderRadius.circular(EazyRadius.sm), border: Border.all(color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: .5) : Theme.of(context).dividerColor)),
+        child: Text(label, style: TextStyle(color: selected ? Theme.of(context).colorScheme.primary : EazyColors.muted,
           fontSize: 12, fontWeight: FontWeight.w800)))));
 }
 
@@ -312,7 +312,7 @@ class _ChatRow extends StatelessWidget {
             Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15, letterSpacing: -.15, fontWeight: unread > 0 ? FontWeight.w900 : FontWeight.w700))),
             const SizedBox(width: 8),
-            Text(timestamp, style: TextStyle(color: unread > 0 ? EazyColors.green : EazyColors.muted, fontSize: 11)),
+            Text(timestamp, style: TextStyle(color: unread > 0 ? Theme.of(context).colorScheme.primary : EazyColors.muted, fontSize: 11)),
           ]),
           const SizedBox(height: 5),
           Row(children: [
@@ -321,8 +321,8 @@ class _ChatRow extends StatelessWidget {
             if (unread > 0) ...[
               const SizedBox(width: 7),
               Container(height: 21, constraints: const BoxConstraints(minWidth: 21), padding: const EdgeInsets.symmetric(horizontal: 5),
-                alignment: Alignment.center, decoration: BoxDecoration(color: EazyColors.green, borderRadius: BorderRadius.circular(8)),
-                child: Text(unread > 99 ? '99+' : '$unread', style: const TextStyle(color: EazyColors.canvas, fontSize: 10, fontWeight: FontWeight.w900))),
+                alignment: Alignment.center, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, borderRadius: BorderRadius.circular(8)),
+                child: Text(unread > 99 ? '99+' : '$unread', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontSize: 10, fontWeight: FontWeight.w900))),
             ],
           ]),
         ])),
@@ -336,8 +336,8 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = url == null || url!.isEmpty ? null : NetworkImage(url!);
-    return Container(width: 52, height: 52, decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(17), border: Border.all(color: EazyColors.border), image: image == null ? null : DecorationImage(image: image, fit: BoxFit.cover)),
-      alignment: Alignment.center, child: image == null ? Text(_initials(name), style: const TextStyle(color: EazyColors.green, fontWeight: FontWeight.w900, fontSize: 17, letterSpacing: -.5)) : null);
+    return Container(width: 52, height: 52, decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(17), border: Border.all(color: Theme.of(context).dividerColor), image: image == null ? null : DecorationImage(image: image, fit: BoxFit.cover)),
+      alignment: Alignment.center, child: image == null ? Text(_initials(name), style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w900, fontSize: 17, letterSpacing: -.5)) : null);
   }
 }
 
@@ -379,7 +379,7 @@ class _Empty extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(child: Padding(padding: const EdgeInsets.all(28),
     child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(width: 76, height: 76, decoration: BoxDecoration(color: EazyColors.green.withValues(alpha: .09), borderRadius: BorderRadius.circular(25), border: Border.all(color: EazyColors.green.withValues(alpha: .25))), child: Icon(icon, size: 34, color: EazyColors.green)), const SizedBox(height: 16),
+      Container(width: 76, height: 76, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: .09), borderRadius: BorderRadius.circular(25), border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: .25))), child: Icon(icon, size: 34, color: Theme.of(context).colorScheme.primary)), const SizedBox(height: 16),
       Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 19, fontWeight: FontWeight.w900)),
       const SizedBox(height: 8), Text(detail, textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted, height: 1.5)),
       const SizedBox(height: 18), FilledButton(onPressed: action, child: Text(actionText)),
