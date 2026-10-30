@@ -222,7 +222,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                         ),
                       )
                       : available == true
-                      ? const Icon(Icons.check_circle, color: EazyColors.green)
+                      ? Icon(Icons.check_circle, color: EazyColors.greenForeground)
                       : available == false
                       ?  Icon(Icons.cancel, color: EazyColors.red)
                       : null,
@@ -236,7 +236,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               borderRadius: BorderRadius.circular(EazyRadius.md),
               side: const BorderSide(color: EazyColors.border),
             ),
-            leading: const Icon(Icons.cake_outlined, color: EazyColors.green),
+            leading: Icon(Icons.cake_outlined, color: EazyColors.greenForeground),
             title: Text(
               dob == null
                   ? 'Date of birth'
