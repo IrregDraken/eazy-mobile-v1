@@ -264,10 +264,10 @@ class _SocialPageState extends State<SocialPage> {
                             ),
                           ),
                           const SizedBox(width: 5),
-                          const Icon(Icons.keyboard_arrow_down_rounded, color: EazyColors.muted, size: 19),
+                           Icon(Icons.keyboard_arrow_down_rounded, color: EazyColors.muted, size: 19),
                         ]),
                         const SizedBox(height: 3),
-                        const Text(
+                         Text(
                           'Your world, made easier',
                           style: TextStyle(color: EazyColors.muted, fontSize: 12),
                         ),
@@ -357,7 +357,7 @@ class _SocialPageState extends State<SocialPage> {
           if (loading && posts.isNotEmpty)
             const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
           if (!loading && error != null && posts.isNotEmpty)
-            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), child: Text('Could not refresh feed: $error', style: const TextStyle(color: EazyColors.red)))),
+            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), child: Text('Could not refresh feed: $error', style:  TextStyle(color: EazyColors.red)))),
           if (posts.isNotEmpty && loadingMore)
             const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(22), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))),
           if (!loading && !hasMore && posts.isNotEmpty)
@@ -522,15 +522,15 @@ class _PostState extends State<_Post> {
                         ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.chat_bubble_outline_rounded, size: 34, color: EazyColors.muted),
+                               Icon(Icons.chat_bubble_outline_rounded, size: 34, color: EazyColors.muted),
                               const SizedBox(height: 10),
-                              Text(commentError!, textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted)),
+                              Text(commentError!, textAlign: TextAlign.center, style:  TextStyle(color: EazyColors.muted)),
                               const SizedBox(height: 10),
                               OutlinedButton(onPressed: () { commentsLoading = true; refreshComments(setSheetState); }, child: const Text('Try again')),
                             ],
                           )))
                         : comments.isEmpty
-                            ? const Center(child: Text('Start the conversation.', style: TextStyle(color: EazyColors.muted)))
+                            ?  Center(child: Text('Start the conversation.', style: TextStyle(color: EazyColors.muted)))
                             : ListView.separated(
                                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                                 itemCount: comments.length,
@@ -538,7 +538,7 @@ class _PostState extends State<_Post> {
                                 itemBuilder: (_, index) => _CommentTile(comment: comments[index], api: widget.api, currentUsername: widget.currentUsername, onChanged: () async { if (ctx.mounted) { commentsLoading = true; await refreshComments(setSheetState); } }, onReply: (comment) { setSheetState(() { replyToId = comment['id']?.toString(); final author = comment['author'] is Map ? Map<String, dynamic>.from(comment['author'] as Map) : <String, dynamic>{}; replyToName = author['username']?.toString() ?? author['displayName']?.toString() ?? 'user'; }); }),
                               )),
                 const Divider(height: 1),
-                if (replyToId != null) Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Row(children: [Expanded(child: Text('Replying to @$replyToName', style: const TextStyle(color: EazyColors.muted, fontSize: 12))), IconButton(visualDensity: VisualDensity.compact, onPressed: () => setSheetState(() { replyToId = null; replyToName = null; }), icon: const Icon(Icons.close_rounded, size: 18))])),
+                if (replyToId != null) Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Row(children: [Expanded(child: Text('Replying to @$replyToName', style:  TextStyle(color: EazyColors.muted, fontSize: 12))), IconButton(visualDensity: VisualDensity.compact, onPressed: () => setSheetState(() { replyToId = null; replyToName = null; }), icon: const Icon(Icons.close_rounded, size: 18))])),
                 SafeArea(top: false, child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -632,7 +632,7 @@ class _PostState extends State<_Post> {
                             author['username']?.toString().isNotEmpty == true
                                 ? '@${author['username']}'
                                 : 'Eazy',
-                            style: const TextStyle(color: EazyColors.muted, fontSize: 12),
+                            style:  TextStyle(color: EazyColors.muted, fontSize: 12),
                           ),
                         ],
                       ),
@@ -640,7 +640,7 @@ class _PostState extends State<_Post> {
                   ),
                   PopupMenuButton<String>(
                     tooltip: 'Post options',
-                    icon: const Icon(Icons.more_horiz_rounded, color: EazyColors.muted),
+                    icon:  Icon(Icons.more_horiz_rounded, color: EazyColors.muted),
                     onSelected: (value) async {
                       if (value == 'save') {
                         await mutate(saved ? 'delete' : 'post', 'posts/$id/save');
@@ -850,7 +850,7 @@ class _CommentTileState extends State<_CommentTile> {
       context: context,
       showDragHandle: true,
       builder: (ctx) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        if (isMine) ListTile(leading: const Icon(Icons.delete_outline_rounded, color: EazyColors.red), title: const Text('Delete comment'), onTap: () => Navigator.pop(ctx, 'delete')),
+        if (isMine) ListTile(leading:  Icon(Icons.delete_outline_rounded, color: EazyColors.red), title: const Text('Delete comment'), onTap: () => Navigator.pop(ctx, 'delete')),
         ListTile(leading: const Icon(Icons.flag_outlined), title: const Text('Report comment'), onTap: () => Navigator.pop(ctx, 'report')),
         const SizedBox(height: 8),
       ])),
@@ -906,13 +906,13 @@ class _CommentTileState extends State<_CommentTile> {
           const SizedBox(height: 3),
           Text(widget.comment['content']?.toString() ?? '', style: const TextStyle(height: 1.4)),
           Row(children: [
-            if (created.isNotEmpty) Padding(padding: const EdgeInsets.only(right: 12), child: Text(created.length >= 10 ? created.substring(0, 10) : created, style: const TextStyle(color: EazyColors.muted, fontSize: 10))),
+            if (created.isNotEmpty) Padding(padding: const EdgeInsets.only(right: 12), child: Text(created.length >= 10 ? created.substring(0, 10) : created, style:  TextStyle(color: EazyColors.muted, fontSize: 10))),
             TextButton(onPressed: () => widget.onReply(widget.comment), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 28)), child: const Text('Reply', style: TextStyle(fontSize: 11))),
           ]),
         ])),
         Column(mainAxisSize: MainAxisSize.min, children: [
           IconButton(visualDensity: VisualDensity.compact, onPressed: busy ? null : toggleLike, icon: Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: liked ? EazyColors.red : EazyColors.muted, size: 18)),
-          if (likes > 0) Text('$likes', style: const TextStyle(fontSize: 10, color: EazyColors.muted)),
+          if (likes > 0) Text('$likes', style:  TextStyle(fontSize: 10, color: EazyColors.muted)),
         ]),
         ]),
       ),
@@ -965,7 +965,7 @@ class _SuggestedAccounts extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                    icon: const Icon(Icons.close_rounded, size: 16, color: EazyColors.muted),
+                    icon:  Icon(Icons.close_rounded, size: 16, color: EazyColors.muted),
                     onPressed: () => onDismiss(person),
                   )),
                   CircleAvatar(
@@ -976,7 +976,7 @@ class _SuggestedAccounts extends StatelessWidget {
                   ),
                   const SizedBox(height: 7),
                   Text(name.isEmpty ? 'Eazy member' : name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-                  Text(username.isEmpty ? 'On Eazy' : '@$username', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: EazyColors.muted, fontSize: 10)),
+                  Text(username.isEmpty ? 'On Eazy' : '@$username', maxLines: 1, overflow: TextOverflow.ellipsis, style:  TextStyle(color: EazyColors.muted, fontSize: 10)),
                   const Spacer(),
                   SizedBox(width: double.infinity, height: 30, child: FilledButton(
                     onPressed: isFollowed ? null : () => onFollow(person),
@@ -1013,7 +1013,7 @@ class _State extends StatelessWidget {
           Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: EazyColors.muted, height: 1.4),
+            style:  TextStyle(color: EazyColors.muted, height: 1.4),
           ),
           if (action != null) ...[
             const SizedBox(height: 16),
