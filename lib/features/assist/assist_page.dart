@@ -274,7 +274,7 @@ class _EmptyAssist extends StatelessWidget {
             child: Icon(
               Icons.auto_awesome_rounded,
               size: 34,
-              color: EazyColors.green,
+              color: EazyColors.greenForeground,
             ),
           ),
           const SizedBox(height: 16),
