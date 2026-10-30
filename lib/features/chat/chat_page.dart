@@ -343,11 +343,11 @@ class _ConversationPageState extends State<ConversationPage> {
       final messenger = ScaffoldMessenger.of(context);
       try {
         await widget.api.post('social/block/$username', auth: true);
-        if (!mounted) return;
+        if (!context.mounted) return;
         Navigator.of(context).pop();
         messenger.showSnackBar(const SnackBar(content: Text('Account blocked.')));
       } on ApiException catch (e) {
-        if (mounted) messenger.showSnackBar(SnackBar(content: Text(e.message)));
+        if (context.mounted) messenger.showSnackBar(SnackBar(content: Text(e.message)));
       }
       return;
     }
