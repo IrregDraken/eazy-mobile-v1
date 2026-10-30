@@ -86,6 +86,13 @@ jobs:
         env:
           EAZY_ALLOW_DEBUG_RELEASE_SIGNING: "true"
         run: flutter build apk --release --no-tree-shake-icons --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
+      - name: Upload CI smoke APK for emulator testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: eazy-android-ci-smoke-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
 
   backend-build-test:
     runs-on: ubuntu-latest
