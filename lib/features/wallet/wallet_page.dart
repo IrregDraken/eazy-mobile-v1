@@ -986,7 +986,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF168C58), Color(0xFF075B3A)],
+                colors: [Color(0xFF0F7A4B), Color(0xFF075B3A)],
               ),
               boxShadow: [
                 BoxShadow(
