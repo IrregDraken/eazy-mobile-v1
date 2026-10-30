@@ -163,14 +163,14 @@ class _StoryAvatar extends StatelessWidget {
             padding: const EdgeInsets.all(2.5),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: seen ? EazyColors.border : EazyColors.green, width: seen ? 1.4 : 2.4),
+              border: Border.all(color: seen ? EazyColors.border : EazyColors.greenForeground, width: seen ? 1.4 : 2.4),
             ),
             child: Stack(children: [
               CircleAvatar(
                 radius: 27,
                 backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 backgroundImage: imageUrl != null && imageUrl!.startsWith('http') ? NetworkImage(imageUrl!) : null,
-                child: imageUrl == null || !imageUrl!.startsWith('http') ? const Icon(Icons.person_rounded, color: EazyColors.green, size: 28) : null,
+                child: imageUrl == null || !imageUrl!.startsWith('http') ? Icon(Icons.person_rounded, color: EazyColors.greenForeground, size: 28) : null,
               ),
               if (isOwn) Positioned(
                 right: -1, bottom: -1,
