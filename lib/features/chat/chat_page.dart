@@ -202,9 +202,9 @@ class _ConversationPageState extends State<ConversationPage> {
       context: context,
       showDragHandle: true,
       builder: (sheet) => SafeArea(child: Wrap(children: [
-        ListTile(leading: const Icon(Icons.photo_library_outlined, color: EazyColors.green), title: const Text('Photo'), subtitle: const Text('Choose an image'), onTap: () => Navigator.pop(sheet, 'photo')),
-        ListTile(leading: const Icon(Icons.video_library_outlined, color: EazyColors.green), title: const Text('Video'), subtitle: const Text('Choose a video'), onTap: () => Navigator.pop(sheet, 'video')),
-        ListTile(leading: const Icon(Icons.attach_file_rounded, color: EazyColors.green), title: const Text('File or document'), subtitle: const Text('PDF, Word, TXT or CSV, up to 25 MB'), onTap: () => Navigator.pop(sheet, 'file')),
+        ListTile(leading: Icon(Icons.photo_library_outlined, color: Theme.of(sheet).colorScheme.primary), title: const Text('Photo'), subtitle: const Text('Choose an image'), onTap: () => Navigator.pop(sheet, 'photo')),
+        ListTile(leading: Icon(Icons.video_library_outlined, color: Theme.of(sheet).colorScheme.primary), title: const Text('Video'), subtitle: const Text('Choose a video'), onTap: () => Navigator.pop(sheet, 'video')),
+        ListTile(leading: Icon(Icons.attach_file_rounded, color: Theme.of(sheet).colorScheme.primary), title: const Text('File or document'), subtitle: const Text('PDF, Word, TXT or CSV, up to 25 MB'), onTap: () => Navigator.pop(sheet, 'file')),
         const SizedBox(height: 8),
       ])),
     );
@@ -438,11 +438,10 @@ class _ConversationPageState extends State<ConversationPage> {
             },
           )),
         SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(8,6,8,10),child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
-          IconButton(tooltip:'Attach photo, video or document',onPressed:sending?null:_pickAttachment,style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:const Icon(Icons.add_circle_outline_rounded,size:29)),
+          IconButton(tooltip:'Attach photo, video or document',onPressed:sending?null:_pickAttachment,style:IconButton.styleFrom(foregroundColor:Theme.of(context).colorScheme.primary),icon:const Icon(Icons.add_circle_outline_rounded,size:29)),
           Expanded(child:TextField(controller:draft,maxLines:5,minLines:1,decoration:InputDecoration(
             hintText:editing!=null?'Edit message…':replying!=null?'Write a reply…':'Message on Eazy…'))),
-          IconButton(tooltip:'Open Eazy Assist',onPressed:()=>context.push('/assist'),style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:Image.asset('assets/images/eazy_logo_mark.png',width:23,height:23,errorBuilder:(_,__,___)=>const Icon(Icons.auto_awesome_rounded))),
-          IconButton(tooltip:'Translate draft to English',onPressed:_translateDraft,style:IconButton.styleFrom(foregroundColor:EazyColors.green),icon:const Icon(Icons.translate_rounded)),
+          IconButton(tooltip:'Translate draft to English',onPressed:_translateDraft,style:IconButton.styleFrom(foregroundColor:Theme.of(context).colorScheme.primary),icon:const Icon(Icons.translate_rounded)),
           SizedBox(width:48,height:52,child:FilledButton(onPressed:sending?null:send,style:FilledButton.styleFrom(padding:EdgeInsets.zero),child:Icon(editing!=null?Icons.check_rounded:Icons.send_rounded)))
         ])))
       ]))
@@ -476,10 +475,10 @@ class _MessageBubble extends StatelessWidget {
           bottomLeft:Radius.circular(isMine?20:7),
           bottomRight:Radius.circular(isMine?7:20),
         ),
-        border:Border.all(color:isMine?Theme.of(context).colorScheme.primary.withValues(alpha:.24):EazyColors.border),
+        border:Border.all(color:isMine?Theme.of(context).colorScheme.primary.withValues(alpha:.24):Theme.of(context).dividerColor),
       ),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        if(!isMine&&sender['displayName']!=null&&!deleted)Padding(padding:const EdgeInsets.only(bottom:4),child:Text(sender['displayName'].toString(),style:const TextStyle(color:Theme.of(context).colorScheme.primary,fontSize:10,fontWeight:FontWeight.w900,letterSpacing:.2))),
+        if(!isMine&&sender['displayName']!=null&&!deleted)Padding(padding:const EdgeInsets.only(bottom:4),child:Text(sender['displayName'].toString(),style:TextStyle(color:Theme.of(context).colorScheme.primary,fontSize:10,fontWeight:FontWeight.w900,letterSpacing:.2))),
         Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color: deleted ? EazyColors.muted : (isMine ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface),fontSize:14,height:1.45,fontStyle:deleted?FontStyle.italic:FontStyle.normal)),
         if(message['replyTo'] is Map)Padding(padding:const EdgeInsets.only(top:8),child:Text('↳ ' + ((message['replyTo']['body'] ?? 'Deleted message').toString()),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))),
         if(message['attachments'] is List && (message['attachments'] as List).isNotEmpty)
@@ -501,7 +500,7 @@ class _MessageBubble extends StatelessWidget {
                   padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
                   decoration:BoxDecoration(color:Theme.of(context).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(11),border:Border.all(color:Theme.of(context).dividerColor)),
                   child:Row(mainAxisSize:MainAxisSize.min,children:[
-                    Icon(type.startsWith('image/')?Icons.image_outlined:type.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:EazyColors.green,size:18),
+                    Icon(type.startsWith('image/')?Icons.image_outlined:type.startsWith('video/')?Icons.video_file_outlined:Icons.description_outlined,color:Theme.of(context).colorScheme.primary,size:18),
                     const SizedBox(width:7),
                     Text('${label} attachment',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
                     const SizedBox(width:7),
@@ -527,7 +526,7 @@ class _MessageBubble extends StatelessWidget {
         )),
          Row(children:[
           Expanded(child:Text(_time(message['createdAt'] ?? message['created_at']),style:const TextStyle(color:EazyColors.muted,fontSize:9))),
-          if(!deleted)TextButton.icon(onPressed:onTranslate, icon:const Icon(Icons.translate_rounded,size:13), label:const Text('Translate',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800)), style:TextButton.styleFrom(foregroundColor:EazyColors.green,visualDensity:VisualDensity.compact,padding:const EdgeInsets.symmetric(horizontal:6)))
+          if(!deleted)TextButton.icon(onPressed:onTranslate, icon:const Icon(Icons.translate_rounded,size:13), label:const Text('Translate',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800)), style:TextButton.styleFrom(foregroundColor:Theme.of(context).colorScheme.primary,visualDensity:VisualDensity.compact,padding:const EdgeInsets.symmetric(horizontal:6)))
         ])
       ])
         ))));
@@ -544,9 +543,9 @@ class _ContextBar extends StatelessWidget{
   final String label,value;final VoidCallback onClose;
   @override Widget build(BuildContext context)=>Container(margin:const EdgeInsets.fromLTRB(12,6,12,0),padding:const EdgeInsets.symmetric(horizontal:12,vertical:9),
     decoration:BoxDecoration(color:Theme.of(context).colorScheme.surface,borderRadius:BorderRadius.circular(EazyRadius.md),border:Border.all(color:Theme.of(context).dividerColor)),child:Row(children:[
-      Container(width:3,height:31,decoration:BoxDecoration(gradient:const LinearGradient(colors:[Theme.of(context).colorScheme.primary,Theme.of(context).colorScheme.secondary],begin:Alignment.topCenter,end:Alignment.bottomCenter),borderRadius:BorderRadius.circular(4))),const SizedBox(width:9),
+      Container(width:3,height:31,decoration:BoxDecoration(gradient:LinearGradient(colors:[Theme.of(context).colorScheme.primary,Theme.of(context).colorScheme.secondary],begin:Alignment.topCenter,end:Alignment.bottomCenter),borderRadius:BorderRadius.circular(4))),const SizedBox(width:9),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text(label,style:const TextStyle(color:EazyColors.green,fontSize:9,fontWeight:FontWeight.w900,letterSpacing:1)),
+        Text(label,style:TextStyle(color:Theme.of(context).colorScheme.primary,fontSize:9,fontWeight:FontWeight.w900,letterSpacing:1)),
         Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))
       ])),IconButton(onPressed:onClose,icon:const Icon(Icons.close_rounded,size:18))
     ]));
@@ -555,7 +554,7 @@ class _ContextBar extends StatelessWidget{
 class _ChatState extends StatelessWidget{
   const _ChatState(this.message,[this.action]);final String message;final Future<void> Function()? action;
   @override Widget build(BuildContext context)=>Padding(padding:const EdgeInsets.symmetric(vertical:70,horizontal:24),child:Column(children:[
-    Container(width:68,height:68,decoration:BoxDecoration(color:EazyColors.green.withValues(alpha:.08),borderRadius:BorderRadius.circular(22),border:Border.all(color:Theme.of(context).dividerColor)),child:const Icon(Icons.forum_outlined,size:32,color:EazyColors.green)),const SizedBox(height:12),
+    Container(width:68,height:68,decoration:BoxDecoration(color:Theme.of(context).colorScheme.primary.withValues(alpha:.08),borderRadius:BorderRadius.circular(22),border:Border.all(color:Theme.of(context).dividerColor)),child:Icon(Icons.forum_outlined,size:32,color:Theme.of(context).colorScheme.primary)),const SizedBox(height:12),
     Text(message,textAlign:TextAlign.center,style:const TextStyle(color:EazyColors.muted,height:1.4)),
     if(action!=null)...[const SizedBox(height:14),OutlinedButton(onPressed:action,child:const Text('Try again'))]
   ]));
