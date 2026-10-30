@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
+import type { Pool } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { loadConfig } from '../src/config/env.js';
 import { createLogger } from '../src/config/logger.js';
 import { AppError } from '../src/middleware/errors.js';
 import type { FirebaseAuthProvider, FirebaseIdentity } from '../src/providers/firebase-auth.js';
-import type { EmailVerificationService } from '../src/modules/auth/email-verification.js';
+import { EmailVerificationService } from '../src/modules/auth/email-verification.js';
+import type { EmailProvider } from '../src/providers/resend-email.js';
 import { createEmailVerificationRouter } from '../src/modules/auth/email-verification-routes.js';
 
 const email = 'person@example.com';
@@ -199,4 +202,84 @@ test('authenticated finalization cannot bind a verified challenge to another ema
     assert.equal(response.status, 403);
     assert.deepEqual(harness.verifiedUsers, []);
   });
+});
+
+test('resending is limited to an active unverified account and invalidates older pending codes', async () => {
+  const operations: string[] = [];
+  const pool = {
+    query: async (sql: string) => {
+      operations.push(sql);
+      if (sql.startsWith('SELECT id, status, email_verified_at')) {
+        return {
+          rows: [{ id: 'user-1', status: 'active', email_verified_at: null }],
+          rowCount: 1
+        };
+      }
+      return { rows: [], rowCount: 1 };
+    }
+  } as unknown as Pool;
+  let sent = 0;
+  const provider: EmailProvider = {
+    send: async message => {
+      sent += 1;
+      assert.equal(message.to, email);
+    }
+  };
+  const config = loadConfig({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
+  const service = new EmailVerificationService(pool, provider, config);
+
+  const challenge = await service.requestCode(email, {
+    allowExistingUnverified: true
+  });
+  assert.ok(challenge.challengeId);
+  assert.equal(sent, 1);
+  assert.ok(operations.findIndex(sql => sql.startsWith('DELETE FROM email_verification_challenges'))
+    < operations.findIndex(sql => sql.startsWith('INSERT INTO email_verification_challenges')));
+});
+
+test('an already verified challenge can only be finalized for its matching authenticated email', async () => {
+  const code = '123456';
+  const digest = createHash('sha256')
+    .update(`${challengeId}:${code}`)
+    .digest('hex');
+  const clientCalls: string[] = [];
+  const client = {
+    query: async (sql: string) => {
+      clientCalls.push(sql);
+      if (sql.includes('SELECT id, email, code_digest')) {
+        return {
+          rows: [{
+            id: challengeId,
+            email,
+            code_digest: digest,
+            expires_at: new Date(Date.now() + 60_000),
+            attempts: 0,
+            max_attempts: 5,
+            verified_at: new Date()
+          }],
+          rowCount: 1
+        };
+      }
+      return { rows: [], rowCount: 1 };
+    },
+    release: () => undefined
+  };
+  const pool = { connect: async () => client } as unknown as Pool;
+  const provider: EmailProvider = { send: async () => undefined };
+  const config = loadConfig({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
+  const service = new EmailVerificationService(pool, provider, config);
+
+  const result = await service.verifyCode(challengeId, code, email);
+  assert.equal(result.verified, true);
+  assert.equal(result.email, email);
+  assert.ok(clientCalls.includes('COMMIT'));
+
+  await assert.rejects(
+    () => service.verifyCode(challengeId, code),
+    (error: unknown) => error instanceof AppError && error.code === 'CONFLICT'
+  );
+  await assert.rejects(
+    () => service.verifyCode(challengeId, code, 'other@example.com'),
+    (error: unknown) => error instanceof AppError && error.code === 'FORBIDDEN'
+  );
 });
