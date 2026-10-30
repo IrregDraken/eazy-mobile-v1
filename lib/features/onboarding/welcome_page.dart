@@ -97,7 +97,6 @@ class WelcomePage extends StatelessWidget {
                               disabledBackgroundColor: EazyColors.green,
                               disabledForegroundColor: EazyColors.canvas,
                               overlayColor: EazyColors.greenDeep.withValues(alpha: .18),
-                              overlayColor: EazyColors.greenDeep.withValues(alpha: .18),
                               elevation: 0,
                             ),
                           ),
