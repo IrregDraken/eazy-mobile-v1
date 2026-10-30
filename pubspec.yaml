@@ -44,11 +44,8 @@ flutter:
     - assets/images/eazy_onboarding_hero.png
     - assets/images/auth/signup_background.webp
     - assets/images/auth/signin_background.webp
-    - assets/images/discover/categories/phones_tablets.webp
-    - assets/images/discover/categories/computers.webp
+    - assets/images/discover/categories/electronics_tech.webp
     - assets/images/discover/categories/gaming.webp
-    - assets/images/discover/categories/fashion.webp
-    - assets/images/discover/categories/home_living.webp
-    - assets/images/discover/categories/electronics.webp
-    - assets/images/discover/categories/vehicles.webp
+    - assets/images/discover/categories/fashion_lifestyle.webp
+    - assets/images/discover/categories/vehicles_automotive.webp
     - assets/images/discover/categories/services.webp

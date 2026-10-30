@@ -10,6 +10,10 @@ const currencySchema = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Curr
 const priceSchema = z.string().trim().regex(/^\d{1,18}(\.\d{1,2})?$/, 'Price must use a decimal monetary representation');
 const mediaSchema = z.object({ storageKey: z.string().trim().min(1).max(1024), position: z.number().int().min(0).max(99) }).strict();
 const statusSchema = z.enum(['draft', 'active', 'archived', 'sold_out']);
+const categoryIdsSchema = z.preprocess(
+  value => typeof value === 'string' ? value.split(',').map(id => id.trim()).filter(Boolean) : value,
+  z.array(z.string().uuid()).min(1).max(50).transform(ids => [...new Set(ids)])
+);
 
 export const productCreateSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -36,6 +40,7 @@ export const productIdSchema = z.object({ id: z.string().uuid() });
 export const productSearchSchema = z.object({
   q: z.string().trim().min(2).max(80).optional(),
   categoryId: z.string().uuid().optional(),
+  categoryIds: categoryIdsSchema.optional(),
   sellerId: z.string().uuid().optional(),
   minPrice: priceSchema.optional(),
   maxPrice: priceSchema.optional(),
@@ -47,6 +52,7 @@ export const productSearchSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20)
 }).strict().superRefine((value, ctx) => {
   if (value.minPrice && value.maxPrice && Number(value.minPrice) > Number(value.maxPrice)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['maxPrice'], message: 'maxPrice must be greater than or equal to minPrice' });
+  if (value.categoryId && value.categoryIds) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['categoryIds'], message: 'Use either categoryId or categoryIds, not both' });
 });
 
 export class MarketplaceService {

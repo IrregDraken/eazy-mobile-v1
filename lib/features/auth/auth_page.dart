@@ -190,6 +190,7 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF020B07),
       body: Stack(
         children: [
           Positioned.fill(
