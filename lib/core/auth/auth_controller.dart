@@ -76,8 +76,9 @@ class AuthController extends ChangeNotifier {
               password: password,
             );
         final user = credential.user;
-        if (user == null)
+        if (user == null) {
           throw const ApiException('Unable to create your Eazy account.');
+        }
         await _syncFirebaseUser(user, forceRefresh: true);
         return await requestEmailVerificationCode(email);
       } on FirebaseAuthException catch (e) {
@@ -148,8 +149,9 @@ class AuthController extends ChangeNotifier {
     );
     await FirebaseAuth.instance.currentUser?.reload();
     final fresh = FirebaseAuth.instance.currentUser;
-    if (fresh == null)
+    if (fresh == null) {
       throw const ApiException('Your registration session expired.');
+    }
     await _syncFirebaseUser(fresh, forceRefresh: true);
   }
 
@@ -163,15 +165,17 @@ class AuthController extends ChangeNotifier {
           final result = await FirebaseAuth.instance.signInWithCredential(
             credential,
           );
-          if (result.user != null)
+          if (result.user != null) {
             await _syncFirebaseUser(result.user!, forceRefresh: true);
+          }
         } catch (_) {
           // The code-sent path remains available when automatic verification fails.
         }
       },
       verificationFailed: (error) {
-        if (!completer.isCompleted)
+        if (!completer.isCompleted) {
           completer.completeError(ApiException(_firebaseMessage(error)));
+        }
       },
       codeSent: (verificationId, _) {
         if (!completer.isCompleted) completer.complete(verificationId);
@@ -194,10 +198,11 @@ class AuthController extends ChangeNotifier {
         credential,
       );
       final user = result.user;
-      if (user == null)
+      if (user == null) {
         throw const ApiException(
           'Phone verification did not create your Eazy session.',
         );
+      }
       await _syncFirebaseUser(user, forceRefresh: true);
     } on FirebaseAuthException catch (e) {
       throw ApiException(_firebaseMessage(e));
@@ -224,7 +229,9 @@ class AuthController extends ChangeNotifier {
         await signedInUser.reload();
         final user = FirebaseAuth.instance.currentUser;
         if (user == null) {
-          throw const ApiException('Your sign-in session could not be restored.');
+          throw const ApiException(
+            'Your sign-in session could not be restored.',
+          );
         }
         if (!user.emailVerified) {
           throw const ApiException(
@@ -264,18 +271,20 @@ class AuthController extends ChangeNotifier {
       );
       final account = await google.authenticate();
       final idToken = account.authentication.idToken;
-      if (idToken == null || idToken.isEmpty)
+      if (idToken == null || idToken.isEmpty) {
         throw const ApiException(
           'Google did not return a valid identity token.',
           kind: ApiErrorKind.provider,
         );
+      }
       final result = await FirebaseAuth.instance.signInWithCredential(
         GoogleAuthProvider.credential(idToken: idToken),
       );
-      if (result.user == null)
+      if (result.user == null) {
         throw const ApiException(
           'Google sign-in could not create your Eazy session.',
         );
+      }
       await _syncFirebaseUser(result.user!, forceRefresh: true);
     });
   }
@@ -308,20 +317,22 @@ class AuthController extends ChangeNotifier {
                 : null,
       );
       final idToken = credential.identityToken;
-      if (idToken == null || idToken.isEmpty)
+      if (idToken == null || idToken.isEmpty) {
         throw const ApiException(
           'Apple did not return a valid identity token.',
           kind: ApiErrorKind.provider,
         );
+      }
       final result = await FirebaseAuth.instance.signInWithCredential(
         OAuthProvider(
           'apple.com',
         ).credential(idToken: idToken, rawNonce: rawNonce),
       );
-      if (result.user == null)
+      if (result.user == null) {
         throw const ApiException(
           'Apple sign-in could not create your Eazy session.',
         );
+      }
       await _syncFirebaseUser(result.user!, forceRefresh: true);
     });
   }
@@ -359,8 +370,9 @@ class AuthController extends ChangeNotifier {
 
   Future<void> _syncFirebaseUser(User user, {bool forceRefresh = false}) async {
     final token = await user.getIdToken(forceRefresh);
-    if (token == null || token.isEmpty)
+    if (token == null || token.isEmpty) {
       throw const ApiException('Firebase did not return a session token.');
+    }
     await api.saveToken(token);
     try {
       final result = await api.get('auth/me', auth: true);
@@ -387,10 +399,11 @@ class AuthController extends ChangeNotifier {
   };
 
   Future<T> _run<T>(Future<T> Function() action) async {
-    if (_busy)
+    if (_busy) {
       throw const ApiException(
         'Please wait for the current request to finish.',
       );
+    }
     _busy = true;
     notifyListeners();
     try {
@@ -404,11 +417,12 @@ class AuthController extends ChangeNotifier {
   }
 
   void _requireFirebase() {
-    if (!firebaseReady)
+    if (!firebaseReady) {
       throw const ApiException(
         'Firebase native configuration is missing from this build.',
         kind: ApiErrorKind.provider,
       );
+    }
   }
 
   String _nonce([int length = 32]) {

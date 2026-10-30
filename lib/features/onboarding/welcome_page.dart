@@ -102,7 +102,8 @@ class WelcomePage extends StatelessWidget {
                             style: FilledButton.styleFrom(
                               backgroundColor: EazyColors.green,
                               foregroundColor: EazyColors.canvas,
-                              disabledBackgroundColor: EazyColors.green.withValues(alpha: .45),
+                              disabledBackgroundColor: EazyColors.green
+                                  .withValues(alpha: .45),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(18),
                               ),
@@ -110,7 +111,10 @@ class WelcomePage extends StatelessWidget {
                             ),
                             child: const Text(
                               'LOG IN',
-                              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: .5),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: .5,
+                              ),
                             ),
                           ),
                         ),

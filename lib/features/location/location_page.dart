@@ -6,25 +6,34 @@ import '../../core/network/api_exception.dart';
 
 class LocationPage extends StatefulWidget {
   const LocationPage({super.key});
-  @override State<LocationPage> createState() => _LocationPageState();
+  @override
+  State<LocationPage> createState() => _LocationPageState();
 }
 
 class _LocationPageState extends State<LocationPage> {
   final api = ApiClient();
-  String message = 'Location is only submitted after you explicitly grant permission.';
+  String message =
+      'Location is only submitted after you explicitly grant permission.';
   bool busy = false;
 
   Future<void> locate() async {
     setState(() => busy = true);
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) throw Exception('Location services are turned off.');
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw Exception('Location services are turned off.');
+      }
       var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         throw Exception('Location permission was not granted.');
       }
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
       );
       final result = await api.post(
         'location/reverse-geocode',
@@ -33,14 +42,21 @@ class _LocationPageState extends State<LocationPage> {
       );
       final location = result['location'];
       if (mounted) {
-        setState(() => message = location is Map
-            ? (location['formattedAddress']?.toString() ?? 'Location found.')
-            : 'Location found.');
+        setState(
+          () =>
+              message =
+                  location is Map
+                      ? (location['formattedAddress']?.toString() ??
+                          'Location found.')
+                      : 'Location found.',
+        );
       }
     } on ApiException catch (e) {
       if (mounted) setState(() => message = e.message);
     } catch (e) {
-      if (mounted) setState(() => message = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) {
+        setState(() => message = e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -49,7 +65,12 @@ class _LocationPageState extends State<LocationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Location', style: TextStyle(fontWeight: FontWeight.w900))),
+      appBar: AppBar(
+        title: const Text(
+          'Location',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -57,7 +78,10 @@ class _LocationPageState extends State<LocationPage> {
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('Eazy does not persist precise location. It receives coordinates only for an explicit lookup.', style: TextStyle(color: EazyColors.muted, height: 1.35)),
+                child: Text(
+                  'Eazy does not persist precise location. It receives coordinates only for an explicit lookup.',
+                  style: TextStyle(color: EazyColors.muted, height: 1.35),
+                ),
               ),
             ),
             const SizedBox(height: 18),
@@ -67,7 +91,11 @@ class _LocationPageState extends State<LocationPage> {
               label: Text(busy ? 'Finding you...' : 'Use my current location'),
             ),
             const SizedBox(height: 18),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: EazyColors.muted),
+            ),
           ],
         ),
       ),

@@ -7,7 +7,8 @@ import 'product_detail_page.dart';
 
 class MarketplacePage extends StatefulWidget {
   const MarketplacePage({super.key});
-  @override State<MarketplacePage> createState() => _MarketplacePageState();
+  @override
+  State<MarketplacePage> createState() => _MarketplacePageState();
 }
 
 class _MarketplacePageState extends State<MarketplacePage> {
@@ -20,28 +21,53 @@ class _MarketplacePageState extends State<MarketplacePage> {
   List<Map<String, dynamic>> products = [];
   List<Map<String, dynamic>> categories = [];
 
-  @override void initState() { super.initState(); load(); }
-  @override void dispose() { search.dispose(); super.dispose(); }
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
 
   Future<void> load() async {
-    setState(() { if (products.isEmpty) loading = true; error = null; });
+    setState(() {
+      if (products.isEmpty) loading = true;
+      error = null;
+    });
     try {
       final params = <String, String>{
-        'status': 'active', 'limit': '30', 'page': '1', 'sort': sort,
+        'status': 'active',
+        'limit': '30',
+        'page': '1',
+        'sort': sort,
       };
       if (categoryId != null) params['categoryId'] = categoryId!;
       if (search.text.trim().length >= 2) params['q'] = search.text.trim();
-      final qs = params.entries.map((e) =>
-        '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}').join('&');
+      final qs = params.entries
+          .map(
+            (e) =>
+                '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}',
+          )
+          .join('&');
 
       final r = await Future.wait([
         api.get('marketplace/products?$qs'),
         api.get('marketplace/categories?page=1&limit=50'),
       ]);
-      products = (r[0]['items'] as List? ?? const [])
-          .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-      categories = (r[1]['items'] as List? ?? const [])
-          .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      products =
+          (r[0]['items'] as List? ?? const [])
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+      categories =
+          (r[1]['items'] as List? ?? const [])
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
@@ -65,9 +91,19 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Discover', style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                          Text(
+                            'Discover',
+                            style: TextStyle(
+                              fontSize: 29,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1,
+                            ),
+                          ),
                           SizedBox(height: 3),
-                          Text('Discover things worth having', style: TextStyle(color: EazyColors.muted)),
+                          Text(
+                            'Discover things worth having',
+                            style: TextStyle(color: EazyColors.muted),
+                          ),
                         ],
                       ),
                     ),
@@ -95,7 +131,10 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.search_rounded),
                     hintText: 'Search products, brands...',
-                    suffixIcon: IconButton(onPressed: load, icon: const Icon(Icons.tune_rounded)),
+                    suffixIcon: IconButton(
+                      onPressed: load,
+                      icon: const Icon(Icons.tune_rounded),
+                    ),
                   ),
                 ),
               ),
@@ -108,14 +147,17 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: categories.length + 1,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
                     itemBuilder: (c, i) {
                       if (i == 0) {
                         return _CategoryTile(
                           name: 'All',
                           icon: Icons.grid_view_rounded,
                           selected: categoryId == null,
-                          onTap: () { setState(() => categoryId = null); load(); },
+                          onTap: () {
+                            setState(() => categoryId = null);
+                            load();
+                          },
                         );
                       }
                       final x = categories[i - 1];
@@ -124,7 +166,10 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         name: x['name']?.toString() ?? 'Category',
                         icon: _categoryIcon(x['name']?.toString()),
                         selected: categoryId == id,
-                        onTap: () { setState(() => categoryId = id); load(); },
+                        onTap: () {
+                          setState(() => categoryId = id);
+                          load();
+                        },
                       );
                     },
                   ),
@@ -135,18 +180,40 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
                 child: Row(
                   children: [
-                    const Text('Latest', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                    const Text(
+                      'Latest',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     const Spacer(),
                     PopupMenuButton<String>(
                       initialValue: sort,
-                      onSelected: (v) { setState(() => sort = v); load(); },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'newest', child: Text('Newest')),
-                        PopupMenuItem(value: 'price_asc', child: Text('Price: low to high')),
-                        PopupMenuItem(value: 'price_desc', child: Text('Price: high to low')),
-                      ],
+                      onSelected: (v) {
+                        setState(() => sort = v);
+                        load();
+                      },
+                      itemBuilder:
+                          (_) => const [
+                            PopupMenuItem(
+                              value: 'newest',
+                              child: Text('Newest'),
+                            ),
+                            PopupMenuItem(
+                              value: 'price_asc',
+                              child: Text('Price: low to high'),
+                            ),
+                            PopupMenuItem(
+                              value: 'price_desc',
+                              child: Text('Price: high to low'),
+                            ),
+                          ],
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(30),
@@ -155,7 +222,13 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Sort', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                            Text(
+                              'Sort',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                             SizedBox(width: 5),
                             Icon(Icons.keyboard_arrow_down_rounded, size: 17),
                           ],
@@ -167,21 +240,43 @@ class _MarketplacePageState extends State<MarketplacePage> {
               ),
             ),
             if (loading && products.isEmpty)
-              const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
             if (loading && products.isNotEmpty)
-              const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
+              const SliverToBoxAdapter(
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
             if (!loading && error != null && products.isEmpty)
-              SliverFillRemaining(hasScrollBody: false, child: _State(error!, load)),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _State(error!, load),
+              ),
             if (!loading && error != null && products.isNotEmpty)
-              SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text('Could not refresh listings: $error', style: const TextStyle(color: EazyColors.red)))),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: Text(
+                    'Could not refresh listings: $error',
+                    style: const TextStyle(color: EazyColors.red),
+                  ),
+                ),
+              ),
             if (!loading && error == null && products.isEmpty)
-              const SliverFillRemaining(hasScrollBody: false, child: _State('No products match your search.', null)),
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: _State('No products match your search.', null),
+              ),
             if (products.isNotEmpty)
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                 sliver: SliverGrid.builder(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: .68,
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: .68,
                   ),
                   itemCount: products.length,
                   itemBuilder: (c, i) => _Product(product: products[i]),
@@ -195,7 +290,12 @@ class _MarketplacePageState extends State<MarketplacePage> {
 }
 
 class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.name, required this.icon, required this.selected, required this.onTap});
+  const _CategoryTile({
+    required this.name,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
   final String name;
   final IconData icon;
   final bool selected;
@@ -213,27 +313,52 @@ class _CategoryTile extends StatelessWidget {
             width: 62,
             height: 62,
             decoration: BoxDecoration(
-              gradient: selected ? const LinearGradient(
-                colors: [EazyColors.green, EazyColors.greenDeep],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ) : null,
+              gradient:
+                  selected
+                      ? const LinearGradient(
+                        colors: [EazyColors.green, EazyColors.greenDeep],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                      : null,
               color: selected ? null : Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(21),
-              border: Border.all(color: selected ? EazyColors.green : EazyColors.border),
-              boxShadow: selected ? [
-                BoxShadow(color: EazyColors.green.withValues(alpha: .15), blurRadius: 18, spreadRadius: 1),
-              ] : null,
+              border: Border.all(
+                color: selected ? EazyColors.green : EazyColors.border,
+              ),
+              boxShadow:
+                  selected
+                      ? [
+                        BoxShadow(
+                          color: EazyColors.green.withValues(alpha: .15),
+                          blurRadius: 18,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                      : null,
             ),
-            child: Icon(icon, color: selected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary, size: 25),
+            child: Icon(
+              icon,
+              color:
+                  selected
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.primary,
+              size: 25,
+            ),
           ),
           const SizedBox(height: 7),
           Text(
             name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-              color: selected ? Theme.of(context).colorScheme.primary : EazyColors.muted),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+              color:
+                  selected
+                      ? Theme.of(context).colorScheme.primary
+                      : EazyColors.muted,
+            ),
           ),
         ],
       ),
@@ -244,17 +369,25 @@ class _CategoryTile extends StatelessWidget {
 IconData _categoryIcon(String? value) {
   final name = (value ?? '').toLowerCase();
   if (name.contains('elect')) return Icons.devices_rounded;
-  if (name.contains('fashion') || name.contains('cloth')) return Icons.checkroom_rounded;
+  if (name.contains('fashion') || name.contains('cloth')) {
+    return Icons.checkroom_rounded;
+  }
   if (name.contains('home')) return Icons.weekend_rounded;
   if (name.contains('beaut')) return Icons.auto_awesome_rounded;
   if (name.contains('health')) return Icons.favorite_rounded;
-  if (name.contains('food') || name.contains('grocery')) return Icons.shopping_basket_rounded;
-  if (name.contains('auto') || name.contains('vehicle')) return Icons.directions_car_rounded;
+  if (name.contains('food') || name.contains('grocery')) {
+    return Icons.shopping_basket_rounded;
+  }
+  if (name.contains('auto') || name.contains('vehicle')) {
+    return Icons.directions_car_rounded;
+  }
   if (name.contains('sport')) return Icons.sports_basketball_rounded;
   if (name.contains('book')) return Icons.menu_book_rounded;
   if (name.contains('game')) return Icons.sports_esports_rounded;
   if (name.contains('pet')) return Icons.pets_rounded;
-  if (name.contains('baby') || name.contains('kid')) return Icons.child_friendly_rounded;
+  if (name.contains('baby') || name.contains('kid')) {
+    return Icons.child_friendly_rounded;
+  }
   if (name.contains('tool')) return Icons.handyman_rounded;
   return Icons.category_rounded;
 }
@@ -265,17 +398,24 @@ class _Product extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final media = product['media'] is List ? product['media'] as List : const [];
-    final first = media.isNotEmpty && media.first is Map
-        ? Map<String, dynamic>.from(media.first as Map)
-        : const <String, dynamic>{};
+    final media =
+        product['media'] is List ? product['media'] as List : const [];
+    final first =
+        media.isNotEmpty && media.first is Map
+            ? Map<String, dynamic>.from(media.first as Map)
+            : const <String, dynamic>{};
     final url = first['url']?.toString();
     final price = product['priceAmount']?.toString() ?? '0.00';
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductDetailPage(product: product))),
+        onTap:
+            () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ProductDetailPage(product: product),
+              ),
+            ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -284,7 +424,11 @@ class _Product extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   url != null
-                      ? Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const _ProductPlaceholder())
+                      ? Image.network(
+                        url,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const _ProductPlaceholder(),
+                      )
                       : const _ProductPlaceholder(),
                   Positioned(
                     top: 9,
@@ -293,11 +437,16 @@ class _Product extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: .72),
+                        color: Theme.of(
+                          context,
+                        ).scaffoldBackgroundColor.withValues(alpha: .72),
                         shape: BoxShape.circle,
                         border: Border.all(color: EazyColors.border),
                       ),
-                      child: const Icon(Icons.favorite_border_rounded, size: 18),
+                      child: const Icon(
+                        Icons.favorite_border_rounded,
+                        size: 18,
+                      ),
                     ),
                   ),
                 ],
@@ -308,11 +457,24 @@ class _Product extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product['name']?.toString() ?? 'Product', maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w800, height: 1.15)),
+                  Text(
+                    product['name']?.toString() ?? 'Product',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text('${product['currency'] ?? 'NGN'} $price',
-                    style: const TextStyle(color: EazyColors.green, fontWeight: FontWeight.w900, fontSize: 15)),
+                  Text(
+                    '${product['currency'] ?? 'NGN'} $price',
+                    style: const TextStyle(
+                      color: EazyColors.green,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -325,9 +487,16 @@ class _Product extends StatelessWidget {
 
 class _ProductPlaceholder extends StatelessWidget {
   const _ProductPlaceholder();
-  @override Widget build(BuildContext context) => Container(
+  @override
+  Widget build(BuildContext context) => Container(
     color: Theme.of(context).colorScheme.surfaceContainerHighest,
-    child: const Center(child: Icon(Icons.shopping_bag_outlined, size: 42, color: EazyColors.green)),
+    child: const Center(
+      child: Icon(
+        Icons.shopping_bag_outlined,
+        size: 42,
+        color: EazyColors.green,
+      ),
+    ),
   );
 }
 
@@ -343,9 +512,17 @@ class _State extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.storefront_outlined, size: 44, color: EazyColors.green),
+          const Icon(
+            Icons.storefront_outlined,
+            size: 44,
+            color: EazyColors.green,
+          ),
           const SizedBox(height: 12),
-          Text(text, textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted)),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: EazyColors.muted),
+          ),
           if (action != null) ...[
             const SizedBox(height: 12),
             OutlinedButton(onPressed: action, child: const Text('Try again')),

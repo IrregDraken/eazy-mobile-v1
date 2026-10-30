@@ -83,8 +83,9 @@ class _AuthPageState extends State<AuthPage> {
               'Password must include an uppercase letter, a lowercase letter, a number, and a symbol.',
             );
           }
-          if (password.text != confirmPassword.text)
+          if (password.text != confirmPassword.text) {
             throw const ApiException('Your passwords do not match.');
+          }
           await widget.auth.registerEmailAfterVerification(
             identifier.text,
             password.text,
@@ -93,16 +94,18 @@ class _AuthPageState extends State<AuthPage> {
         }
       } else {
         await widget.auth.signInEmail(identifier.text, password.text);
-        if (mounted)
+        if (mounted) {
           context.go(widget.auth.needsOnboarding ? '/onboarding' : '/home');
+        }
       }
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => error = 'We could not complete that action. Please try again.',
         );
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -115,15 +118,17 @@ class _AuthPageState extends State<AuthPage> {
     });
     try {
       await action();
-      if (mounted)
+      if (mounted) {
         context.go(widget.auth.needsOnboarding ? '/onboarding' : '/home');
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => error = 'We could not complete sign-in. Please try again.',
         );
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -178,9 +183,7 @@ class _AuthPageState extends State<AuthPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFF4F8F4),
-        ),
+        decoration: const BoxDecoration(color: Color(0xFFF4F8F4)),
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -226,7 +229,7 @@ class _AuthPageState extends State<AuthPage> {
                                     ? constraints.maxHeight * .86
                                     : constraints.maxHeight * .78,
                           ),
-                          child: _FormCard(compact: compact),
+                          child: _formCard(compact: compact),
                         ),
                       ),
                     ),
@@ -240,7 +243,7 @@ class _AuthPageState extends State<AuthPage> {
     );
   }
 
-  Widget _FormCard({required bool compact}) {
+  Widget _formCard({required bool compact}) {
     final title =
         !register
             ? 'Welcome back'
@@ -488,10 +491,11 @@ class _AuthPageState extends State<AuthPage> {
     }
     try {
       await widget.auth.sendPasswordReset(identifier.text);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Password reset email sent.')),
         );
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     }
@@ -604,15 +608,23 @@ class _PasswordRequirements extends StatelessWidget {
                 child: Row(
                   children: [
                     Icon(
-                      rule.$2 ? Icons.check_circle_rounded : Icons.circle_outlined,
+                      rule.$2
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
                       size: 16,
-                      color: rule.$2 ? const Color(0xFF0E9D61) : const Color(0xFF91A097),
+                      color:
+                          rule.$2
+                              ? const Color(0xFF0E9D61)
+                              : const Color(0xFF91A097),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       rule.$1,
                       style: TextStyle(
-                        color: rule.$2 ? const Color(0xFF087A4A) : const Color(0xFF68776F),
+                        color:
+                            rule.$2
+                                ? const Color(0xFF087A4A)
+                                : const Color(0xFF68776F),
                         fontSize: 12,
                         fontWeight: rule.$2 ? FontWeight.w700 : FontWeight.w500,
                       ),
@@ -654,7 +666,7 @@ class _EntryField extends StatelessWidget {
     decoration: InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(color: Color(0xFF718179), fontSize: 13),
-      prefixIcon: Icon(icon, color: Color(0xFF0E9D61), size: 20),
+      prefixIcon: Icon(icon, color: const Color(0xFF0E9D61), size: 20),
       suffixIcon: suffix,
       filled: true,
       fillColor: const Color(0xFFF5FAF6),
@@ -678,17 +690,17 @@ class _EntryField extends StatelessWidget {
 class _OrDivider extends StatelessWidget {
   const _OrDivider();
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => const Row(
     children: [
-      const Expanded(child: Divider(color: Color(0xFFD6E5DA))),
+      Expanded(child: Divider(color: Color(0xFFD6E5DA))),
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: EdgeInsets.symmetric(horizontal: 10),
         child: Text(
           'or continue with',
           style: TextStyle(color: Color(0xFF718179), fontSize: 11),
         ),
       ),
-      const Expanded(child: Divider(color: Color(0xFFD6E5DA))),
+      Expanded(child: Divider(color: Color(0xFFD6E5DA))),
     ],
   );
 }
