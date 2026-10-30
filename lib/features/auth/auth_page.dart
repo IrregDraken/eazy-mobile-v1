@@ -295,18 +295,26 @@ class _AuthPageState extends State<AuthPage> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 30,
-            offset: Offset(0, 16),
-          ),
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 5,
-            offset: Offset(0, 2),
-          ),
-        ],
+        boxShadow: Theme.of(context).brightness == Brightness.dark
+            ? const [
+                BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 30,
+                  offset: Offset(0, 16),
+                ),
+                BoxShadow(
+                  color: Color(0x22000000),
+                  blurRadius: 5,
+                  offset: Offset(0, 2),
+                ),
+              ]
+            : const [
+                BoxShadow(
+                  color: Color(0x120E3B25),
+                  blurRadius: 24,
+                  offset: Offset(0, 10),
+                ),
+              ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
