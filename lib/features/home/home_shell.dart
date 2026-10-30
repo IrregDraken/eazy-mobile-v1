@@ -89,7 +89,7 @@ class EazyPageHeader extends StatelessWidget{
     child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(title,style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900,letterSpacing:-1)),
-        if(subtitle!=null)...[const SizedBox(height:4),Text(subtitle!,style: TextStyle(color:EazyColors.muted))],
+        if(subtitle!=null)...[const SizedBox(height:4),Text(subtitle!,style: TextStyle(color:Theme.of(context).colorScheme.onSurfaceVariant))],
       ])),if(trailing!=null)trailing!,
     ]),
   );
