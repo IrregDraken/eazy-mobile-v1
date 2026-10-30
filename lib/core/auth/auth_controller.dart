@@ -148,16 +148,31 @@ class AuthController extends ChangeNotifier {
     await _run(() async {
       _requireFirebase();
       try {
-        final credential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-              email: email.trim().toLowerCase(),
-              password: password,
-            );
+        final normalizedEmail = email.trim().toLowerCase();
+        UserCredential credential;
+        try {
+          credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            email: normalizedEmail,
+            password: password,
+          );
+        } on FirebaseAuthException catch (error) {
+          // Firebase creation can succeed even when the follow-up API call
+          // fails. Sign in to that same account and safely retry verification.
+          if (error.code != 'email-already-in-use') rethrow;
+          credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: normalizedEmail,
+            password: password,
+          );
+        }
         final user = credential.user;
         if (user == null) {
           throw const ApiException('Unable to create your Eazy account.');
         }
-        await _syncFirebaseUser(user, forceRefresh: true);
+        await user.reload();
+        await _syncFirebaseUser(
+          FirebaseAuth.instance.currentUser ?? user,
+          forceRefresh: true,
+        );
       } on FirebaseAuthException catch (e) {
         throw ApiException(_firebaseMessage(e));
       }
