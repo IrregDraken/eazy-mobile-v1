@@ -8,9 +8,8 @@ class WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const dark = true;
-    final foreground = dark ? Colors.white : const Color(0xFF10231A);
-    final muted = dark ? const Color(0xFFD0DDD5) : const Color(0xFF4D6256);
+    const foreground = Colors.white;
+    const muted = Color(0xFFD0DDD5);
 
     return Scaffold(
       body: Stack(
@@ -26,20 +25,12 @@ class WelcomePage extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors:
-                    dark
-                        ? const [
-                          Color(0x00030B07),
-                          Color(0x10030B07),
-                          Color(0xB8071D12),
-                          Color(0xF504110B),
-                        ]
-                        : const [
-                          Color(0x00030B07),
-                          Color(0x12030B07),
-                          Color(0xB8DFF4E8),
-                          Color(0xF3F3FBF6),
-                        ],
+                colors: const [
+                  Color(0x00030B07),
+                  Color(0x10030B07),
+                  Color(0xB8071D12),
+                  Color(0xF504110B),
+                ],
                 stops: const [0, .35, .70, 1],
               ),
             ),
@@ -51,7 +42,7 @@ class WelcomePage extends StatelessWidget {
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: _BrandLockup(dark: dark),
+                    child: _BrandLockup(dark: true),
                   ),
                   const Spacer(),
                   Padding(
