@@ -184,9 +184,21 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(color: Color(0xFFF4F8F4)),
-        child: SafeArea(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Opacity(
+              opacity: .10,
+              child: Image.asset(
+                'assets/images/eazy_auth_hero.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: ColoredBox(color: Color(0xEAF4F8F4)),
+          ),
+          SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxHeight < 700;
@@ -241,6 +253,7 @@ class _AuthPageState extends State<AuthPage> {
             },
           ),
         ),
+      ],
       ),
     );
   }
