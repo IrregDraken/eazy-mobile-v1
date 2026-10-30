@@ -28,7 +28,7 @@ export class EmailVerificationService {
       status: string;
       email_verified_at: Date | string | null;
     }>(
-      'SELECT id, status, email_verified_at FROM users WHERE lower(email) = $1 AND status <> 'deleted' LIMIT 1',
+      `SELECT id, status, email_verified_at FROM users WHERE lower(email) = $1 AND status <> 'deleted' LIMIT 1`,
       [email]
     );
     if (existing.rowCount) {
