@@ -75,7 +75,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
                         shape: BoxShape.circle,
-                        border: Border.all(color: EazyColors.border),
+                        border: Border.all(color: Theme.of(context).dividerColor),
                       ),
                       child: IconButton(
                         onPressed: () => context.push('/cart'),
@@ -150,7 +150,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: EazyColors.border),
+                          border: Border.all(color: Theme.of(context).dividerColor),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
@@ -213,16 +213,16 @@ class _CategoryTile extends StatelessWidget {
             width: 62,
             height: 62,
             decoration: BoxDecoration(
-              gradient: selected ? const LinearGradient(
-                colors: [EazyColors.green, EazyColors.greenDeep],
+              gradient: selected ? LinearGradient(
+                colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ) : null,
               color: selected ? null : Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(21),
-              border: Border.all(color: selected ? EazyColors.green : EazyColors.border),
+              border: Border.all(color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor),
               boxShadow: selected ? [
-                BoxShadow(color: EazyColors.green.withValues(alpha: .15), blurRadius: 18, spreadRadius: 1),
+                BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: .15), blurRadius: 18, spreadRadius: 1),
               ] : null,
             ),
             child: Icon(icon, color: selected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary, size: 25),
@@ -295,7 +295,7 @@ class _Product extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: .72),
                         shape: BoxShape.circle,
-                        border: Border.all(color: EazyColors.border),
+                        border: Border.all(color: Theme.of(context).dividerColor),
                       ),
                       child: const Icon(Icons.favorite_border_rounded, size: 18),
                     ),
@@ -312,7 +312,7 @@ class _Product extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w800, height: 1.15)),
                   const SizedBox(height: 6),
                   Text('${product['currency'] ?? 'NGN'} $price',
-                    style: const TextStyle(color: EazyColors.green, fontWeight: FontWeight.w900, fontSize: 15)),
+                    style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w900, fontSize: 15)),
                 ],
               ),
             ),
@@ -327,7 +327,7 @@ class _ProductPlaceholder extends StatelessWidget {
   const _ProductPlaceholder();
   @override Widget build(BuildContext context) => Container(
     color: Theme.of(context).colorScheme.surfaceContainerHighest,
-    child: const Center(child: Icon(Icons.shopping_bag_outlined, size: 42, color: EazyColors.green)),
+    child: Center(child: Icon(Icons.shopping_bag_outlined, size: 42, color: Theme.of(context).colorScheme.primary)),
   );
 }
 
@@ -343,7 +343,7 @@ class _State extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.storefront_outlined, size: 44, color: EazyColors.green),
+          const Icon(Icons.storefront_outlined, size: 44, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 12),
           Text(text, textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted)),
           if (action != null) ...[
