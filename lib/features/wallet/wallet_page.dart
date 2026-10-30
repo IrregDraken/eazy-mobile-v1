@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -991,7 +990,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Theme.of(context).colorScheme.primaryDeep.withValues(alpha: .28),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: .28),
                   blurRadius: 22,
                   offset: const Offset(0, 12),
                 ),
@@ -1108,7 +1107,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: .12),
-                    child: const Icon(
+                    child: Icon(
                       Icons.receipt_long_rounded,
                       color: Theme.of(context).colorScheme.primary,
                     ),
