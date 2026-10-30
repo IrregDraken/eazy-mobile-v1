@@ -408,6 +408,7 @@ class _AuthPageState extends State<AuthPage> {
                 label: '6-digit verification code',
                 icon: Icons.password_rounded,
                 keyboardType: TextInputType.number,
+                readOnly: emailCodeVerified,
               ),
             ],
           ],
