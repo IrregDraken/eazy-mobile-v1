@@ -177,7 +177,7 @@ class _SocialPageState extends State<SocialPage> {
                         label: Text(attachment != null && attachment!.contentType.startsWith('video/') ? 'Video attached' : 'Add video'),
                       ),
                       if (attachment != null)
-                        const Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary),
+                        Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary),
                     ],
                   ),
                 ),
@@ -249,7 +249,7 @@ class _SocialPageState extends State<SocialPage> {
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                                colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primaryDeep],
+                                colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary],
                               ),
                             ),
                             alignment: Alignment.center,
@@ -334,7 +334,7 @@ class _SocialPageState extends State<SocialPage> {
             ),
           ),
           SliverToBoxAdapter(child: StoriesTray(api: api, media: media)),
-          const SliverToBoxAdapter(child: Divider(height: 1, color: Theme.of(context).dividerColor)),
+          SliverToBoxAdapter(child: Divider(height: 1, color: Theme.of(context).dividerColor)),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           if (loading && posts.isEmpty)
             const SliverFillRemaining(
