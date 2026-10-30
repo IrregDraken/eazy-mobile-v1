@@ -660,7 +660,7 @@ class _HighlightsRow extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Theme.of(context).dividerColor, width: 1.5)),
-              child: const CircleAvatar(radius: 27, backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest, child: Icon(Icons.add_rounded, size: 28)),
+              child: CircleAvatar(radius: 27, backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest, child: const Icon(Icons.add_rounded, size: 28)),
             ),
             const SizedBox(height: 5),
             const Text('New', style: TextStyle(fontSize: 11)),
