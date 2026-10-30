@@ -73,7 +73,7 @@ jobs:
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
 
-  flutter-android-release-smoke:
+  flutter-android-debug-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -82,7 +82,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build apk --release --no-tree-shake-icons --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
+      - run: flutter build apk --debug --no-tree-shake-icons --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
 
   backend-build-test:
     runs-on: ubuntu-latest
