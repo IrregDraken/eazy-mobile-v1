@@ -20,8 +20,6 @@ class _MarketplacePageState extends State<MarketplacePage> {
   String sort = 'newest';
   List<Map<String, dynamic>> products = [];
   List<Map<String, dynamic>> categories = [];
-  final Map<String, String> categoryImages = {};
-  String? allCategoryImage;
 
   @override
   void initState() {
@@ -65,19 +63,6 @@ class _MarketplacePageState extends State<MarketplacePage> {
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
-      for (final product in products) {
-        final category = product['category'];
-        final media = product['media'] as List? ?? const [];
-        final firstMedia = media.isNotEmpty && media.first is Map
-            ? media.first as Map
-            : null;
-        final url = firstMedia?['url']?.toString();
-        if (url == null || !url.startsWith('http')) continue;
-        allCategoryImage ??= url;
-        if (category is Map && category['id'] != null) {
-          categoryImages.putIfAbsent(category['id'].toString(), () => url);
-        }
-      }
       categories =
           (r[1]['items'] as List? ?? const [])
               .whereType<Map>()
@@ -89,9 +74,6 @@ class _MarketplacePageState extends State<MarketplacePage> {
       if (mounted) setState(() => loading = false);
     }
   }
-
-  String? _categoryImageUrl(String? id) =>
-      id == null ? allCategoryImage : categoryImages[id];
 
   @override
   Widget build(BuildContext context) {
@@ -171,7 +153,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         return _CategoryTile(
                           name: 'All',
                           icon: Icons.grid_view_rounded,
-                          imageUrl: _categoryImageUrl(null),
+                          assetPath: null,
                           selected: categoryId == null,
                           onTap: () {
                             setState(() => categoryId = null);
@@ -184,7 +166,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       return _CategoryTile(
                         name: x['name']?.toString() ?? 'Category',
                         icon: _categoryIcon(x['name']?.toString()),
-                        imageUrl: _categoryImageUrl(id),
+                        assetPath: _categoryAssetPath(x['name']?.toString()),
                         selected: categoryId == id,
                         onTap: () {
                           setState(() => categoryId = id);
@@ -313,13 +295,13 @@ class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
     required this.name,
     required this.icon,
-    this.imageUrl,
+    this.assetPath,
     required this.selected,
     required this.onTap,
   });
   final String name;
   final IconData icon;
-  final String? imageUrl;
+  final String? assetPath;
   final bool selected;
   final VoidCallback onTap;
 
@@ -361,9 +343,9 @@ class _CategoryTile extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: imageUrl != null
-                  ? Image.network(
-                      imageUrl!,
+              child: assetPath != null
+                  ? Image.asset(
+                      assetPath!,
                       fit: BoxFit.cover,
                       width: 62,
                       height: 62,
@@ -402,6 +384,35 @@ class _CategoryTile extends StatelessWidget {
       ),
     ),
   );
+}
+
+String? _categoryAssetPath(String? value) {
+  final name = (value ?? '').trim().toLowerCase();
+  if (name.contains('phone') || name.contains('tablet')) {
+    return 'assets/images/discover/categories/phones_tablets.webp';
+  }
+  if (name.contains('computer') || name.contains('laptop')) {
+    return 'assets/images/discover/categories/computers.webp';
+  }
+  if (name.contains('gaming') || name.contains('game')) {
+    return 'assets/images/discover/categories/gaming.webp';
+  }
+  if (name.contains('fashion') || name.contains('cloth')) {
+    return 'assets/images/discover/categories/fashion.webp';
+  }
+  if (name.contains('home') || name.contains('living')) {
+    return 'assets/images/discover/categories/home_living.webp';
+  }
+  if (name.contains('electronic')) {
+    return 'assets/images/discover/categories/electronics.webp';
+  }
+  if (name.contains('vehicle') || name.contains('car')) {
+    return 'assets/images/discover/categories/vehicles.webp';
+  }
+  if (name.contains('service')) {
+    return 'assets/images/discover/categories/services.webp';
+  }
+  return null;
 }
 
 IconData _categoryIcon(String? value) {
