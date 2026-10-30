@@ -8,7 +8,7 @@ class WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    const dark = true;
     final foreground = dark ? Colors.white : const Color(0xFF10231A);
     final muted = dark ? const Color(0xFFD0DDD5) : const Color(0xFF4D6256);
 
