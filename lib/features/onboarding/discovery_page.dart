@@ -269,10 +269,10 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
       contentPadding: EdgeInsets.zero,
       leading: Container(width: 46, height: 46,
         decoration: BoxDecoration(color: EazyColors.greenDeep.withValues(alpha: .10), borderRadius: BorderRadius.circular(14)),
-        child: const Icon(Icons.shopping_bag_outlined, color: EazyColors.greenDeep)),
+        child: Icon(Icons.shopping_bag_outlined, color: EazyColors.greenForeground)),
       title: Text(product['name']?.toString() ?? 'Eazy listing', style: const TextStyle(fontWeight: FontWeight.w800)),
       subtitle: Text('${product['currency'] ?? 'NGN'} ${product['priceAmount'] ?? ''}',
-        style: const TextStyle(color: EazyColors.greenDeep, fontWeight: FontWeight.w800)),
+        style: TextStyle(color: EazyColors.greenForeground, fontWeight: FontWeight.w800)),
     ),
     const Divider(height: 1),
   ]);
