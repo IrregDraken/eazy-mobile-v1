@@ -5,6 +5,9 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
+val releaseSigningConfigured = keystorePropertiesFile.exists() &&
+    listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+        .all { !keystoreProperties.getProperty(it).isNullOrBlank() }
 
 plugins {
     id("com.android.application")
@@ -18,7 +21,7 @@ android {
     ndkVersion = flutter.ndkVersion
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
+            if (releaseSigningConfigured) {
                 storeFile = file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
@@ -41,12 +44,27 @@ android {
     }
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
+            signingConfig = if (releaseSigningConfigured) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                null
             }
         }
+    }
+}
+val verifyEazyReleaseSigning = tasks.register("verifyEazyReleaseSigning") {
+    doLast {
+        if (!releaseSigningConfigured) {
+            throw GradleException(
+                "Release signing is not configured. Add android/key.properties and the canonical private keystore."
+            )
+        }
+    }
+}
+tasks.configureEach {
+    if ((name.startsWith("package") && name.contains("Release")) ||
+        name == "assembleRelease" || name == "bundleRelease") {
+        dependsOn(verifyEazyReleaseSigning)
     }
 }
 flutter { source = "../.." }
