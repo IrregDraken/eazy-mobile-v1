@@ -30,6 +30,7 @@ class AuthController extends ChangeNotifier {
   bool _busy = false;
   User? _firebaseUser;
   Map<String, dynamic>? _profile;
+  Future<void>? _googleInitialization;
 
   bool get isRestoring => _restoring;
   bool get isBusy => _busy;
@@ -307,13 +308,19 @@ class AuthController extends ChangeNotifier {
     await _run(() async {
       _requireFirebase();
       final google = GoogleSignIn.instance;
-      await google.initialize(
+      final initialization = _googleInitialization ??= google.initialize(
         serverClientId: const String.fromEnvironment(
           'GOOGLE_SERVER_CLIENT_ID',
           defaultValue:
               '370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com',
         ),
       );
+      try {
+        await initialization;
+      } catch (_) {
+        _googleInitialization = null;
+        rethrow;
+      }
       final account = await google.authenticate();
       final idToken = account.authentication.idToken;
       if (idToken == null || idToken.isEmpty) {
