@@ -317,7 +317,7 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               const Text('Edit your profile', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900)),
               const SizedBox(height: 6),
-              const Text('Keep your Eazy identity up to date.', style: TextStyle(color: EazyColors.muted)),
+               Text('Keep your Eazy identity up to date.', style: TextStyle(color: EazyColors.muted)),
               const SizedBox(height: 18),
               TextFormField(controller: first, decoration: const InputDecoration(labelText: 'First name'), validator: (v) => (v ?? '').trim().isEmpty ? 'Add your first name' : null),
               const SizedBox(height: 10),
@@ -414,7 +414,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ]),
             const SizedBox(height: 16),
             Text(name.isEmpty ? 'Make Eazy yours' : name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-            if (profile['category']?.toString().isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 3), child: Text(profile['category'].toString(), style: const TextStyle(color: EazyColors.muted, fontSize: 12))),
+            if (profile['category']?.toString().isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 3), child: Text(profile['category'].toString(), style:  TextStyle(color: EazyColors.muted, fontSize: 12))),
             if (bio.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(bio, style: const TextStyle(height: 1.45))),
             const SizedBox(height: 16),
             if (isOwnProfile)
@@ -487,7 +487,7 @@ class _ProfilePageState extends State<ProfilePage> {
               margin: const EdgeInsets.only(top: 6),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: EazyColors.red.withValues(alpha: .10), borderRadius: BorderRadius.circular(EazyRadius.md)),
-              child: Text(error!, style: const TextStyle(color: EazyColors.red)),
+              child: Text(error!, style:  TextStyle(color: EazyColors.red)),
             ),
           ]),
         )),
@@ -522,14 +522,14 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 12),
               Text(contentTab == 0 ? ((int.tryParse(postsCount.toString()) ?? 0) > 0 ? 'Posts are not available on this page yet' : isOwnProfile ? 'Share your first moment' : 'No posts yet') : contentTab == 1 ? 'No Reels yet' : 'No tagged posts yet', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               const SizedBox(height: 6),
-              Text(contentTab == 0 ? (isOwnProfile ? 'Build your corner of Eazy, one post at a time.' : 'New posts will appear here when they are shared.') : contentTab == 1 ? 'Video posts from this profile will appear here.' : 'Posts tagging this profile will appear here.', textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted, height: 1.45)),
+              Text(contentTab == 0 ? (isOwnProfile ? 'Build your corner of Eazy, one post at a time.' : 'New posts will appear here when they are shared.') : contentTab == 1 ? 'Video posts from this profile will appear here.' : 'Posts tagging this profile will appear here.', textAlign: TextAlign.center, style:  TextStyle(color: EazyColors.muted, height: 1.45)),
               if (contentTab == 0 && isOwnProfile) Padding(padding: const EdgeInsets.only(top: 14), child: FilledButton.icon(onPressed: () => context.go('/home'), icon: const Icon(Icons.add_rounded), label: const Text('Create a post'))),
             ]),
           )),
         if (loadingMoreProfilePosts)
           const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(18), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))),
         if (error != null && ownPosts.isEmpty && !loading)
-          SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(20), child: Text('Could not refresh all profile content. Pull down to retry.', style: const TextStyle(color: EazyColors.muted)))),
+          SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(20), child: Text('Could not refresh all profile content. Pull down to retry.', style:  TextStyle(color: EazyColors.muted)))),
         const SliverToBoxAdapter(child: SizedBox(height: 110)),
       ]),
     ));
@@ -602,7 +602,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 : listError != null
                     ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(listError!, textAlign: TextAlign.center)))
                     : filtered.isEmpty
-                        ? Center(child: Text(people.isEmpty ? 'No $direction yet.' : 'No matching people.', style: const TextStyle(color: EazyColors.muted)))
+                        ? Center(child: Text(people.isEmpty ? 'No $direction yet.' : 'No matching people.', style:  TextStyle(color: EazyColors.muted)))
                         : ListView.separated(
                             itemCount: filtered.length + (listHasMore ? 1 : 0),
                             separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
@@ -718,7 +718,7 @@ class _Stat extends StatelessWidget {
     child: Padding(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8), child: Column(children: [
       Text(loading ? '—' : value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
       const SizedBox(height: 3),
-      Text(label, style: const TextStyle(fontSize: 11, color: EazyColors.muted)),
+      Text(label, style:  TextStyle(fontSize: 11, color: EazyColors.muted)),
     ])),
   );
 }
