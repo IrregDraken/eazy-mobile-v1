@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/auth/auth_controller.dart';
 import '../features/auth/auth_page.dart';
-import '../features/assist/assist_page.dart';
 import '../features/location/location_page.dart';
 import '../features/translation/translation_page.dart';
 import '../features/notifications/notifications_page.dart';
@@ -65,7 +64,6 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
     GoRoute(path: '/cart', builder: (_, __) => const CartPage()),
     GoRoute(path: '/home', builder: (_, state) => HomeShell(auth: auth, initialTab: state.uri.queryParameters['tab'])),
     GoRoute(path: '/profile/:username', builder: (_, state) => ProfilePage(auth: auth, username: state.pathParameters['username'])),
-    GoRoute(path: '/assist', builder: (_, __) => const AssistPage()),
     GoRoute(path: '/translation', builder: (_, __) => const TranslationPage()),
     GoRoute(path: '/location', builder: (_, __) => const LocationPage()),
     GoRoute(
