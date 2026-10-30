@@ -161,7 +161,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
-          const Text(
+           Text(
             'A few details unlock your social identity, wallet and marketplace experience.',
             style: TextStyle(color: EazyColors.muted, height: 1.5),
           ),
@@ -176,7 +176,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               ),
               child: Text(
                 error!,
-                style: const TextStyle(color: EazyColors.red),
+                style:  TextStyle(color: EazyColors.red),
               ),
             ),
           TextField(
@@ -224,7 +224,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       : available == true
                       ? const Icon(Icons.check_circle, color: EazyColors.green)
                       : available == false
-                      ? const Icon(Icons.cancel, color: EazyColors.red)
+                      ?  Icon(Icons.cancel, color: EazyColors.red)
                       : null,
             ),
           ),
