@@ -136,7 +136,7 @@ class _StoriesTrayState extends State<StoriesTray> {
             );
           }),
           if (error != null && stories.isEmpty)
-            InkWell(onTap: load, child: const Padding(padding: EdgeInsets.all(8), child: Icon(Icons.refresh_rounded, color: EazyColors.muted))),
+            InkWell(onTap: load, child:  Padding(padding: EdgeInsets.all(8), child: Icon(Icons.refresh_rounded, color: EazyColors.muted))),
         ],
       ),
     );
