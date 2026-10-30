@@ -75,6 +75,7 @@ class AuthController extends ChangeNotifier {
     String email, {
     bool authenticated = false,
   }) async {
+    if (authenticated) await _saveCurrentFirebaseTokenForVerification();
     final result = await api.post(
       'auth/email-verification/request-code',
       auth: authenticated,
@@ -102,7 +103,6 @@ class AuthController extends ChangeNotifier {
           'This email is already verified. Please sign in instead.',
         );
       }
-      await _syncFirebaseUser(current, forceRefresh: true);
       return requestEmailVerificationCode(
         normalizedEmail,
         authenticated: true,
@@ -147,7 +147,6 @@ class AuthController extends ChangeNotifier {
           await _syncFirebaseUser(current, forceRefresh: true);
           return;
         }
-        await _syncFirebaseUser(current, forceRefresh: true);
       } else {
         try {
           credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -161,7 +160,11 @@ class AuthController extends ChangeNotifier {
         if (user == null) {
           throw const ApiException('Unable to create your Eazy account.');
         }
-        await _syncFirebaseUser(user, forceRefresh: true);
+        final token = await user.getIdToken(true);
+        if (token == null || token.isEmpty) {
+          throw const ApiException('Firebase did not return a session token.');
+        }
+        await api.saveToken(token);
       }
 
       // The code was verified before account creation. Re-submit that same
@@ -175,6 +178,7 @@ class AuthController extends ChangeNotifier {
     EmailVerificationChallenge challenge,
     String code,
   ) async {
+    await _saveCurrentFirebaseTokenForVerification();
     await api.post(
       'auth/email-verification/verify-code',
       auth: true,
@@ -185,6 +189,19 @@ class AuthController extends ChangeNotifier {
     if (fresh == null)
       throw const ApiException('Your registration session expired.');
     await _syncFirebaseUser(fresh, forceRefresh: true);
+  }
+
+  Future<void> _saveCurrentFirebaseTokenForVerification() async {
+    _requireFirebase();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw const ApiException('Your registration session has expired.');
+    }
+    final token = await user.getIdToken(true);
+    if (token == null || token.isEmpty) {
+      throw const ApiException('Firebase did not return a session token.');
+    }
+    await api.saveToken(token);
   }
 
   Future<String> requestPhoneCode(String phone) async {
