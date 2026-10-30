@@ -64,6 +64,12 @@ class _AuthPageState extends State<AuthPage> {
             if (mounted) context.go('/onboarding');
           }
         } else if (registerStage == 0) {
+          challenge = await widget.auth.beginEmailRegistration(identifier.text);
+          if (mounted) setState(() => registerStage = 1);
+        } else if (registerStage == 1) {
+          await widget.auth.verifyEmailRegistration(challenge!, code.text);
+          if (mounted) setState(() => registerStage = 2);
+        } else {
           if (password.text.length < 8 || password.text.length > 124) {
             throw const ApiException(
               'Password must be 8 to 124 characters long.',
@@ -80,13 +86,12 @@ class _AuthPageState extends State<AuthPage> {
           if (password.text != confirmPassword.text) {
             throw const ApiException('Your passwords do not match.');
           }
-          challenge = await widget.auth.registerEmail(
+          await widget.auth.registerEmailAfterVerification(
             identifier.text,
             password.text,
+            challenge!,
+            code.text,
           );
-          if (mounted) setState(() => registerStage = 1);
-        } else {
-          await widget.auth.verifyEmailCode(challenge!, code.text);
           if (mounted) context.go('/onboarding');
         }
       } else {
@@ -140,7 +145,7 @@ class _AuthPageState extends State<AuthPage> {
           identifier.text,
         );
       } else {
-        challenge = await widget.auth.requestEmailVerificationCode(identifier.text);
+        challenge = await widget.auth.beginEmailRegistration(identifier.text);
       }
       if (mounted) {
         code.clear();
@@ -246,15 +251,17 @@ class _AuthPageState extends State<AuthPage> {
             ? 'Welcome back'
             : registerStage == 0
             ? 'Create your account'
-            : 'Check your code';
+            : registerStage == 1
+            ? 'Check your code'
+            : 'Set your password';
     final subtitle =
         !register
             ? 'Sign in to continue to Eazy.'
             : registerStage == 0
-            ? (phoneMode
-                ? 'Start with your phone number.'
-                : 'Enter your email and create a secure password.')
-            : 'Enter the 6-digit code we sent you.';
+            ? 'Start with your email or phone number.'
+            : registerStage == 1
+            ? 'Enter the 6-digit code we sent you.'
+            : 'Set a secure password for future sign-ins.';
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
@@ -343,7 +350,31 @@ class _AuthPageState extends State<AuthPage> {
                 ),
               ],
             ),
-          ] else if (registerStage == 0) ...[
+          ] else if (registerStage == 2) ...[
+            _EntryField(
+              controller: password,
+              label: 'Password',
+              icon: Icons.lock_outline_rounded,
+              obscure: obscure,
+              suffix: IconButton(
+                onPressed: () => setState(() => obscure = !obscure),
+                icon: Icon(
+                  obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _PasswordRequirements(controller: password),
+            const SizedBox(height: 10),
+            _EntryField(
+              controller: confirmPassword,
+              label: 'Confirm password',
+              icon: Icons.verified_user_outlined,
+              obscure: obscure,
+            ),
+          ] else ...[
             _ToggleRow(phone: phoneMode, onChanged: switchInput),
             const SizedBox(height: 10),
             _EntryField(
@@ -355,39 +386,15 @@ class _AuthPageState extends State<AuthPage> {
               keyboardType:
                   phoneMode ? TextInputType.phone : TextInputType.emailAddress,
             ),
-            if (!phoneMode) ...[
+            if (registerStage == 1) ...[
               const SizedBox(height: 10),
               _EntryField(
-                controller: password,
-                label: 'Password',
-                icon: Icons.lock_outline_rounded,
-                obscure: obscure,
-                suffix: IconButton(
-                  onPressed: () => setState(() => obscure = !obscure),
-                  icon: Icon(
-                    obscure
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _PasswordRequirements(controller: password),
-              const SizedBox(height: 10),
-              _EntryField(
-                controller: confirmPassword,
-                label: 'Confirm password',
-                icon: Icons.verified_user_outlined,
-                obscure: obscure,
+                controller: code,
+                label: '6-digit verification code',
+                icon: Icons.password_rounded,
+                keyboardType: TextInputType.number,
               ),
             ],
-          ] else ...[
-            _EntryField(
-              controller: code,
-              label: '6-digit verification code',
-              icon: Icons.password_rounded,
-              keyboardType: TextInputType.number,
-            ),
           ],
           if (error != null)
             Padding(
@@ -425,8 +432,10 @@ class _AuthPageState extends State<AuthPage> {
                         !register
                             ? 'Sign in'
                             : registerStage == 0
-                            ? (phoneMode ? 'Send verification code' : 'Create account and send code')
-                            : 'Verify code',
+                            ? 'Send verification code'
+                            : registerStage == 1
+                            ? 'Verify code'
+                            : 'Create account',
                       ),
             ),
           ),
