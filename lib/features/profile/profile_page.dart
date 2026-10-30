@@ -577,7 +577,7 @@ class _ProfilePageState extends State<ProfilePage> {
             listPage = nextPage;
             listHasMore = total == null ? raw.length >= 50 : people.length < total;
           } on ApiException catch (e) {
-            if (ctx.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+            if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.message)));
           } finally {
             listLoadingMore = false;
             if (ctx.mounted) setSheetState(() {});
