@@ -343,7 +343,7 @@ class _State extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.storefront_outlined, size: 44, color: Theme.of(context).colorScheme.primary),
+          Icon(Icons.storefront_outlined, size: 44, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 12),
           Text(text, textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted)),
           if (action != null) ...[
