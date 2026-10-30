@@ -118,6 +118,8 @@ class AuthController extends ChangeNotifier {
   Future<void> registerEmailAfterVerification(
     String email,
     String password,
+    EmailVerificationChallenge challenge,
+    String code,
   ) async {
     await _run(() async {
       _requireFirebase();
@@ -136,6 +138,10 @@ class AuthController extends ChangeNotifier {
         throw ApiException(_firebaseMessage(e));
       }
     });
+
+    // Bind the already-verified challenge to the newly-created Firebase user.
+    // The authenticated backend request marks that exact identity as verified.
+    await verifyEmailCode(challenge, code);
   }
 
   Future<void> verifyEmailCode(
