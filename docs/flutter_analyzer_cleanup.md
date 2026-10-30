@@ -2,7 +2,7 @@
 
 ## Scope and starting point
 
-This maintenance branch is based on `99c6d18fd3638d09f19505429cc345a2b4835361` (`main` at task start), on branch `maintenance/flutter-analyzer-cleanup`. The application identity, architecture, screens, navigation, backend contracts, platform configuration, package versions, and signing settings were preserved. No local APK or release build was run; the PR's Android CI build attempt was canceled before completion as described below.
+This maintenance branch is based on `99c6d18fd3638d09f19505429cc345a2b4835361` (`main` at task start), on branch `maintenance/flutter-analyzer-cleanup`. The application identity, architecture, screens, navigation, backend contracts, platform configuration, package versions, and signing settings were preserved. No local signed APK or keystore-based release build was produced. The latest GitHub Actions run completed the Android release smoke build successfully; this CI result does not establish that the APK is signed with the project's existing release keystore or ready for Appetize.
 
 The baseline was measured with Flutter **3.47.9** and Dart **3.13.7** after `flutter pub get`. The complete, unedited output from `flutter analyze` on the starting commit is preserved in [the baseline analyzer log](flutter_analyzer_baseline.log), including every affected path, line, and column. The baseline had **123 informational diagnostics, 0 warnings, and 0 errors**:
 
@@ -40,9 +40,9 @@ The requested `dart format .` pass reformatted the Dart sources repository-wide.
 | `flutter test` | Passed: all existing tests passed. |
 | Existing iOS configuration preflight from CI | Passed. |
 | `git diff --check` | Passed. |
-| PR GitHub Actions run [41033247774](https://github.com/IrregDraken/eazy-mobile-v1/actions/runs/41033247774) | `flutter-analyze-test`, `ios-config-preflight`, and `backend-build-test` succeeded. `flutter-android-release-smoke` was canceled while its `flutter build apk --release` step was running, to honor the no-APK instruction. Its log has no build-completion or artifact-upload marker. |
+| Latest PR GitHub Actions run [41038904593](https://github.com/IrregDraken/eazy-mobile-v1/actions/runs/41038904593) | **All four jobs passed**, including `flutter-android-release-smoke`, which completed `flutter build apk --release --no-tree-shake-icons` successfully. |
 
-The local analyzer/test runs completed successfully. The GitHub workflow did start an Android APK build command before it was canceled; the available log does not evidence successful completion or artifact distribution, so no claim of a successful APK build is made. No local APK build or signing operation was performed.
+The local analyzer/test runs completed successfully. The latest GitHub Actions run confirms that the Android release smoke build completed successfully. This is a CI build result only: no evidence here confirms signing with the existing release keystore, certificate identity, or Appetize installability. No local keystore-based signing operation was performed.
 
 ## Files and scope notes
 
@@ -79,10 +79,10 @@ lib/features/translation/translation_page.dart
 lib/features/wallet/wallet_page.dart
 ```
 
-Formatter-normalized comparison shows `lib/core/network/api_exception.dart` is the only formatting-only Dart source. The other 27 Dart files contain analyzer or lifecycle edits in addition to formatting; most are behavior-preserving lint fixes. The lifecycle/correctness changes are concentrated in `chat_page.dart`, `profile_page.dart`, `social_page.dart`, and `stories_tray.dart`. No intended product-flow or UI behavior changes were made. The only non-code additions are this report and the baseline analyzer log.
+Formatter-normalized comparison shows five formatting-only Dart sources: `lib/core/network/api_client.dart`, `lib/core/network/api_exception.dart`, `lib/features/assist/assist_page.dart`, `lib/features/onboarding/welcome_page.dart`, and `lib/features/translation/translation_page.dart`. The other 23 Dart files contain analyzer or lifecycle edits in addition to formatting; most are behavior-preserving lint fixes. The lifecycle/correctness changes are concentrated in `chat_page.dart`, `profile_page.dart`, `social_page.dart`, and `stories_tray.dart`. No intended product-flow or UI behavior changes were made. The only non-code additions are this report and the baseline analyzer log.
 
 Protected files and systems were not changed: `android/key.properties`, release signing configuration, application ID/namespace/version, Firebase/Google configuration, CI workflows, `pubspec.yaml` / `pubspec.lock`, analyzer configuration, backend/database/deployment configuration, production secrets, and production data.
 
 ## Remaining risks and limitations
 
-The existing automated test coverage is very small (one widget test), so passing `flutter test` does not exercise the authentication, payments, chat, or social flows end-to-end. This task did not perform device-level testing or build an APK, as required. No confirmed security issue requiring an in-scope code change was identified during the focused review; a comprehensive security review remains outside this maintenance task.
+The existing automated test coverage is very small (one widget test), so passing `flutter test` does not exercise the authentication, payments, chat, or social flows end-to-end. This task did not perform device-level testing or produce a locally signed APK. No confirmed security issue requiring an in-scope code change was identified during the focused review; a comprehensive security review remains outside this maintenance task.
