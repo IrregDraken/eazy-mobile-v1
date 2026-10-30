@@ -24,7 +24,6 @@ class _AuthPageState extends State<AuthPage> {
   bool phoneMode = false;
   int registerStage = 0;
   bool obscure = true;
-  bool remember = true;
   bool emailCodeVerified = false;
   bool busy = false;
   String? error;
@@ -355,16 +354,6 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 2),
             Row(
               children: [
-                Checkbox(
-                  value: remember,
-                  onChanged: (v) => setState(() => remember = v ?? true),
-                  activeColor: const Color(0xFF087A4A),
-                  visualDensity: VisualDensity.compact,
-                ),
-                const Text(
-                  'Remember me',
-                  style: TextStyle(color: Color(0xFF40534A), fontSize: 12),
-                ),
                 const Spacer(),
                 TextButton(
                   onPressed: _resetPassword,
