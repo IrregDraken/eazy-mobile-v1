@@ -5,6 +5,7 @@ import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/ui/eazy_skeleton.dart';
 import '../social/stories_tray.dart';
 import '../social/video_media.dart';
 
@@ -1061,12 +1062,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             if (loading && ownPosts.isEmpty)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(36),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              ),
+              const EazyProfileGridSkeleton(),
             if (!loading && ownPosts.isNotEmpty)
               SliverPadding(
                 padding: const EdgeInsets.all(2),
