@@ -394,12 +394,12 @@ class _ProfilePageState extends State<ProfilePage> {
             Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
               Container(
                 padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: EazyColors.green.withValues(alpha: .75), width: 2)),
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: .75), width: 2)),
                 child: CircleAvatar(
                   radius: 43,
                   backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
-                  child: avatar == null || !avatar.startsWith('http') ? const Icon(Icons.person_rounded, size: 42, color: EazyColors.green) : null,
+                  child: avatar == null || !avatar.startsWith('http') ? Icon(Icons.person_rounded, size: 42, color: Theme.of(context).colorScheme.primary) : null,
                 ),
               ),
               const SizedBox(width: 22),
@@ -500,7 +500,7 @@ class _ProfilePageState extends State<ProfilePage> {
             onDelete: _deleteHighlight,
           )),
         SliverToBoxAdapter(child: Container(
-          decoration: const BoxDecoration(border: Border(top: BorderSide(color: EazyColors.border))),
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: Theme.of(context).dividerColor))),
           child: Row(children: [
             ProfileTab(icon: Icons.grid_on_rounded, selected: contentTab == 0, onTap: () => _selectContentTab(0)),
             ProfileTab(icon: Icons.play_circle_outline_rounded, selected: contentTab == 1, onTap: () => _selectContentTab(1)),
@@ -518,7 +518,7 @@ class _ProfilePageState extends State<ProfilePage> {
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.fromLTRB(28, 42, 28, 100),
             child: Column(children: [
-              Icon(contentTab == 0 ? Icons.add_a_photo_outlined : contentTab == 1 ? Icons.play_circle_outline_rounded : Icons.person_pin_outlined, size: 42, color: EazyColors.green),
+              Icon(contentTab == 0 ? Icons.add_a_photo_outlined : contentTab == 1 ? Icons.play_circle_outline_rounded : Icons.person_pin_outlined, size: 42, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 12),
               Text(contentTab == 0 ? ((int.tryParse(postsCount.toString()) ?? 0) > 0 ? 'Posts are not available on this page yet' : isOwnProfile ? 'Share your first moment' : 'No posts yet') : contentTab == 1 ? 'No Reels yet' : 'No tagged posts yet', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               const SizedBox(height: 6),
@@ -624,7 +624,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               final name = person['displayName']?.toString() ?? person['username']?.toString() ?? 'Eazy user';
                               final handle = person['username']?.toString() ?? '';
                               return ListTile(
-                                leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest, backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null, child: avatar == null || !avatar.startsWith('http') ? const Icon(Icons.person_rounded, color: EazyColors.green) : null),
+                                leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest, backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null, child: avatar == null || !avatar.startsWith('http') ? Icon(Icons.person_rounded, color: Theme.of(context).colorScheme.primary) : null),
                                 title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
                                 subtitle: Text('@$handle'),
                                 onTap: handle.isEmpty ? null : () { Navigator.pop(ctx); context.push('/profile/$handle'); },
@@ -659,7 +659,7 @@ class _HighlightsRow extends StatelessWidget {
           child: Column(children: [
             Container(
               padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: EazyColors.border, width: 1.5)),
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Theme.of(context).dividerColor, width: 1.5)),
               child: const CircleAvatar(radius: 27, backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest, child: Icon(Icons.add_rounded, size: 28)),
             ),
             const SizedBox(height: 5),
@@ -675,12 +675,12 @@ class _HighlightsRow extends StatelessWidget {
             child: Column(children: [
               Container(
                 padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: EazyColors.border, width: 1.5)),
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Theme.of(context).dividerColor, width: 1.5)),
                 child: CircleAvatar(
                   radius: 27,
                   backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   backgroundImage: cover != null && cover.startsWith('http') ? NetworkImage(cover) : null,
-                  child: cover == null || !cover.startsWith('http') ? const Icon(Icons.auto_awesome_rounded, color: EazyColors.green) : null,
+                  child: cover == null || !cover.startsWith('http') ? Icon(Icons.auto_awesome_rounded, color: Theme.of(context).colorScheme.primary) : null,
                 ),
               ),
               const SizedBox(height: 5),
@@ -731,7 +731,7 @@ class ProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(child: InkWell(
     onTap: onTap,
-    child: Container(height: 48, decoration: BoxDecoration(border: Border(bottom: BorderSide(color: selected ? EazyColors.green : Colors.transparent, width: 2))), child: Icon(icon, color: selected ? Theme.of(context).colorScheme.primary : EazyColors.muted, size: 22)),
+    child: Container(height: 48, decoration: BoxDecoration(border: Border(bottom: BorderSide(color: selected ? Theme.of(context).colorScheme.primary : Colors.transparent, width: 2))), child: Icon(icon, color: selected ? Theme.of(context).colorScheme.primary : EazyColors.muted, size: 22)),
   ));
 }
 
