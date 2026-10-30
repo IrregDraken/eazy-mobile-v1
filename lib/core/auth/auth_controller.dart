@@ -89,10 +89,12 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<EmailVerificationChallenge> requestEmailVerificationCode(
-    String email,
-  ) async {
+    String email, {
+    bool auth = false,
+  }) async {
     final result = await api.post(
       'auth/email-verification/request-code',
+      auth: auth,
       body: {'email': email.trim().toLowerCase()},
     );
     return EmailVerificationChallenge(
