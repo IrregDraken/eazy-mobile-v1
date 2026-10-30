@@ -160,7 +160,7 @@ class _ConversationPageState extends State<ConversationPage> {
               .toList()
               .reversed
               .toList();
-      await markRead();
+      unawaited(markRead());
       if (mounted) setState(() => error = null);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (scroll.hasClients) scroll.jumpTo(scroll.position.maxScrollExtent);
