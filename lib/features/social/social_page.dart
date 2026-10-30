@@ -71,26 +71,15 @@ class _SocialPageState extends State<SocialPage> {
         hasMore = true;
       });
     }
-    Future<Map<String, dynamic>> loadSuggestions() async {
-      try {
-        return await api.get(
-          'discover?type=people&page=1&limit=8',
-          auth: true,
-        );
-      } catch (_) {
-        return <String, dynamic>{'items': <dynamic>[]};
-      }
-    }
-
     try {
-      // Feed and suggested accounts are independent requests. Fetch them
-      // together so the home screen does not wait for them serially.
-      final responses = await Future.wait([
-        api.get('home/feed?page=1&limit=20&mode=$mode', auth: true),
-        loadSuggestions(),
-      ]);
-      final result = responses[0];
-      final peopleResult = responses[1];
+      // The current people-discovery endpoint requires a search query, so
+      // requesting an empty recommendation feed only adds a failed round trip.
+      // Keep the feed as the critical home-screen request.
+      final result = await api.get(
+        'home/feed?page=1&limit=20&mode=$mode',
+        auth: true,
+      );
+      suggestions = [];
       final raw = result['items'] as List? ?? const [];
       final loaded = raw
           .whereType<Map>()
@@ -99,11 +88,6 @@ class _SocialPageState extends State<SocialPage> {
       final total = result['meta'] is Map
           ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '')
           : null;
-      suggestions = (peopleResult['items'] as List? ?? const [])
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-
       if (mounted) {
         setState(() {
           if (wasScrolled &&
