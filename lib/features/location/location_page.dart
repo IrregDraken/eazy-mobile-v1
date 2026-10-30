@@ -54,7 +54,7 @@ class _LocationPageState extends State<LocationPage> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Card(
+             Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
                 child: Text('Eazy does not persist precise location. It receives coordinates only for an explicit lookup.', style: TextStyle(color: EazyColors.muted, height: 1.35)),
@@ -67,7 +67,7 @@ class _LocationPageState extends State<LocationPage> {
               label: Text(busy ? 'Finding you...' : 'Use my current location'),
             ),
             const SizedBox(height: 18),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: EazyColors.muted)),
+            Text(message, textAlign: TextAlign.center, style:  TextStyle(color: EazyColors.muted)),
           ],
         ),
       ),
