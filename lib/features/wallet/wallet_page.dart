@@ -320,7 +320,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             _Info('Amount', '$_currency $amount'),
             _Info('Available balance', '$_currency $_balance'),
             const SizedBox(height: 10),
-            const Text('Your device will ask you to authenticate before this transfer is submitted.', style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.4)),
+             Text('Your device will ask you to authenticate before this transfer is submitted.', style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.4)),
           ],
         ),
         actions: [
@@ -423,7 +423,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 decoration: const InputDecoration(labelText: '10-digit account number'),
               ),
               const SizedBox(height: 4),
-              const Text(
+               Text(
                 'Eazy will resolve and display the account name before you enter an amount.',
                 style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.35),
               ),
@@ -501,7 +501,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             _Info('Amount', '$_currency $amount'),
             _Info('Available balance', '$_currency $_balance'),
             const SizedBox(height: 10),
-            const Text('Authenticate on this device before submitting the transfer.', style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.4)),
+             Text('Authenticate on this device before submitting the transfer.', style: TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.4)),
           ],
         ),
         actions: [
@@ -1081,7 +1081,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
           ),
           if (error != null) ...[
             const SizedBox(height: 12),
-            Text(error!, style: const TextStyle(color: EazyColors.red)),
+            Text(error!, style:  TextStyle(color: EazyColors.red)),
           ],
           const SizedBox(height: 22),
           const SizedBox(height: 22),
@@ -1091,7 +1091,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
           ]),
           const SizedBox(height: 10),
           if (transactions.isEmpty)
-            const Card(
+             Card(
               child: Padding(
                 padding: EdgeInsets.all(22),
                 child: Text(
@@ -1118,7 +1118,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   ),
                   subtitle: Text(
                     entry['status']?.toString() ?? '',
-                    style: const TextStyle(color: EazyColors.muted),
+                    style:  TextStyle(color: EazyColors.muted),
                   ),
                   trailing: Text(
                     balanceVisible ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}' : '••••••',
@@ -1186,7 +1186,7 @@ class _Info extends StatelessWidget {
           width: 105,
           child: Text(
             label,
-            style: const TextStyle(color: EazyColors.muted, fontSize: 12),
+            style:  TextStyle(color: EazyColors.muted, fontSize: 12),
           ),
         ),
         Expanded(
@@ -1221,7 +1221,7 @@ class _ReceiveQrSheet extends StatelessWidget {
             Text(
               'Share this QR or your username: @$username',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: EazyColors.muted),
+              style:  TextStyle(color: EazyColors.muted),
             ),
             const SizedBox(height: 18),
             if (content.isNotEmpty)
@@ -1247,7 +1247,7 @@ class _ReceiveQrSheet extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Expires ${qr['expiresAt'] ?? 'soon'}',
-              style: const TextStyle(color: EazyColors.muted, fontSize: 12),
+              style:  TextStyle(color: EazyColors.muted, fontSize: 12),
             ),
           ],
         ),
@@ -1272,7 +1272,7 @@ class _BankReceiveSheet extends StatelessWidget {
             style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
-          const Text(
+           Text(
             'Give these details to the sender. Eazy will update the wallet only after the configured bank webhook confirms the deposit.',
             style: TextStyle(color: EazyColors.muted, height: 1.4),
           ),
