@@ -30,7 +30,7 @@ function createHarness(options: {
     },
     verifyCode: async (id: string, code: string, expectedEmail?: string) => {
       calls.push({ method: 'verifyCode', args: [id, code, expectedEmail] });
-      if (expectedEmail !== email) {
+      if (expectedEmail && expectedEmail !== email) {
         throw new AppError('FORBIDDEN', 'Verification request does not match the authenticated account');
       }
       return { challengeId: id, email, verified: true as const };
@@ -148,16 +148,46 @@ test('authenticated code requests cannot target a different email or a verified 
   });
 });
 
-test('verification requires the matching authenticated Firebase account before marking it verified', async () => {
+test('pre-account verification can be completed and then bound to the matching Firebase account', async () => {
   const harness = createHarness();
   await withServer(harness.app, async baseUrl => {
-    const missingAuth = await fetch(`${baseUrl}/v1/auth/email-verification/verify-code`, {
+    const preAccount = await fetch(`${baseUrl}/v1/auth/email-verification/verify-code`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ challengeId, code: '123456' })
     });
-    assert.equal(missingAuth.status, 401);
+    assert.equal(preAccount.status, 200);
+    assert.deepEqual(harness.verifiedUsers, []);
+    assert.deepEqual(
+      harness.calls.find(call => call.method === 'verifyCode')?.args,
+      [challengeId, '123456', undefined]
+    );
 
+    const finalize = await fetch(`${baseUrl}/v1/auth/email-verification/verify-code`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer valid-token'
+      },
+      body: JSON.stringify({ challengeId, code: '123456' })
+    });
+    assert.equal(finalize.status, 200);
+    assert.deepEqual(harness.verifiedUsers, ['firebase-user-1']);
+    assert.deepEqual(
+      harness.calls.filter(call => call.method === 'verifyCode').at(-1)?.args,
+      [challengeId, '123456', email]
+    );
+  });
+});
+
+test('authenticated finalization cannot bind a verified challenge to another email', async () => {
+  const harness = createHarness({
+    identity: {
+      firebaseUid: 'firebase-user-2',
+      claims: { email: 'other@example.com', email_verified: false }
+    }
+  });
+  await withServer(harness.app, async baseUrl => {
     const response = await fetch(`${baseUrl}/v1/auth/email-verification/verify-code`, {
       method: 'POST',
       headers: {
@@ -166,11 +196,7 @@ test('verification requires the matching authenticated Firebase account before m
       },
       body: JSON.stringify({ challengeId, code: '123456' })
     });
-    assert.equal(response.status, 200);
-    assert.deepEqual(harness.verifiedUsers, ['firebase-user-1']);
-    assert.deepEqual(
-      harness.calls.find(call => call.method === 'verifyCode')?.args,
-      [challengeId, '123456', email]
-    );
+    assert.equal(response.status, 403);
+    assert.deepEqual(harness.verifiedUsers, []);
   });
 });
