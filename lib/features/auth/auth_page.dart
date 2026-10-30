@@ -314,7 +314,7 @@ class _AuthPageState extends State<AuthPage> {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface,
               fontSize: 27,
               fontWeight: FontWeight.w900,
@@ -739,7 +739,7 @@ class _ProviderButton extends StatelessWidget {
       icon: icon,
       label: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           color: Theme.of(context).colorScheme.onSurface,
           fontSize: 12,
           fontWeight: FontWeight.w800,
