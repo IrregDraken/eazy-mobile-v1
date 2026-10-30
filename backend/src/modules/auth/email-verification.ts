@@ -106,14 +106,24 @@ export class EmailVerificationService {
       if (expectedEmail && challenge.email !== normalizeEmail(expectedEmail)) {
         throw new AppError('FORBIDDEN', 'Verification request does not match the authenticated account');
       }
-      if (challenge.verified_at) throw new AppError('CONFLICT', 'Verification code has already been used');
-      if (new Date(challenge.expires_at).getTime() <= Date.now()) throw new AppError('VALIDATION_ERROR', 'Verification code has expired');
-      if (challenge.attempts >= challenge.max_attempts) throw new AppError('RATE_LIMITED', 'Too many verification attempts. Request a new code.');
+      if (new Date(challenge.expires_at).getTime() <= Date.now()) {
+        throw new AppError('VALIDATION_ERROR', 'Verification code has expired');
+      }
+      if (!challenge.verified_at && challenge.attempts >= challenge.max_attempts) {
+        throw new AppError('RATE_LIMITED', 'Too many verification attempts. Request a new code.');
+      }
       const valid = hashCode(challenge.id, code) === challenge.code_digest;
       if (!valid) {
         await client.query('UPDATE email_verification_challenges SET attempts = attempts + 1 WHERE id = $1', [challenge.id]);
         await client.query('COMMIT');
         throw new AppError('UNAUTHORIZED', 'Incorrect verification code');
+      }
+      if (challenge.verified_at) {
+        if (!expectedEmail) {
+          throw new AppError('CONFLICT', 'Verification code has already been used');
+        }
+        await client.query('COMMIT');
+        return { challengeId: challenge.id, email: challenge.email, verified: true };
       }
       await client.query('UPDATE email_verification_challenges SET verified_at = now() WHERE id = $1', [challenge.id]);
       await client.query('COMMIT');
