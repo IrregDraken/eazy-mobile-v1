@@ -58,9 +58,9 @@ class _ArtworkCaption extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(data.$1, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -.5)),
+          Text(data.$1, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -.5)),
           const SizedBox(height: 4),
-          Text(data.$2, style: const TextStyle(color: EazyColors.muted, fontSize: 12, height: 1.35)),
+          Text(data.$2, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12, height: 1.35)),
         ],
       ),
     );
