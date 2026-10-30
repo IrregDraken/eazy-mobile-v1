@@ -358,7 +358,7 @@ class _AuthPageState extends State<AuthPage> {
                 Checkbox(
                   value: remember,
                   onChanged: (v) => setState(() => remember = v ?? true),
-                  activeColor: const Color(0xFF0E9D61),
+                  activeColor: const Color(0xFF087A4A),
                   visualDensity: VisualDensity.compact,
                 ),
                 const Text(
@@ -437,9 +437,9 @@ class _AuthPageState extends State<AuthPage> {
             child: FilledButton(
               onPressed: busy ? null : submit,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF0E9D61),
+                backgroundColor: const Color(0xFF087A4A),
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFF0E9D61),
+                disabledBackgroundColor: const Color(0xFF087A4A),
                 disabledForegroundColor: Colors.white,
                 overlayColor: const Color(0x260E9D61),
                 elevation: 0,
@@ -471,7 +471,7 @@ class _AuthPageState extends State<AuthPage> {
                 onPressed: busy ? null : resend,
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF087A4A),
-                  disabledForegroundColor: const Color(0xFF718179),
+                  disabledForegroundColor: const Color(0xFF586B60),
                   overlayColor: const Color(0x1F0E9D61),
                 ),
                 child: const Text('Resend code'),
@@ -589,7 +589,7 @@ class _Toggle extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? const Color(0xFF082117) : const Color(0xFF667970),
+            color: selected ? const Color(0xFF082117) : const Color(0xFF586B60),
             fontWeight: FontWeight.w800,
             fontSize: 12,
           ),
@@ -643,7 +643,7 @@ class _PasswordRequirements extends StatelessWidget {
                     Icon(
                       rule.$2 ? Icons.check_circle_rounded : Icons.circle_outlined,
                       size: 16,
-                      color: rule.$2 ? const Color(0xFF0E9D61) : const Color(0xFF91A097),
+                      color: rule.$2 ? const Color(0xFF087A4A) : const Color(0xFF586B60),
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -693,8 +693,8 @@ class _EntryField extends StatelessWidget {
     ),
     decoration: InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Color(0xFF718179), fontSize: 13),
-      prefixIcon: Icon(icon, color: Color(0xFF0E9D61), size: 20),
+      labelStyle: const TextStyle(color: Color(0xFF586B60), fontSize: 13),
+      prefixIcon: Icon(icon, color: Color(0xFF087A4A), size: 20),
       suffixIcon: suffix,
       filled: true,
       fillColor: const Color(0xFFF5FAF6),
@@ -709,7 +709,7 @@ class _EntryField extends StatelessWidget {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFF0E9D61), width: 1.5),
+        borderSide: const BorderSide(color: Color(0xFF087A4A), width: 1.5),
       ),
     ),
   );
@@ -725,7 +725,7 @@ class _OrDivider extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Text(
           'or continue with',
-          style: TextStyle(color: Color(0xFF718179), fontSize: 11),
+          style: TextStyle(color: Color(0xFF586B60), fontSize: 11),
         ),
       ),
       const Expanded(child: Divider(color: Color(0xFFD6E5DA))),
