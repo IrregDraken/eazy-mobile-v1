@@ -283,3 +283,28 @@ test('an already verified challenge can only be finalized for its matching authe
     (error: unknown) => error instanceof AppError && error.code === 'FORBIDDEN'
   );
 });
+
+
+test('authenticated unprovisioned Firebase signups can recover a verification code', async () => {
+  const queries: string[] = [];
+  const pool = {
+    query: async (sql: string) => {
+      queries.push(sql);
+      return { rows: [], rowCount: 0 };
+    }
+  } as unknown as Pool;
+  let sent = 0;
+  const provider: EmailProvider = { send: async message => {
+    sent += 1;
+    assert.equal(message.to, email);
+  } };
+  const config = loadConfig({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
+  const service = new EmailVerificationService(pool, provider, config);
+
+  const challenge = await service.requestCode(email, {
+    allowExistingUnverified: true
+  });
+  assert.ok(challenge.challengeId);
+  assert.equal(sent, 1);
+  assert.ok(queries.some(sql => sql.includes('SELECT id, status, email_verified_at')));
+});
