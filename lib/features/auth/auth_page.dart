@@ -140,7 +140,7 @@ class _AuthPageState extends State<AuthPage> {
           identifier.text,
         );
       } else {
-        challenge = await widget.auth.beginEmailRegistration(identifier.text);
+        challenge = await widget.auth.requestEmailVerificationCode(identifier.text);
       }
       if (mounted) {
         code.clear();
@@ -246,9 +246,7 @@ class _AuthPageState extends State<AuthPage> {
             ? 'Welcome back'
             : registerStage == 0
             ? 'Create your account'
-            : registerStage == 1
-            ? 'Check your code'
-            : 'Set your password';
+            : 'Check your code';
     final subtitle =
         !register
             ? 'Sign in to continue to Eazy.'
