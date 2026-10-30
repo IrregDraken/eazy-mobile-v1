@@ -281,7 +281,7 @@ class _SocialPageState extends State<SocialPage> {
                   ),
                   IconButton(
                     onPressed: posting ? null : compose,
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.add_circle_rounded,
                       color: Theme.of(context).colorScheme.primary,
                     ),
