@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
@@ -23,6 +25,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   bool busy = false, checking = false, usernameManuallyEdited = false;
   bool avatarBusy = false;
   String? avatarPath;
+  String? avatarLocalPath;
   bool? available;
   String? error;
 
@@ -131,7 +134,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     });
     try {
       final upload = await EazyMediaService(ApiClient()).pickAndUpload(kind: 'avatar');
-      if (upload != null && mounted) setState(() => avatarPath = upload.path);
+      if (upload != null && mounted) {
+        setState(() {
+          avatarPath = upload.path;
+          avatarLocalPath = upload.localPath;
+        });
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
@@ -257,10 +265,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 CircleAvatar(
                   radius: 42,
                   backgroundColor: EazyColors.green.withValues(alpha: .10),
-                  backgroundImage: widget.auth.profile?['avatarUrl'] is String
-                      ? NetworkImage(widget.auth.profile!['avatarUrl'].toString())
-                      : null,
-                  child: widget.auth.profile?['avatarUrl'] is String
+                  backgroundImage: avatarLocalPath != null
+                      ? FileImage(File(avatarLocalPath!))
+                      : widget.auth.profile?['avatarUrl'] is String
+                          ? NetworkImage(widget.auth.profile!['avatarUrl'].toString())
+                          : null,
+                  child: avatarLocalPath != null || widget.auth.profile?['avatarUrl'] is String
                       ? null
                       : const Icon(Icons.person_rounded, size: 38, color: EazyColors.green),
                 ),
