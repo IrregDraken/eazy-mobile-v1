@@ -477,7 +477,7 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 7),
             _ProviderButton(
               label: 'Continue with Apple',
-              icon: const Icon(Icons.apple, color: Color(0xFF082117), size: 20),
+              icon: Icon(Icons.apple, color: Theme.of(context).colorScheme.onSurface, size: 20),
               onPressed: busy ? null : () => social(widget.auth.signInApple),
             ),
           ],
@@ -486,15 +486,15 @@ class _AuthPageState extends State<AuthPage> {
             child: TextButton(
               onPressed: busy ? null : () => switchMode(!register),
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF087A4A),
+                foregroundColor: Theme.of(context).colorScheme.primary,
                 overlayColor: const Color(0x1F0E9D61),
               ),
               child: Text(
                 register
                     ? 'Already have an account? Sign in'
                     : 'New to Eazy? Create account',
-                style: const TextStyle(
-                  color: Color(0xFF087A4A),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
                 ),
@@ -675,7 +675,7 @@ class _EntryField extends StatelessWidget {
     obscureText: obscure,
     keyboardType: keyboardType,
     readOnly: readOnly,
-    style: const TextStyle(
+    style: TextStyle(
       color: Theme.of(context).colorScheme.onSurface,
       fontWeight: FontWeight.w600,
     ),
@@ -693,7 +693,7 @@ class _EntryField extends StatelessWidget {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFD6E5DA)),
+        borderSide: BorderSide(color: Theme.of(context).dividerColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -716,7 +716,7 @@ class _OrDivider extends StatelessWidget {
           style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11),
         ),
       ),
-      const Expanded(child: Divider(color: Color(0xFFD6E5DA))),
+      Expanded(child: Divider(color: Theme.of(context).dividerColor)),
     ],
   );
 }
