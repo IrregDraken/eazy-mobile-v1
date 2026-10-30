@@ -411,10 +411,8 @@ class _AuthPageState extends State<AuthPage> {
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: const Color(0xFF0E9D61),
                 disabledForegroundColor: Colors.white,
-                overlayColor: const WidgetStatePropertyAll(
-                  Color(0x260E9D61),
-                ),
-                elevation: const WidgetStatePropertyAll(0),
+                overlayColor: const Color(0x260E9D61),
+                elevation: 0,
               ),
               child:
                   busy
