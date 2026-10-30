@@ -20,6 +20,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
   String sort = 'newest';
   List<Map<String, dynamic>> products = [];
   List<Map<String, dynamic>> categories = [];
+  final Map<String, String> categoryImages = {};
+  String? allCategoryImage;
 
   @override
   void initState() {
@@ -63,6 +65,17 @@ class _MarketplacePageState extends State<MarketplacePage> {
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
+      for (final product in products) {
+        final category = product['category'];
+        final media = product['media'] as List? ?? const [];
+        final firstMedia = media.whereType<Map>().firstOrNull;
+        final url = firstMedia?['url']?.toString();
+        if (url == null || !url.startsWith('http')) continue;
+        allCategoryImage ??= url;
+        if (category is Map && category['id'] != null) {
+          categoryImages.putIfAbsent(category['id'].toString(), () => url);
+        }
+      }
       categories =
           (r[1]['items'] as List? ?? const [])
               .whereType<Map>()
@@ -75,21 +88,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
     }
   }
 
-  String? _categoryImageUrl(String? id) {
-    for (final product in products) {
-      final category = product['category'];
-      if (id != null &&
-          (category is! Map || category['id']?.toString() != id)) {
-        continue;
-      }
-      final media = product['media'] as List? ?? const [];
-      for (final item in media.whereType<Map>()) {
-        final url = item['url']?.toString();
-        if (url != null && url.startsWith('http')) return url;
-      }
-    }
-    return null;
-  }
+  String? _categoryImageUrl(String? id) =>
+      id == null ? allCategoryImage : categoryImages[id];
 
   @override
   Widget build(BuildContext context) {
