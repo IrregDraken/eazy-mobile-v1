@@ -82,7 +82,10 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build apk --release --no-tree-shake-icons --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
+      - name: Build release APK smoke with explicit CI-only debug signing
+        env:
+          EAZY_ALLOW_DEBUG_RELEASE_SIGNING: "true"
+        run: flutter build apk --release --no-tree-shake-icons --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
 
   backend-build-test:
     runs-on: ubuntu-latest
