@@ -886,7 +886,12 @@ class _PostState extends State<_Post> {
                                                   'parentId': replyToId,
                                               },
                                             );
-                                            if (!ctx.mounted) return;
+                                            if (!ctx.mounted) {
+                                              if (mounted) {
+                                                await widget.onChanged();
+                                              }
+                                              return;
+                                            }
                                             controller.clear();
                                             replyToId = null;
                                             replyToName = null;
