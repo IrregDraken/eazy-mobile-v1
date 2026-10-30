@@ -195,6 +195,7 @@ class _AuthPageState extends State<AuthPage> {
     code.clear();
     challenge = null;
     phoneVerificationId = null;
+    emailCodeVerified = false;
   });
 
   @override
@@ -220,11 +221,20 @@ class _AuthPageState extends State<AuthPage> {
                     Row(
                       children: [
                         IconButton(
-                          onPressed:
-                              () =>
-                                  registerStage > 0
-                                      ? setState(() => registerStage--)
-                                      : context.go('/welcome'),
+                          onPressed: () {
+                            if (registerStage == 2) {
+                              setState(() => registerStage = 1);
+                            } else if (registerStage == 1) {
+                              setState(() {
+                                registerStage = 0;
+                                challenge = null;
+                                emailCodeVerified = false;
+                                code.clear();
+                              });
+                            } else {
+                              context.go('/welcome');
+                            }
+                          },
                           icon: const Icon(
                             Icons.arrow_back_rounded,
                             color: Color(0xFF0E7A4B),
@@ -400,6 +410,7 @@ class _AuthPageState extends State<AuthPage> {
                   : Icons.alternate_email_rounded,
               keyboardType:
                   phoneMode ? TextInputType.phone : TextInputType.emailAddress,
+              readOnly: !phoneMode && registerStage == 1,
             ),
             if (registerStage == 1) ...[
               const SizedBox(height: 10),
@@ -661,6 +672,7 @@ class _EntryField extends StatelessWidget {
     this.obscure = false,
     this.suffix,
     this.keyboardType,
+    this.readOnly = false,
   });
   final TextEditingController controller;
   final String label;
@@ -668,11 +680,13 @@ class _EntryField extends StatelessWidget {
   final bool obscure;
   final Widget? suffix;
   final TextInputType? keyboardType;
+  final bool readOnly;
   @override
   Widget build(BuildContext context) => TextField(
     controller: controller,
     obscureText: obscure,
     keyboardType: keyboardType,
+    readOnly: readOnly,
     style: const TextStyle(
       color: Color(0xFF082117),
       fontWeight: FontWeight.w600,
