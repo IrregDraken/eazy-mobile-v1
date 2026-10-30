@@ -23,7 +23,7 @@ export class EmailVerificationService {
     const existing = await this.pool.query<{ id: string }>(
       `SELECT id FROM users
        WHERE lower(email) = $1 AND status <> 'deleted'
-         AND ($2::text IS NULL OR firebase_uid <> $2)
+         AND ($2::text IS NULL OR COALESCE(firebase_uid, '') <> $2)
        LIMIT 1`,
       [email, allowedFirebaseUid ?? null]
     );
