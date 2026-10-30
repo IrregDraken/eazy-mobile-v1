@@ -162,16 +162,16 @@ class _MarketplacePageState extends State<MarketplacePage> {
             ),
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 112,
+                height: 124,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: discoverParentCategories.length + 1,
-                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  separatorBuilder: (_, _) => const SizedBox(width: 9),
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return _CategoryTile(
-                        name: 'All',
+                        name: 'All categories',
                         icon: Icons.grid_view_rounded,
                         assetPath: null,
                         selected: selectedParentSlug == null,
@@ -318,6 +318,7 @@ class _CategoryTile extends StatelessWidget {
     required this.selected,
     required this.onTap,
   });
+
   final String name;
   final IconData icon;
   final String? assetPath;
@@ -325,83 +326,116 @@ class _CategoryTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: SizedBox(
-      width: 148,
-      child: Column(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 62,
-            height: 62,
-            decoration: BoxDecoration(
-              gradient:
-                  selected
-                      ? const LinearGradient(
-                        colors: [EazyColors.green, EazyColors.greenDeep],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                      : null,
-              color: selected ? null : Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(21),
-              border: Border.all(
-                color: selected ? EazyColors.green : EazyColors.border,
-              ),
-              boxShadow:
-                  selected
-                      ? [
-                        BoxShadow(
-                          color: EazyColors.green.withValues(alpha: .15),
-                          blurRadius: 18,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                      : null,
+  Widget build(BuildContext context) => SizedBox(
+    width: 218,
+    height: 116,
+    child: Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color: EazyColors.surfaceRaised,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected ? EazyColors.mint : EazyColors.border,
+              width: selected ? 2 : 1,
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: assetPath != null
-                  ? Image.asset(
-                      assetPath!,
-                      fit: BoxFit.cover,
-                      width: 62,
-                      height: 62,
-                      errorBuilder: (_, _, _) => Icon(
-                        icon,
-                        color: selected
-                            ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context).colorScheme.primary,
-                        size: 25,
-                      ),
-                    )
-                  : Icon(
-                      icon,
-                      color: selected
-                          ? Theme.of(context).colorScheme.onPrimary
-                          : Theme.of(context).colorScheme.primary,
-                      size: 25,
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: EazyColors.green.withValues(alpha: .20),
+                      blurRadius: 16,
+                      spreadRadius: 1,
                     ),
+                  ]
+                : null,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(17),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (assetPath != null)
+                  Image.asset(
+                    assetPath!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => _fallback(context),
+                  )
+                else
+                  _fallback(context),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0x08000000),
+                        Color(0x26000000),
+                        Color(0xD9000000),
+                      ],
+                      stops: [0, .38, 1],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 13,
+                  right: 12,
+                  bottom: 12,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            height: 1.12,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -.2,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black54,
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (selected) ...[
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: EazyColors.mint,
+                          size: 19,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 7),
-          Text(
-            name,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-              color:
-                  selected
-                      ? Theme.of(context).colorScheme.primary
-                      : EazyColors.muted,
-            ),
-          ),
-        ],
+        ),
       ),
+    ),
+  );
+
+  Widget _fallback(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [EazyColors.greenDeep, EazyColors.canvas],
+      ),
+    ),
+    child: Center(
+      child: Icon(icon, color: EazyColors.mint, size: 38),
     ),
   );
 }
