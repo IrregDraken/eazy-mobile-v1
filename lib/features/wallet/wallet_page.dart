@@ -824,7 +824,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               const Text('Transaction history', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
               const SizedBox(height: 12),
               for (final entry in entries) ListTile(
-                leading: const Icon(Icons.receipt_long_rounded, color: EazyColors.green),
+                leading: Icon(Icons.receipt_long_rounded, color: Theme.of(context).colorScheme.primary),
                 title: Text(entry['type']?.toString() ?? 'Transaction'),
                 subtitle: Text('${entry['status'] ?? 'unknown'} · ${entry['createdAt'] ?? ''}'),
                 trailing: Text(balanceVisible ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}' : '••••••', style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -923,7 +923,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   subtitle: Text('Receive from Eazy or an external bank.'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.add_card_rounded, color: EazyColors.green),
+                  leading: Icon(Icons.add_card_rounded, color: Theme.of(context).colorScheme.primary),
                   title: const Text('Add money online', style: TextStyle(fontWeight: FontWeight.w900)),
                   subtitle: const Text('Fund your wallet through secure Paystack checkout'),
                   onTap: () {
@@ -991,7 +991,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: EazyColors.greenDeep.withValues(alpha: .28),
+                  color: Theme.of(context).colorScheme.primaryDeep.withValues(alpha: .28),
                   blurRadius: 22,
                   offset: const Offset(0, 12),
                 ),
@@ -1085,58 +1085,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             Text(error!, style: const TextStyle(color: EazyColors.red)),
           ],
           const SizedBox(height: 22),
-          Card(
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => context.push('/assist'),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: EazyColors.green.withValues(alpha: .14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: EazyColors.green,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Easy Access',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Tap to open Eazy Assist and get help with your wallet.',
-                            style: TextStyle(
-                              color: EazyColors.muted,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: EazyColors.muted,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
           const SizedBox(height: 22),
           Row(children: [
             const Expanded(child: Text('Transaction history', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
@@ -1159,10 +1107,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: EazyColors.green.withValues(alpha: .12),
+                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: .12),
                     child: const Icon(
                       Icons.receipt_long_rounded,
-                      color: EazyColors.green,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   title: Text(
@@ -1397,7 +1345,7 @@ class _QrScannerPageState extends State<_QrScannerPage> {
             width: 250,
             height: 250,
             decoration: BoxDecoration(
-              border: Border.all(color: EazyColors.green, width: 3),
+              border: Border.all(color: Theme.of(context).colorScheme.primary, width: 3),
               borderRadius: BorderRadius.circular(26),
             ),
           ),
