@@ -51,13 +51,21 @@ export function createEmailVerificationRouter(service: EmailVerificationService,
 
   router.post('/email-verification/verify-code', verifyLimit, validate('body', verifySchema), async (request, response, next) => {
     try {
+      const body = request.body as { challengeId: string; code: string };
       const header = request.header('authorization');
-      if (!header) throw new AppError('UNAUTHORIZED', 'Authentication required');
+
+      // First stage: the user proves control of the email before creating a Firebase account.
+      if (!header) {
+        const result = await service.verifyCode(body.challengeId, body.code);
+        sendSuccess(response, { challengeId: result.challengeId, email: result.email, verified: true });
+        return;
+      }
+
+      // Finalization stage: bind that verified challenge to the newly created Firebase identity.
       const [scheme, token] = header.split(' ');
       if (scheme?.toLowerCase() !== 'bearer' || !token) {
         throw new AppError('UNAUTHORIZED', 'Invalid authorization header');
       }
-
       const identity = await firebaseProvider.verifyIdentity(token);
       const firebaseEmail = typeof identity.claims.email === 'string'
         ? identity.claims.email.trim().toLowerCase()
@@ -65,11 +73,7 @@ export function createEmailVerificationRouter(service: EmailVerificationService,
       if (!firebaseEmail) {
         throw new AppError('UNAUTHORIZED', 'Authenticated account has no email address');
       }
-      if (identity.claims.email_verified === true) {
-        throw new AppError('CONFLICT', 'This email is already verified. Please sign in.');
-      }
 
-      const body = request.body as { challengeId: string; code: string };
       const result = await service.verifyCode(
         body.challengeId,
         body.code,
