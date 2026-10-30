@@ -83,25 +83,19 @@ export class EmailVerificationService {
       const challenge = result.rows[0];
       if (!challenge) throw new AppError('NOT_FOUND', 'Verification request not found');
       if (new Date(challenge.expires_at).getTime() <= Date.now()) throw new AppError('VALIDATION_ERROR', 'Verification code has expired');
+      if (challenge.attempts >= challenge.max_attempts) {
+        throw new AppError('RATE_LIMITED', 'Too many verification attempts. Request a new code.');
+      }
       const valid = hashCode(challenge.id, code) === challenge.code_digest;
       if (!valid) {
-        if (!challenge.verified_at && challenge.attempts < challenge.max_attempts) {
-          await client.query('UPDATE email_verification_challenges SET attempts = attempts + 1 WHERE id = $1', [challenge.id]);
-          await client.query('COMMIT');
-          throw new AppError('UNAUTHORIZED', 'Incorrect verification code');
-        }
-        if (challenge.attempts >= challenge.max_attempts) {
-          throw new AppError('RATE_LIMITED', 'Too many verification attempts. Request a new code.');
-        }
+        await client.query('UPDATE email_verification_challenges SET attempts = attempts + 1 WHERE id = $1', [challenge.id]);
+        await client.query('COMMIT');
         throw new AppError('UNAUTHORIZED', 'Incorrect verification code');
       }
       // The client first verifies the code before creating its Firebase identity.
       // It then repeats this request with authentication so this verified challenge
       // can be bound to that identity and Firebase can be marked emailVerified.
       if (!challenge.verified_at) {
-        if (challenge.attempts >= challenge.max_attempts) {
-          throw new AppError('RATE_LIMITED', 'Too many verification attempts. Request a new code.');
-        }
         await client.query('UPDATE email_verification_challenges SET verified_at = now() WHERE id = $1', [challenge.id]);
       }
       await client.query('COMMIT');
