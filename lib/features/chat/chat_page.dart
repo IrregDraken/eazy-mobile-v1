@@ -389,7 +389,7 @@ class _ConversationPageState extends State<ConversationPage> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar:AppBar(title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(title,style:Theme.of(context).textTheme.titleMedium?.copyWith(fontSize:17,fontWeight:FontWeight.w900)),
-        Text(_conversationUsername,style:const TextStyle(fontSize:11,color:EazyColors.muted,fontWeight:FontWeight.w600))
+        Text(_conversationUsername,style: TextStyle(fontSize:11,color:EazyColors.muted,fontWeight:FontWeight.w600))
       ]),actions:[
         PopupMenuButton<String>(
           tooltip: 'Conversation options',
@@ -480,7 +480,7 @@ class _MessageBubble extends StatelessWidget {
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         if(!isMine&&sender['displayName']!=null&&!deleted)Padding(padding:const EdgeInsets.only(bottom:4),child:Text(sender['displayName'].toString(),style:TextStyle(color:Theme.of(context).colorScheme.primary,fontSize:10,fontWeight:FontWeight.w900,letterSpacing:.2))),
         Text(deleted?'Message deleted':(message['body']?.toString() ?? ''),style:TextStyle(color: deleted ? EazyColors.muted : (isMine ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface),fontSize:14,height:1.45,fontStyle:deleted?FontStyle.italic:FontStyle.normal)),
-        if(message['replyTo'] is Map)Padding(padding:const EdgeInsets.only(top:8),child:Text('↳ ' + ((message['replyTo']['body'] ?? 'Deleted message').toString()),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))),
+        if(message['replyTo'] is Map)Padding(padding:const EdgeInsets.only(top:8),child:Text('↳ ' + ((message['replyTo']['body'] ?? 'Deleted message').toString()),maxLines:1,overflow:TextOverflow.ellipsis,style: TextStyle(color:EazyColors.muted,fontSize:11))),
         if(message['attachments'] is List && (message['attachments'] as List).isNotEmpty)
           Padding(
             padding:const EdgeInsets.only(top:8),
@@ -504,7 +504,7 @@ class _MessageBubble extends StatelessWidget {
                     const SizedBox(width:7),
                     Text('${label} attachment',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
                     const SizedBox(width:7),
-                    Text(size,style:const TextStyle(fontSize:10,color:EazyColors.muted)),
+                    Text(size,style: TextStyle(fontSize:10,color:EazyColors.muted)),
                   ]),
                   ),
                 );
@@ -525,7 +525,7 @@ class _MessageBubble extends StatelessWidget {
           )).toList(),
         )),
          Row(children:[
-          Expanded(child:Text(_time(message['createdAt'] ?? message['created_at']),style:const TextStyle(color:EazyColors.muted,fontSize:9))),
+          Expanded(child:Text(_time(message['createdAt'] ?? message['created_at']),style: TextStyle(color:EazyColors.muted,fontSize:9))),
           if(!deleted)TextButton.icon(onPressed:onTranslate, icon:const Icon(Icons.translate_rounded,size:13), label:const Text('Translate',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800)), style:TextButton.styleFrom(foregroundColor:Theme.of(context).colorScheme.primary,visualDensity:VisualDensity.compact,padding:const EdgeInsets.symmetric(horizontal:6)))
         ])
       ])
@@ -546,7 +546,7 @@ class _ContextBar extends StatelessWidget{
       Container(width:3,height:31,decoration:BoxDecoration(gradient:LinearGradient(colors:[Theme.of(context).colorScheme.primary,Theme.of(context).colorScheme.secondary],begin:Alignment.topCenter,end:Alignment.bottomCenter),borderRadius:BorderRadius.circular(4))),const SizedBox(width:9),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(label,style:TextStyle(color:Theme.of(context).colorScheme.primary,fontSize:9,fontWeight:FontWeight.w900,letterSpacing:1)),
-        Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:EazyColors.muted,fontSize:11))
+        Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style: TextStyle(color:EazyColors.muted,fontSize:11))
       ])),IconButton(onPressed:onClose,icon:const Icon(Icons.close_rounded,size:18))
     ]));
 }
@@ -555,7 +555,7 @@ class _ChatState extends StatelessWidget{
   const _ChatState(this.message,[this.action]);final String message;final Future<void> Function()? action;
   @override Widget build(BuildContext context)=>Padding(padding:const EdgeInsets.symmetric(vertical:70,horizontal:24),child:Column(children:[
     Container(width:68,height:68,decoration:BoxDecoration(color:Theme.of(context).colorScheme.primary.withValues(alpha:.08),borderRadius:BorderRadius.circular(22),border:Border.all(color:Theme.of(context).dividerColor)),child:Icon(Icons.forum_outlined,size:32,color:Theme.of(context).colorScheme.primary)),const SizedBox(height:12),
-    Text(message,textAlign:TextAlign.center,style:const TextStyle(color:EazyColors.muted,height:1.4)),
+    Text(message,textAlign:TextAlign.center,style: TextStyle(color:EazyColors.muted,height:1.4)),
     if(action!=null)...[const SizedBox(height:14),OutlinedButton(onPressed:action,child:const Text('Try again'))]
   ]));
 }
