@@ -81,13 +81,16 @@ export function createApp(config: AppConfig, logger: Logger, options: AppOptions
 
   if (config.ENFORCE_HTTPS) app.use(enforceHttps);
   app.use(createRateLimiter({ name: 'public', windowMs: config.RATE_LIMIT_WINDOW_MS, max: config.RATE_LIMIT_MAX }));
+  // Email verification owns its Firebase token checks and must run before
+  // account provisioning so an unverified password identity cannot gain an
+  // application session merely by requesting or finalizing a verification code.
+  if (options.emailVerificationRouter) app.use('/v1/auth', options.emailVerificationRouter);
   if (options.authMiddleware) app.use(options.authMiddleware);
 
   app.get('/v1', (_request, response) => sendSuccess(response, { version: 'v1', status: 'available' }));
 
   if (options.inboundEmailRouter) app.use('/webhooks/email', options.inboundEmailRouter);
 
-  if (options.emailVerificationRouter) app.use('/v1/auth', options.emailVerificationRouter);
   if (options.authMiddleware && options.authRouter) app.use('/v1/auth', options.authRouter);
   else app.use('/v1/auth', (_request, _response, next) => next(new AppError('SERVICE_UNAVAILABLE', 'Authentication is not configured')));
   if (options.profileRouter) app.use('/v1/profiles', options.profileRouter);
