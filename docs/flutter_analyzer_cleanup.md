@@ -7,7 +7,7 @@ This maintenance branch is based on `99c6d18fd3638d09f19505429cc345a2b4835361` (
 The baseline was measured with Flutter **3.47.9** and Dart **3.13.7** after `flutter pub get`. The complete, unedited output from `flutter analyze` on the starting commit is preserved in [the baseline analyzer log](flutter_analyzer_baseline.log), including every affected path, line, and column. The baseline had **123 informational diagnostics, 0 warnings, and 0 errors**:
 
 | Diagnostic | Baseline |
-|---|---:|
+| --- | --- |
 | `curly_braces_in_flow_control_structures` | 34 |
 | `unnecessary_underscores` | 40 |
 | `prefer_const_constructors` | 25 |
@@ -24,7 +24,7 @@ The original test suite contained one widget test and passed on the starting com
 
 All safely applicable mechanical analyzer fixes were applied: explicit control-flow blocks, single ignored-parameter underscores supported by the declared Dart SDK, valid `const` constructors, interpolation in place of string composition, redundant interpolation-brace removal, and the current `DropdownButtonFormField.initialValue` API. The private auth-page helper was renamed from `_FormCard` to `_formCard`; this is not a public or serialized identifier.
 
-The seven original asynchronous `BuildContext` findings were reviewed in their enclosing callbacks and lifecycle contexts rather than suppressed. Guards now match the context actually captured by the callback (`State.mounted` for a state's own context and `BuildContext.mounted` for a callback/build context). The chat block flow exits if its state was removed while the confirmation dialog was open. The stories flow similarly stops before opening a second dialog when its state has been disposed. The comments bottom sheet no longer calls its `StateSetter` after the sheet is unmounted; the async comment-post path checks sheet liveness before clearing its controller or updating the sheet. Story deletion checks liveness before updating viewer state, and its error snackbar uses the local mounted context.
+The seven original asynchronous `BuildContext` findings were reviewed in their enclosing callbacks and lifecycle contexts rather than suppressed. Guards match the actual context and owning State: the chat block flow exits if its State was removed while the confirmation dialog was open; profile-list and comment-sheet error snackbars require both the parent State and sheet context to remain mounted; copy-link snackbars check the local BuildContext; story creation checks State liveness after dialogs and media selection/upload; and story deletion checks liveness before viewer updates, using the local BuildContext for its snackbar. The comments bottom sheet no longer calls its `StateSetter` after the sheet is unmounted, and async comment posting checks sheet liveness before clearing the controller or updating sheet state.
 
 A focused lifecycle review found transient text controllers created inside report/tag dialog builders in the profile and social flows. Ownership was moved outside each builder and the controllers are disposed after their dialogs complete, including cancel/dismiss flows. Existing persistent controllers, stream subscriptions, timers, scroll controllers, and media controllers were reviewed for disposal in their owning `State` objects; no additional confirmed leaks were changed.
 
@@ -33,21 +33,22 @@ The requested `dart format .` pass reformatted the Dart sources repository-wide.
 ## Validation results
 
 | Check | Result |
-|---|---|
+| --- | --- |
 | `flutter pub get` | Passed; dependency lockfile unchanged. Pub reported 60 newer versions outside existing constraints; no dependency upgrades were made. |
-| `dart format .` | Passed: 34 Dart files checked, 0 changed on the final verification pass. |
+| `dart format --output=none --set-exit-if-changed .` | Passed: 34 Dart files checked, 0 changed. |
 | `flutter analyze` (without `--no-fatal-infos`) | Passed: **No issues found** (0 errors, warnings, and informational diagnostics). |
 | `flutter test` | Passed: all existing tests passed. |
 | Existing iOS configuration preflight from CI | Passed. |
 | `git diff --check` | Passed. |
+| PR GitHub Actions run [41033247774](https://github.com/IrregDraken/eazy-mobile-v1/actions/runs/41033247774) | `flutter-analyze-test`, `ios-config-preflight`, and `backend-build-test` succeeded. `flutter-android-release-smoke` was canceled while its `flutter build apk --release` step was running, to honor the no-APK instruction. Its log has no build-completion or artifact-upload marker. |
 
-The final analyzer run and test suite were run on the edited branch. No APK, release build, or signing operation was performed.
+The local analyzer/test runs completed successfully. The GitHub workflow did start an Android APK build command before it was canceled; the available log does not evidence successful completion or artifact distribution, so no claim of a successful APK build is made. No local APK build or signing operation was performed.
 
 ## Files and scope notes
 
 Changed Dart files:
 
-```text
+```
 lib/app/router.dart
 lib/core/auth/auth_controller.dart
 lib/core/media/media_service.dart
@@ -78,7 +79,7 @@ lib/features/translation/translation_page.dart
 lib/features/wallet/wallet_page.dart
 ```
 
-Some Dart files are included solely because the required repository-wide formatter normalized their existing formatting. The only non-code additions are this report and the baseline analyzer log.
+Formatter-normalized comparison shows `lib/core/network/api_exception.dart` is the only formatting-only Dart source. The other 27 Dart files contain analyzer or lifecycle edits in addition to formatting; most are behavior-preserving lint fixes. The lifecycle/correctness changes are concentrated in `chat_page.dart`, `profile_page.dart`, `social_page.dart`, and `stories_tray.dart`. No intended product-flow or UI behavior changes were made. The only non-code additions are this report and the baseline analyzer log.
 
 Protected files and systems were not changed: `android/key.properties`, release signing configuration, application ID/namespace/version, Firebase/Google configuration, CI workflows, `pubspec.yaml` / `pubspec.lock`, analyzer configuration, backend/database/deployment configuration, production secrets, and production data.
 

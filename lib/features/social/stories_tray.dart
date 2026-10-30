@@ -120,12 +120,12 @@ class _StoriesTrayState extends State<StoriesTray> {
             ),
       );
       captionController.dispose();
-      if (caption == null) return;
+      if (!mounted || caption == null) return;
       final upload =
           choice == 'video'
               ? await widget.media.pickAndUploadVideo(kind: 'post')
               : await widget.media.pickAndUpload(kind: 'post');
-      if (upload == null) return;
+      if (!mounted || upload == null) return;
       await widget.api.post(
         'stories',
         auth: true,

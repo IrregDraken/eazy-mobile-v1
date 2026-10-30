@@ -896,7 +896,7 @@ class _PostState extends State<_Post> {
                                             );
                                             await widget.onChanged();
                                           } on ApiException catch (e) {
-                                            if (mounted) {
+                                            if (mounted && ctx.mounted) {
                                               ScaffoldMessenger.of(
                                                 context,
                                               ).showSnackBar(
