@@ -495,7 +495,7 @@ class _AuthPageState extends State<AuthPage> {
       await widget.auth.sendPasswordReset(identifier.text);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password reset email sent.')),
+          const SnackBar(content: Text('If this email is registered, check your inbox and spam folder for a reset link.')),
         );
       }
     } on ApiException catch (e) {
