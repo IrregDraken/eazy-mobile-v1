@@ -39,7 +39,7 @@ class _SplashPageState extends State<SplashPage>
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    const dark = true;
     final background = dark ? EazyColors.canvas : const Color(0xFFF3FBF6);
     final foreground = dark ? EazyColors.ink : const Color(0xFF10231A);
     final muted = dark ? EazyColors.muted : const Color(0xFF5B6C63);
