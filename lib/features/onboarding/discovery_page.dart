@@ -182,16 +182,16 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
             ]),
             const SizedBox(height: 4),
             if (search.text.trim().length < 2)
-              const Padding(padding: EdgeInsets.symmetric(vertical: 12),
+               Padding(padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text('Search for at least 2 characters to find Eazy users.', style: TextStyle(color: EazyColors.muted)))
             else if (!peopleLoading && people.isEmpty && error == null)
-              const Padding(padding: EdgeInsets.symmetric(vertical: 12),
+               Padding(padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text('No matching people yet. Try another name or username.', style: TextStyle(color: EazyColors.muted)))
             else
               ...people.map(_personTile),
             if (error != null) ...[
               const SizedBox(height: 8),
-              Text(error!, style: const TextStyle(color: EazyColors.red)),
+              Text(error!, style:  TextStyle(color: EazyColors.red)),
               Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: load, child: const Text('Try again'))),
             ],
             const SizedBox(height: 24),
@@ -201,7 +201,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
             if (productsLoading && products.isEmpty)
               const Padding(padding: EdgeInsets.all(22), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
             else if (products.isEmpty)
-              const Padding(padding: EdgeInsets.symmetric(vertical: 12),
+               Padding(padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text('No listings are available yet. You can come back later.', style: TextStyle(color: EazyColors.muted)))
             else
               ...products.map(_productTile),
@@ -239,7 +239,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
               Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 3),
               Text(username.isEmpty ? 'Eazy member' : '@$username', maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: EazyColors.muted, fontSize: 13)),
+                style:  TextStyle(color: EazyColors.muted, fontSize: 13)),
             ])),
             const SizedBox(width: 8),
             Column(mainAxisSize: MainAxisSize.min, children: [
