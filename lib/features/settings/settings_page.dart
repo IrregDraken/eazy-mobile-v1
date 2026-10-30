@@ -175,8 +175,8 @@ class _SettingsPageState extends State<SettingsPage> {
               padding: const EdgeInsets.all(16),
               children: [
                 if (error.isNotEmpty)
-                  Text(error, style: const TextStyle(color: EazyColors.red)),
-                const Text(
+                  Text(error, style:  TextStyle(color: EazyColors.red)),
+                 Text(
                   'Appearance',
                   style: TextStyle(
                     color: EazyColors.muted,
@@ -200,7 +200,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                 Text(
                   'Language',
                   style: TextStyle(
                     color: EazyColors.muted,
@@ -228,7 +228,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                 Text(
                   'Activity notifications',
                   style: TextStyle(
                     color: EazyColors.muted,
@@ -272,7 +272,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                 Text(
                   'Your Eazy account',
                   style: TextStyle(color: EazyColors.muted, fontWeight: FontWeight.w900),
                 ),
@@ -314,7 +314,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                 Text(
                   'Account',
                   style: TextStyle(
                     color: EazyColors.muted,
@@ -323,7 +323,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 Card(
                   child: ListTile(
-                    leading: const Icon(
+                    leading:  Icon(
                       Icons.delete_forever_rounded,
                       color: EazyColors.red,
                     ),
