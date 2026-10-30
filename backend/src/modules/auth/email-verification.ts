@@ -88,7 +88,7 @@ export class EmailVerificationService {
     return { challengeId, expiresInSeconds: ttlMinutes * 60 };
   }
 
-  async verifyCode(challengeId: string, codeInput: string): Promise<EmailVerificationResult> {
+  async verifyCode(challengeId: string, codeInput: string, expectedEmail?: string): Promise<EmailVerificationResult> {
     const code = codeInput.trim();
     if (!/^\d{6}$/.test(code)) throw new AppError('VALIDATION_ERROR', 'Verification code must be 6 digits');
     const client = await this.pool.connect();
@@ -103,6 +103,9 @@ export class EmailVerificationService {
       );
       const challenge = result.rows[0];
       if (!challenge) throw new AppError('NOT_FOUND', 'Verification request not found');
+      if (expectedEmail && challenge.email !== normalizeEmail(expectedEmail)) {
+        throw new AppError('FORBIDDEN', 'Verification request does not match the authenticated account');
+      }
       if (challenge.verified_at) throw new AppError('CONFLICT', 'Verification code has already been used');
       if (new Date(challenge.expires_at).getTime() <= Date.now()) throw new AppError('VALIDATION_ERROR', 'Verification code has expired');
       if (challenge.attempts >= challenge.max_attempts) throw new AppError('RATE_LIMITED', 'Too many verification attempts. Request a new code.');
