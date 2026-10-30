@@ -68,7 +68,13 @@ class _AuthPageState extends State<AuthPage> {
           if (mounted) setState(() => registerStage = 1);
         } else if (registerStage == 1) {
           await widget.auth.verifyEmailRegistration(challenge!, code.text);
-          if (mounted) setState(() => registerStage = 2);
+          if (mounted) {
+            if (challenge!.accountAlreadyCreated) {
+              context.go('/onboarding');
+            } else {
+              setState(() => registerStage = 2);
+            }
+          }
         } else {
           if (password.text.length < 8 || password.text.length > 124) {
             throw const ApiException(
