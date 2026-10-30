@@ -193,16 +193,33 @@ class _AuthPageState extends State<AuthPage> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Opacity(
-              opacity: .10,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 320),
               child: Image.asset(
-                'assets/images/eazy_auth_hero.png',
+                register
+                    ? 'assets/images/auth/signup_background.webp'
+                    : 'assets/images/auth/signin_background.webp',
+                key: ValueKey<bool>(register),
                 fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
               ),
             ),
           ),
           const Positioned.fill(
-            child: ColoredBox(color: Color(0xEAF4F8F4)),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x33020B07),
+                    Color(0x66020B07),
+                    Color(0x99020B07),
+                  ],
+                ),
+              ),
+            ),
           ),
           SafeArea(
           child: LayoutBuilder(
