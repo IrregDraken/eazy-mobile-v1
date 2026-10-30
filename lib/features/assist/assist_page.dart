@@ -125,14 +125,14 @@ class _AssistPageState extends State<AssistPage> {
             Text('Eazy Assist', style: TextStyle(fontWeight: FontWeight.w900)),
             Text(
               'Useful help, grounded in your Eazy context',
-              style: TextStyle(fontSize: 11, color: EazyColors.muted),
+              style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
         ),
         actions: [
           IconButton(
             onPressed: loading ? null : _bootstrap,
-            icon: const Icon(Icons.refresh_rounded),
+            icon: Icon(Icons.refresh_rounded),
           ),
         ],
       ),
@@ -206,7 +206,7 @@ class _AssistPageState extends State<AssistPage> {
                                           strokeWidth: 2,
                                         ),
                                       )
-                                      : const Icon(Icons.arrow_upward_rounded),
+                                      : Icon(Icons.arrow_upward_rounded),
                             ),
                           ),
                         ],
@@ -271,7 +271,7 @@ class _EmptyAssist extends StatelessWidget {
               color: EazyColors.green.withValues(alpha: .12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.auto_awesome_rounded,
               size: 34,
               color: EazyColors.green,
@@ -286,7 +286,7 @@ class _EmptyAssist extends StatelessWidget {
           const Text(
             'Get help with your Eazy experience when the AI provider is available.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: EazyColors.muted, height: 1.4),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
           ),
         ],
       ),
@@ -331,7 +331,7 @@ class _StatusBanner extends StatelessWidget {
         Expanded(
           child: Text(
             message,
-            style: const TextStyle(color: EazyColors.muted, height: 1.35),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.35),
           ),
         ),
       ],
