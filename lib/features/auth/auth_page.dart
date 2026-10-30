@@ -232,7 +232,7 @@ class _AuthPageState extends State<AuthPage> {
                               context.go('/welcome');
                             }
                           },
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.arrow_back_rounded,
                             color: Theme.of(context).colorScheme.primary,
                           ),
