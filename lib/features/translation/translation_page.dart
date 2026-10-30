@@ -80,7 +80,7 @@ class _TranslationPageState extends State<TranslationPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Card(
+           Card(
             child: Padding(
               padding: EdgeInsets.all(16),
               child: Text(
@@ -125,7 +125,7 @@ class _TranslationPageState extends State<TranslationPage> {
           if (error.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(error, style: const TextStyle(color: EazyColors.red)),
+              child: Text(error, style:  TextStyle(color: EazyColors.red)),
             ),
           if (result.isNotEmpty)
             Card(
