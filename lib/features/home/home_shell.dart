@@ -25,11 +25,12 @@ class _HomeShellState extends State<HomeShell>{
     body:Stack(
       children:[
         IndexedStack(index:index,children:pages),
-        Positioned(
-          right:18,
-          bottom:72,
-          child:SafeArea(
-            child:Tooltip(
+        if (index != 2 && index != 3)
+          Positioned(
+            right:18,
+            bottom:72,
+            child:SafeArea(
+              child:Tooltip(
               message:'Ask Eazy Assist',
               child:Material(
                 color:EazyColors.green,
