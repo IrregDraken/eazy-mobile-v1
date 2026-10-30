@@ -68,7 +68,9 @@ class _MarketplacePageState extends State<MarketplacePage> {
       for (final product in products) {
         final category = product['category'];
         final media = product['media'] as List? ?? const [];
-        final firstMedia = media.whereType<Map>().firstOrNull;
+        final firstMedia = media.isNotEmpty && media.first is Map
+            ? media.first as Map
+            : null;
         final url = firstMedia?['url']?.toString();
         if (url == null || !url.startsWith('http')) continue;
         allCategoryImage ??= url;
