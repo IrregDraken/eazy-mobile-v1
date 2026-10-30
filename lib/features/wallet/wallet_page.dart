@@ -406,7 +406,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: selectedBankCode,
+                initialValue: selectedBankCode,
                 isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Bank'),
                 items: availableBanks.map((bank) => DropdownMenuItem<String>(
