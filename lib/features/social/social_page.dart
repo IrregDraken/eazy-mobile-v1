@@ -661,7 +661,7 @@ class _PostState extends State<_Post> {
                         }
                       } else if (value == 'copy') {
                         await Clipboard.setData(ClipboardData(text: 'https://eazy.app/p/$id'));
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
                       } else if (value == 'pin') {
                         await mutate('post', 'posts/$id/pin');
@@ -777,7 +777,7 @@ class _PostState extends State<_Post> {
                     tooltip: 'Copy post link',
                     onPressed: () async {
                       await Clipboard.setData(ClipboardData(text: 'https://eazy.app/p/$id'));
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post link copied')));
                     },
                     icon: const Icon(Icons.send_outlined),
