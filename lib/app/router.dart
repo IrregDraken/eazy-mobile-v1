@@ -26,6 +26,11 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
 
     if (auth.isRestoring) return null;
 
+    // Keep the retired Assist deep link from falling through to the error screen.
+    if (path == '/assist') {
+      return !signedIn ? '/auth' : onboarding ? '/onboarding' : '/home';
+    }
+
     if (!signedIn) {
       if (path == '/splash' || path == '/welcome' || path == '/auth')
         return null;
