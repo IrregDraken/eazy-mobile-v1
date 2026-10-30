@@ -211,7 +211,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: DropdownButtonFormField<String>(
                     initialValue: language,
                     decoration: const InputDecoration(
-                      labelText: 'App language',
+                      labelText: 'Language preference',
+                      helperText: 'Saved to your account. Full interface translation is not enabled yet.',
                     ),
                     items: const [
                       DropdownMenuItem(value: 'en', child: Text('English')),
