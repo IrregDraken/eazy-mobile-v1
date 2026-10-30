@@ -18,6 +18,30 @@ export function createEmailVerificationRouter(service: EmailVerificationService,
   router.post('/email-verification/request-code', requestLimit, validate('body', requestSchema), async (request, response, next) => {
     try {
       const email = (request.body as { email: string }).email.trim().toLowerCase();
+      const header = request.header('authorization');
+
+      if (header) {
+        const [scheme, token] = header.split(' ');
+        if (scheme?.toLowerCase() !== 'bearer' || !token) {
+          throw new AppError('UNAUTHORIZED', 'Invalid authorization header');
+        }
+        const identity = await firebaseProvider.verifyIdentity(token);
+        const firebaseEmail = typeof identity.claims.email === 'string'
+          ? identity.claims.email.trim().toLowerCase()
+          : '';
+        if (!firebaseEmail || firebaseEmail !== email) {
+          throw new AppError('FORBIDDEN', 'Verification request does not match the authenticated account');
+        }
+        if (identity.claims.email_verified === true) {
+          throw new AppError('CONFLICT', 'This email is already verified. Please sign in.');
+        }
+        const challenge = await service.requestCode(email, {
+          allowExistingUnverified: true
+        });
+        sendSuccess(response, challenge);
+        return;
+      }
+
       if (await firebaseProvider.emailExists(email)) {
         throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
       }
