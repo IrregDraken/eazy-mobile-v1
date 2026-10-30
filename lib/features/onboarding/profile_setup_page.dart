@@ -258,39 +258,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             'A few details unlock your social identity, wallet and marketplace experience.',
             style: TextStyle(color: EazyColors.muted, height: 1.5),
           ),
-          const SizedBox(height: 24),
-          Center(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 42,
-                  backgroundColor: EazyColors.green.withValues(alpha: .10),
-                  backgroundImage: avatarLocalPath != null
-                      ? FileImage(File(avatarLocalPath!))
-                      : widget.auth.profile?['avatarUrl'] is String
-                          ? NetworkImage(widget.auth.profile!['avatarUrl'].toString())
-                          : null,
-                  child: avatarLocalPath != null || widget.auth.profile?['avatarUrl'] is String
-                      ? null
-                      : const Icon(Icons.person_rounded, size: 38, color: EazyColors.green),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: busy || avatarBusy ? null : pickAvatar,
-                  icon: avatarBusy
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.add_a_photo_outlined),
-                  label: Text(avatarBusy ? 'Uploading photo…' : avatarPath != null ? 'Photo uploaded' : 'Add profile photo'),
-                ),
-                const Text(
-                  'A clear photo helps people recognise you. You can add one now.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: EazyColors.muted, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
           if (error != null)
             Container(
               padding: const EdgeInsets.all(14),
@@ -383,6 +350,38 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             decoration: const InputDecoration(
               labelText: 'Bio',
               hintText: 'Tell people a little about you',
+            ),
+          ),
+          const SizedBox(height: 18),
+          Center(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 42,
+                  backgroundColor: EazyColors.green.withValues(alpha: .10),
+                  backgroundImage: avatarLocalPath != null
+                      ? FileImage(File(avatarLocalPath!))
+                      : widget.auth.profile?['avatarUrl'] is String
+                          ? NetworkImage(widget.auth.profile!['avatarUrl'].toString())
+                          : null,
+                  child: avatarLocalPath != null || widget.auth.profile?['avatarUrl'] is String
+                      ? null
+                      : const Icon(Icons.person_rounded, size: 38, color: EazyColors.green),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: busy || avatarBusy ? null : pickAvatar,
+                  icon: avatarBusy
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.add_a_photo_outlined),
+                  label: Text(avatarBusy ? 'Uploading photo…' : avatarPath != null ? 'Photo uploaded' : 'Add profile photo'),
+                ),
+                const Text(
+                  'Add a clear photo so people can recognise you.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: EazyColors.muted, fontSize: 12),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
