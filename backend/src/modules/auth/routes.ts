@@ -17,6 +17,16 @@ const accountDeletionSchema = z.object({ confirmation: z.literal('DELETE') }).st
 
 export function createFirebaseAuthenticationMiddleware(provider: FirebaseAuthProvider, authService: AuthService): RequestHandler {
   return async (request, _response, next) => {
+    // Registration must bind a verified OTP to its newly-created Firebase
+    // identity before that identity is allowed through normal auth provisioning.
+    // The verification router validates the bearer token and email itself.
+    if (
+      request.method === 'POST' &&
+      request.path === '/v1/auth/email-verification/verify-code'
+    ) {
+      return next();
+    }
+
     const header = request.header('authorization');
     if (!header) return next();
     const [scheme, token] = header.split(' ');
