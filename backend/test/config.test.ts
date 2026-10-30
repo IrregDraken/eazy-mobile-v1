@@ -32,3 +32,21 @@ test('production config accepts explicit deployment invariants', () => {
   assert.equal(config.ENFORCE_HTTPS, true);
   assert.equal(config.TRUST_PROXY, true);
 });
+
+test('production email verification requires a dedicated OTP HMAC secret', () => {
+  const resend = {
+    RESEND_API_KEY: 'test-resend-key',
+    RESEND_FROM_EMAIL: 'no-reply@example.test'
+  };
+  assert.throws(
+    () => loadConfig({ ...base, ...resend }),
+    (error: unknown) => error instanceof Error && error.message.includes('OTP_HMAC_SECRET')
+  );
+
+  const config = loadConfig({
+    ...base,
+    ...resend,
+    OTP_HMAC_SECRET: 'a'.repeat(40)
+  });
+  assert.equal(config.OTP_HMAC_SECRET, 'a'.repeat(40));
+});
