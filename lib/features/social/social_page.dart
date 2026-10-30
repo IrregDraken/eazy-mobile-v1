@@ -177,7 +177,7 @@ class _SocialPageState extends State<SocialPage> {
                         label: Text(attachment != null && attachment!.contentType.startsWith('video/') ? 'Video attached' : 'Add video'),
                       ),
                       if (attachment != null)
-                        const Icon(Icons.check_circle, color: EazyColors.green),
+                        const Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary),
                     ],
                   ),
                 ),
@@ -246,10 +246,10 @@ class _SocialPageState extends State<SocialPage> {
                             height: 34,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
-                              gradient: const LinearGradient(
+                              gradient: LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                                colors: [EazyColors.green, EazyColors.greenDeep],
+                                colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primaryDeep],
                               ),
                             ),
                             alignment: Alignment.center,
@@ -283,7 +283,7 @@ class _SocialPageState extends State<SocialPage> {
                     onPressed: posting ? null : compose,
                     icon: const Icon(
                       Icons.add_circle_rounded,
-                      color: EazyColors.green,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ],
@@ -334,7 +334,7 @@ class _SocialPageState extends State<SocialPage> {
             ),
           ),
           SliverToBoxAdapter(child: StoriesTray(api: api, media: media)),
-          const SliverToBoxAdapter(child: Divider(height: 1, color: EazyColors.border)),
+          const SliverToBoxAdapter(child: Divider(height: 1, color: Theme.of(context).dividerColor)),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           if (loading && posts.isEmpty)
             const SliverFillRemaining(
@@ -366,7 +366,7 @@ class _SocialPageState extends State<SocialPage> {
               child: Card(child: Padding(
                 padding: EdgeInsets.all(20),
                 child: Column(children: [
-                  Icon(Icons.check_circle_rounded, color: EazyColors.green, size: 30),
+                  Icon(Icons.check_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 30),
                   SizedBox(height: 8),
                   Text("You're all caught up", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                   SizedBox(height: 4),
@@ -571,7 +571,7 @@ class _PostState extends State<_Post> {
                       },
                       icon: sendingComment
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.send_rounded, color: EazyColors.green),
+                          : Icon(Icons.send_rounded, color: Theme.of(context).colorScheme.primary),
                     ),
                   ]),
                 )),
@@ -706,7 +706,7 @@ class _PostState extends State<_Post> {
                   padding: const EdgeInsets.only(top: 6),
                   child: Wrap(
                     spacing: 6,
-                    children: (widget.post['taggedUsers'] as List).whereType<Map>().map((person) => Text('@${person['username']}', style: const TextStyle(color: EazyColors.green, fontSize: 12, fontWeight: FontWeight.w700))).toList(),
+                    children: (widget.post['taggedUsers'] as List).whereType<Map>().map((person) => Text('@${person['username']}', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w700))).toList(),
                   ),
                 ),
               if (media.isNotEmpty) ...[
@@ -898,7 +898,7 @@ class _CommentTileState extends State<_CommentTile> {
           radius: 17,
           backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
           backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
-          child: avatar == null || !avatar.startsWith('http') ? Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase(), style: const TextStyle(color: EazyColors.green, fontSize: 12, fontWeight: FontWeight.w900)) : null,
+          child: avatar == null || !avatar.startsWith('http') ? Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase(), style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w900)) : null,
         ),
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -937,7 +937,7 @@ class _SuggestedAccounts extends StatelessWidget {
           padding: const EdgeInsets.only(right: 20, bottom: 10),
           child: Row(children: [
             const Expanded(child: Text('People to know on Eazy', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16))),
-            const Icon(Icons.auto_awesome_rounded, color: EazyColors.green, size: 18),
+            Icon(Icons.auto_awesome_rounded, color: Theme.of(context).colorScheme.primary, size: 18),
           ]),
         ),
         SizedBox(
@@ -958,7 +958,7 @@ class _SuggestedAccounts extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(EazyRadius.md),
-                  border: Border.all(color: EazyColors.border),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Column(children: [
                   Align(alignment: Alignment.topRight, heightFactor: .5, child: IconButton(
@@ -972,7 +972,7 @@ class _SuggestedAccounts extends StatelessWidget {
                     radius: 27,
                     backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     backgroundImage: avatar != null && avatar.startsWith('http') ? NetworkImage(avatar) : null,
-                    child: avatar == null || !avatar.startsWith('http') ? Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase(), style: const TextStyle(color: EazyColors.green, fontWeight: FontWeight.w900)) : null,
+                    child: avatar == null || !avatar.startsWith('http') ? Text(name.isEmpty ? 'E' : name.characters.first.toUpperCase(), style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w900)) : null,
                   ),
                   const SizedBox(height: 7),
                   Text(name.isEmpty ? 'Eazy member' : name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
@@ -1004,10 +1004,10 @@ class _State extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.dynamic_feed_outlined,
             size: 44,
-            color: EazyColors.green,
+            color: Theme.of(context).colorScheme.primary,
           ),
           const SizedBox(height: 14),
           Text(
