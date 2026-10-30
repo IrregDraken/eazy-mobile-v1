@@ -50,9 +50,9 @@ class _BlocksPageState extends State<BlocksPage> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  if (error.isNotEmpty) Text(error, style: const TextStyle(color: EazyColors.red)),
+                  if (error.isNotEmpty) Text(error, style:  TextStyle(color: EazyColors.red)),
                   if (items.isEmpty)
-                    const Padding(padding: EdgeInsets.all(40), child: Center(child: Text('No blocked accounts.', style: TextStyle(color: EazyColors.muted)))),
+                     Padding(padding: EdgeInsets.all(40), child: Center(child: Text('No blocked accounts.', style: TextStyle(color: EazyColors.muted)))),
                   for (final user in items)
                     Card(
                       child: ListTile(
