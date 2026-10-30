@@ -71,34 +71,39 @@ class _SocialPageState extends State<SocialPage> {
         hasMore = true;
       });
     }
-    try {
-      final result = await api.get(
-        'home/feed?page=1&limit=20&mode=$mode',
-        auth: true,
-      );
-      final raw = result['items'] as List? ?? const [];
-      final loaded =
-          raw
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
-      final total =
-          result['meta'] is Map
-              ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '')
-              : null;
+    Future<Map<String, dynamic>> loadSuggestions() async {
       try {
-        final people = await api.get(
+        return await api.get(
           'discover?type=people&page=1&limit=8',
           auth: true,
         );
-        suggestions =
-            (people['items'] as List? ?? const [])
-                .whereType<Map>()
-                .map((e) => Map<String, dynamic>.from(e))
-                .toList();
       } catch (_) {
-        suggestions = [];
+        return <String, dynamic>{'items': <dynamic>[]};
       }
+    }
+
+    try {
+      // Feed and suggested accounts are independent requests. Fetch them
+      // together so the home screen does not wait for them serially.
+      final responses = await Future.wait([
+        api.get('home/feed?page=1&limit=20&mode=$mode', auth: true),
+        loadSuggestions(),
+      ]);
+      final result = responses[0];
+      final peopleResult = responses[1];
+      final raw = result['items'] as List? ?? const [];
+      final loaded = raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      final total = result['meta'] is Map
+          ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '')
+          : null;
+      suggestions = (peopleResult['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+
       if (mounted) {
         setState(() {
           if (wasScrolled &&
