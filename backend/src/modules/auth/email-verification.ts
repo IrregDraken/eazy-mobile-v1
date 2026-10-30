@@ -1,4 +1,4 @@
-import { createHmac, randomInt, randomUUID } from 'node:crypto';
+import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Pool } from 'pg';
 import { AppError } from '../../middleware/errors.js';
 import type { EmailProvider } from '../../providers/resend-email.js';
@@ -126,7 +126,13 @@ export class EmailVerificationService {
       if (!challenge.verified_at && challenge.attempts >= challenge.max_attempts) {
         throw new AppError('RATE_LIMITED', 'Too many verification attempts. Request a new code.');
       }
-      const valid = hashCode(challenge.id, code, this.otpHmacSecret()) === challenge.code_digest;
+      const actualDigest = Buffer.from(
+        hashCode(challenge.id, code, this.otpHmacSecret()),
+        'hex'
+      );
+      const storedDigest = Buffer.from(challenge.code_digest, 'hex');
+      const valid = actualDigest.length === storedDigest.length &&
+        timingSafeEqual(actualDigest, storedDigest);
       if (!valid) {
         await client.query('UPDATE email_verification_challenges SET attempts = attempts + 1 WHERE id = $1', [challenge.id]);
         await client.query('COMMIT');
