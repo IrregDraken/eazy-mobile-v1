@@ -187,7 +187,7 @@ class _SplashPageState extends State<SplashPage>
                           backgroundColor: EazyColors.greenDeep.withValues(
                             alpha: .13,
                           ),
-                          color: EazyColors.greenDeep,
+                          color: EazyColors.greenForeground,
                         ),
                       ),
                     ),
