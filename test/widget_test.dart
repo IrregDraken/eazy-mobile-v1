@@ -10,6 +10,8 @@ import 'package:eazy_mobile_v1/app/theme/eazy_theme.dart';
 void main() {
   group('Eazy theme', () {
     test('light theme is the white default surface', () {
+      eazyThemeMode.value = ThemeMode.light;
+      addTearDown(() => eazyThemeMode.value = ThemeMode.light);
       final theme = EazyTheme.light();
 
       expect(theme.brightness, Brightness.light);
