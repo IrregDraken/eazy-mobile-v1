@@ -173,8 +173,8 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
             decoration: InputDecoration(hintText: 'Search conversations or people', prefixIcon: Icon(Icons.search_rounded, color: Theme.of(context).colorScheme.primary),
               hintStyle: const TextStyle(color: EazyColors.muted), filled: true, fillColor: Theme.of(context).colorScheme.surface,
               contentPadding: const EdgeInsets.symmetric(vertical: 3),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: Theme.of(context).dividerColor)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: Theme.of(context).dividerColor))))),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: BorderSide(color: Theme.of(context).dividerColor)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: BorderSide(color: Theme.of(context).dividerColor))))),
         SizedBox(height: 42, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), children: [
           _Chip('All', _filter == 'All', () => setState(() => _filter = 'All')),
           const SizedBox(width: 8),
@@ -268,7 +268,7 @@ class _NewChatScreenState extends State<_NewChatScreen> {
       Padding(padding: const EdgeInsets.all(16), child: TextField(controller: _query, autofocus: true, onChanged: _search,
         decoration: InputDecoration(hintText: 'Search name or username', prefixIcon: const Icon(Icons.search),
           filled: true, fillColor: Theme.of(context).colorScheme.surface,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: const BorderSide(color: Theme.of(context).dividerColor))))),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(EazyRadius.md), borderSide: BorderSide(color: Theme.of(context).dividerColor))))),
       if (_busy) const LinearProgressIndicator(minHeight: 2),
       Expanded(child: _loading ? const Center(child: CircularProgressIndicator())
         : _error != null ? Center(child: Text(_error!, textAlign: TextAlign.center))
