@@ -613,7 +613,7 @@ class _PasswordRequirements extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'PASSWORD REQUIREMENTS',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
