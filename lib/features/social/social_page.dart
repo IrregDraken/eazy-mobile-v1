@@ -361,8 +361,8 @@ class _SocialPageState extends State<SocialPage> {
           if (posts.isNotEmpty && loadingMore)
             const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(22), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))),
           if (!loading && !hasMore && posts.isNotEmpty)
-            const SliverToBoxAdapter(child: Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 100),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
               child: Card(child: Padding(
                 padding: EdgeInsets.all(20),
                 child: Column(children: [
