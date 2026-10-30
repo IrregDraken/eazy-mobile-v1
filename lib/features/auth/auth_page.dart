@@ -89,6 +89,8 @@ class _AuthPageState extends State<AuthPage> {
           await widget.auth.registerEmailAfterVerification(
             identifier.text,
             password.text,
+            challenge!,
+            code.text,
           );
           if (mounted) context.go('/onboarding');
         }
