@@ -27,8 +27,6 @@
 			<array>
 				<string>com.googleusercontent.apps.370546190167-61u39skv6bseus60nmf1029p1rs73a8n</string>
 			</array>
-			<key>NSFaceIDUsageDescription</key>
-	<string>Use Face ID to securely authorize wallet transfers.</string>
 </dict>
 	</array>
 	<key>CFBundlePackageType</key>
@@ -47,6 +45,8 @@
 	<string>Eazy uses your location when you choose location-based features, such as finding nearby content and services.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Eazy accesses your photo library when you choose a photo for your profile or content you share.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Use Face ID to securely authorize wallet transfers.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
