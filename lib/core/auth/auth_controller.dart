@@ -71,40 +71,16 @@ class AuthController extends ChangeNotifier {
     return _run(() async {
       _requireFirebase();
       try {
-        final normalizedEmail = email.trim().toLowerCase();
-        UserCredential credential;
-        final current = FirebaseAuth.instance.currentUser;
-        if (current != null &&
-            current.email?.trim().toLowerCase() == normalizedEmail) {
-          await current.reload();
-          credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: normalizedEmail,
-            password: password,
-          );
-        } else {
-          try {
-            credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-              email: normalizedEmail,
+        final credential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+              email: email.trim().toLowerCase(),
               password: password,
             );
-          } on FirebaseAuthException catch (error) {
-            // Account creation may have succeeded before the verification
-            // request failed. Recover that existing account instead of
-            // leaving the user trapped behind email-already-in-use.
-            if (error.code != 'email-already-in-use') rethrow;
-            credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-              email: normalizedEmail,
-              password: password,
-            );
-          }
-        }
         final user = credential.user;
         if (user == null) {
           throw const ApiException('Unable to create your Eazy account.');
         }
-        await user.reload();
-        final freshUser = FirebaseAuth.instance.currentUser ?? user;
-        await _syncFirebaseUser(freshUser, forceRefresh: true);
+        await _syncFirebaseUser(user, forceRefresh: true);
         return await requestEmailVerificationCode(email);
       } on FirebaseAuthException catch (e) {
         throw ApiException(_firebaseMessage(e));
