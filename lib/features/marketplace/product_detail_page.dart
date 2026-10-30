@@ -22,7 +22,7 @@ class _ProductDetailPageState extends State<ProductDetailPage>{
    SizedBox(height:300,child:images.isEmpty?const _Placeholder():PageView.builder(itemCount:images.length,itemBuilder:(c,i)=>ClipRRect(borderRadius:BorderRadius.circular(24),child:Image.network(images[i]['url'].toString(),fit:BoxFit.cover,errorBuilder:(_,__,___)=>const _Placeholder())))),
    const SizedBox(height:20),
    Text(p['name']?.toString()??'Product',style:const TextStyle(fontSize:28,fontWeight:FontWeight.w900,letterSpacing:-.7)),
-   const SizedBox(height:8),Text('${p['currency']??'NGN'} $price',style:const TextStyle(fontSize:22,color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w900)),
+   const SizedBox(height:8),Text('${p['currency']??'NGN'} $price',style:TextStyle(fontSize:22,color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w900)),
    const SizedBox(height:16),Text(p['description']?.toString()??'No description provided.',style:const TextStyle(color:EazyColors.muted,height:1.55)),
    const SizedBox(height:20),
    if(p['seller'] is Map)Card(child:ListTile(leading:const CircleAvatar(child:Icon(Icons.person_rounded)),title:Text((p['seller'] as Map)['displayName']?.toString()??'Seller',style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text('@${(p['seller'] as Map)['username']??''}',style:const TextStyle(color:EazyColors.muted)))),
@@ -32,4 +32,4 @@ class _ProductDetailPageState extends State<ProductDetailPage>{
  ]));
  }
 }
-class _Placeholder extends StatelessWidget{const _Placeholder();@override Widget build(BuildContext context)=>Container(decoration:BoxDecoration(color:Theme.of(context).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(24)),child:const Center(child:Icon(Icons.shopping_bag_outlined,size:72,color:Theme.of(context).colorScheme.primary)));}
+class _Placeholder extends StatelessWidget{const _Placeholder();@override Widget build(BuildContext context)=>Container(decoration:BoxDecoration(color:Theme.of(context).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(24)),child:Center(child:Icon(Icons.shopping_bag_outlined,size:72,color:Theme.of(context).colorScheme.primary)));}
