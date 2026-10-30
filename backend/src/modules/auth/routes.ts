@@ -23,6 +23,18 @@ export function createFirebaseAuthenticationMiddleware(provider: FirebaseAuthPro
     if (scheme?.toLowerCase() !== 'bearer' || !token) return next(new AppError('UNAUTHORIZED', 'Invalid authorization header'));
     try {
       const identity = await provider.verifyIdentity(token);
+      const firebaseClaims = identity.claims.firebase;
+      const signInProvider =
+        firebaseClaims && typeof firebaseClaims === 'object'
+          ? (firebaseClaims as Record<string, unknown>).sign_in_provider
+          : undefined;
+      if (
+        signInProvider === 'password' &&
+        typeof identity.claims.email === 'string' &&
+        identity.claims.email_verified !== true
+      ) {
+        throw new AppError('FORBIDDEN', 'Verify your email address before accessing Eazy.');
+      }
       const result = await authService.provision(identity, {
         ipAddress: request.ip,
         userAgent: request.header('user-agent')
