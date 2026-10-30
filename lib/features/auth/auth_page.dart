@@ -175,6 +175,8 @@ class _AuthPageState extends State<AuthPage> {
     password.clear();
     confirmPassword.clear();
     code.clear();
+    challenge = null;
+    phoneVerificationId = null;
   });
 
   void switchInput(bool nextPhone) => setState(() {
@@ -182,7 +184,11 @@ class _AuthPageState extends State<AuthPage> {
     registerStage = 0;
     error = null;
     identifier.clear();
+    password.clear();
+    confirmPassword.clear();
     code.clear();
+    challenge = null;
+    phoneVerificationId = null;
   });
 
   @override
@@ -224,20 +230,17 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                     SizedBox(height: compact ? 4 : 10),
                     Expanded(
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
+                      child: SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
                         child: ConstrainedBox(
                           constraints: BoxConstraints(
-                            minHeight:
-                                compact
-                                    ? constraints.maxHeight * .58
-                                    : constraints.maxHeight * .50,
-                            maxHeight:
-                                compact
-                                    ? constraints.maxHeight * .86
-                                    : constraints.maxHeight * .78,
+                            minHeight: constraints.maxHeight * .72,
                           ),
-                          child: _FormCard(compact: compact),
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: _FormCard(compact: compact),
+                          ),
                         ),
                       ),
                     ),
