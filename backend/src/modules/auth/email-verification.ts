@@ -106,7 +106,14 @@ export class EmailVerificationService {
       if (expectedEmail && challenge.email !== normalizeEmail(expectedEmail)) {
         throw new AppError('FORBIDDEN', 'Verification request does not match the authenticated account');
       }
-      if (new Date(challenge.expires_at).getTime() <= Date.now()) {
+      const now = Date.now();
+      const verifiedAt = challenge.verified_at
+        ? new Date(challenge.verified_at).getTime()
+        : null;
+      const challengeExpired = verifiedAt === null
+        ? new Date(challenge.expires_at).getTime() <= now
+        : verifiedAt + 24 * 60 * 60_000 <= now;
+      if (challengeExpired) {
         throw new AppError('VALIDATION_ERROR', 'Verification code has expired');
       }
       if (!challenge.verified_at && challenge.attempts >= challenge.max_attempts) {
