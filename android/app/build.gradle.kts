@@ -5,6 +5,10 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
+val releaseSigningConfigured = keystorePropertiesFile.exists() &&
+    listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+        .all { !keystoreProperties.getProperty(it).isNullOrBlank() }
+val allowDebugReleaseSigning = System.getenv("EAZY_ALLOW_DEBUG_RELEASE_SIGNING") == "true"
 
 plugins {
     id("com.android.application")
@@ -41,12 +45,28 @@ android {
     }
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            signingConfig = when {
+                releaseSigningConfigured -> signingConfigs.getByName("release")
+                allowDebugReleaseSigning -> signingConfigs.getByName("debug")
+                else -> null
             }
         }
+    }
+}
+val verifyEazyReleaseSigning = tasks.register("verifyEazyReleaseSigning") {
+    doLast {
+        if (!releaseSigningConfigured && !allowDebugReleaseSigning) {
+            throw GradleException(
+                "Release signing is not configured. Add android/key.properties and its private keystore. " +
+                    "For CI/emulator-only release builds, explicitly set EAZY_ALLOW_DEBUG_RELEASE_SIGNING=true."
+            )
+        }
+    }
+}
+tasks.configureEach {
+    if ((name.startsWith("package") && name.contains("Release")) ||
+        name == "assembleRelease" || name == "bundleRelease") {
+        dependsOn(verifyEazyReleaseSigning)
     }
 }
 flutter { source = "../.." }
