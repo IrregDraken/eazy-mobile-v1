@@ -28,7 +28,7 @@ export class EmailVerificationService {
       status: string;
       email_verified_at: Date | string | null;
     }>(
-      'SELECT id, status, email_verified_at FROM users WHERE lower(email) = $1 AND status <> \'deleted\' LIMIT 1',
+      'SELECT id, status, email_verified_at FROM users WHERE lower(email) = $1 LIMIT 1',
       [email]
     );
     if (existing.rowCount) {
@@ -39,8 +39,8 @@ export class EmailVerificationService {
       if (!canResend) {
         throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
       }
-    } else if (options.allowExistingUnverified) {
-      throw new AppError('UNAUTHORIZED', 'Sign in again before requesting another verification code');
+    } else if (!options.allowExistingUnverified) {
+      throw new AppError('CONFLICT', 'An account with this email already exists. Sign in instead.');
     }
 
     // A resend invalidates older outstanding codes so only the latest code can be used.
