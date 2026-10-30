@@ -201,9 +201,7 @@ class _AuthPageState extends State<AuthPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFF4F8F4),
-        ),
+        decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor),
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -236,7 +234,7 @@ class _AuthPageState extends State<AuthPage> {
                           },
                           icon: const Icon(
                             Icons.arrow_back_rounded,
-                            color: Color(0xFF0E7A4B),
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         const Spacer(),
@@ -295,7 +293,7 @@ class _AuthPageState extends State<AuthPage> {
         compact ? 12 : 18,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(28),
         boxShadow: const [
           BoxShadow(
@@ -317,7 +315,7 @@ class _AuthPageState extends State<AuthPage> {
           Text(
             title,
             style: const TextStyle(
-              color: Color(0xFF082117),
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 27,
               fontWeight: FontWeight.w900,
               letterSpacing: -1.2,
@@ -326,7 +324,7 @@ class _AuthPageState extends State<AuthPage> {
           const SizedBox(height: 5),
           Text(
             subtitle,
-            style: const TextStyle(color: Color(0xFF5B6C63), fontSize: 13),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
           ),
           SizedBox(height: compact ? 12 : 16),
           if (!register) ...[
@@ -417,7 +415,7 @@ class _AuthPageState extends State<AuthPage> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 error!,
-                style: const TextStyle(color: Color(0xFFC03935), fontSize: 12),
+                style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
               ),
             ),
           const SizedBox(height: 18),
@@ -427,10 +425,10 @@ class _AuthPageState extends State<AuthPage> {
             child: FilledButton(
               onPressed: busy ? null : submit,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF087A4A),
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFF087A4A),
-                disabledForegroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                disabledBackgroundColor: Theme.of(context).colorScheme.primary,
+                disabledForegroundColor: Theme.of(context).colorScheme.onPrimary,
                 overlayColor: const Color(0x260E9D61),
                 elevation: 0,
               ),
@@ -441,7 +439,7 @@ class _AuthPageState extends State<AuthPage> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       )
                       : Text(
@@ -460,8 +458,8 @@ class _AuthPageState extends State<AuthPage> {
               child: TextButton(
                 onPressed: busy ? null : resend,
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF087A4A),
-                  disabledForegroundColor: const Color(0xFF586B60),
+                  foregroundColor: Theme.of(context).colorScheme.primary,
+                  disabledForegroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
                   overlayColor: const Color(0x1F0E9D61),
                 ),
                 child: const Text('Resend code'),
@@ -533,7 +531,7 @@ class _ToggleRow extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(3),
     decoration: BoxDecoration(
-      color: const Color(0xFFEAF3ED),
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(14),
     ),
     child: Row(
@@ -572,14 +570,14 @@ class _Toggle extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.symmetric(vertical: 9),
       decoration: BoxDecoration(
-        color: selected ? Colors.white : Colors.transparent,
+        color: selected ? Theme.of(context).colorScheme.surface : Colors.transparent,
         borderRadius: BorderRadius.circular(11),
       ),
       child: Center(
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? const Color(0xFF082117) : const Color(0xFF586B60),
+            color: selected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w800,
             fontSize: 12,
           ),
@@ -608,9 +606,9 @@ class _PasswordRequirements extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F7F2),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFDCE9DF)),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,7 +616,7 @@ class _PasswordRequirements extends StatelessWidget {
             const Text(
               'PASSWORD REQUIREMENTS',
               style: TextStyle(
-                color: Color(0xFF40534A),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1,
@@ -633,13 +631,13 @@ class _PasswordRequirements extends StatelessWidget {
                     Icon(
                       rule.$2 ? Icons.check_circle_rounded : Icons.circle_outlined,
                       size: 16,
-                      color: rule.$2 ? const Color(0xFF087A4A) : const Color(0xFF586B60),
+                      color: rule.$2 ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       rule.$1,
                       style: TextStyle(
-                        color: rule.$2 ? const Color(0xFF087A4A) : const Color(0xFF68776F),
+                        color: rule.$2 ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 12,
                         fontWeight: rule.$2 ? FontWeight.w700 : FontWeight.w500,
                       ),
@@ -678,20 +676,20 @@ class _EntryField extends StatelessWidget {
     keyboardType: keyboardType,
     readOnly: readOnly,
     style: const TextStyle(
-      color: Color(0xFF082117),
+      color: Theme.of(context).colorScheme.onSurface,
       fontWeight: FontWeight.w600,
     ),
     decoration: InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Color(0xFF586B60), fontSize: 13),
-      prefixIcon: Icon(icon, color: Color(0xFF087A4A), size: 20),
+      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+      prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary, size: 20),
       suffixIcon: suffix,
       filled: true,
-      fillColor: const Color(0xFFF5FAF6),
+      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFD6E5DA)),
+        borderSide: BorderSide(color: Theme.of(context).dividerColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -699,7 +697,7 @@ class _EntryField extends StatelessWidget {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFF087A4A), width: 1.5),
+        borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5),
       ),
     ),
   );
@@ -710,12 +708,12 @@ class _OrDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      const Expanded(child: Divider(color: Color(0xFFD6E5DA))),
+      Expanded(child: Divider(color: Theme.of(context).dividerColor)),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Text(
           'or continue with',
-          style: TextStyle(color: Color(0xFF586B60), fontSize: 11),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11),
         ),
       ),
       const Expanded(child: Divider(color: Color(0xFFD6E5DA))),
@@ -742,13 +740,13 @@ class _ProviderButton extends StatelessWidget {
       label: Text(
         label,
         style: const TextStyle(
-          color: Color(0xFF082117),
+          color: Theme.of(context).colorScheme.onSurface,
           fontSize: 12,
           fontWeight: FontWeight.w800,
         ),
       ),
       style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Color(0xFFD6E5DA)),
+        side: BorderSide(color: Theme.of(context).dividerColor),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
       ),
     ),
