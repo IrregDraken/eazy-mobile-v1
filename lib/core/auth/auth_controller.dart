@@ -103,7 +103,7 @@ class AuthController extends ChangeNotifier {
       await _syncFirebaseUser(user, forceRefresh: false);
       notifyListeners();
     } on ApiException catch (error) {
-      if (error.statusCode == 401) {
+      if (error.statusCode == 401 || error.statusCode == 403) {
         await api.clearToken();
         await api.clearProfileSnapshot();
         _firebaseUser = null;
@@ -673,7 +673,8 @@ class AuthController extends ChangeNotifier {
       _firebaseUser = user;
       await api.saveProfileSnapshot(_profile!);
     } catch (error) {
-      if (error is ApiException && error.statusCode == 401) {
+      if (error is ApiException &&
+          (error.statusCode == 401 || error.statusCode == 403)) {
         await api.clearToken();
         await api.clearProfileSnapshot();
       }
