@@ -20,7 +20,6 @@ class _AssistPageState extends State<AssistPage> {
   String? error;
   bool loading = true;
   bool sending = false;
-  bool providerAvailable = false;
 
   @override
   void initState() {
@@ -37,8 +36,8 @@ class _AssistPageState extends State<AssistPage> {
 
   Future<void> _bootstrap() async {
     try {
-      final capabilities = await api.get('assist/capabilities', auth: true);
-      providerAvailable = capabilities['providerAvailable'] == true;
+      // Capabilities are not needed to render the conversation. Skip that
+      // extra round trip and let send() surface a friendly unavailable state.
       final sessions = await api.get(
         'assist/sessions?page=1&limit=1',
         auth: true,
@@ -52,7 +51,7 @@ class _AssistPageState extends State<AssistPage> {
       }
       if (sessionId != null) await _loadMessages();
     } on ApiException catch (e) {
-      error = e.message;
+      error = _friendlyError(e);
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -109,12 +108,24 @@ class _AssistPageState extends State<AssistPage> {
       if (mounted) {
         setState(() {
           if (composer.text.trim().isEmpty) composer.text = content;
-          error = e.message;
+          error = _friendlyError(e);
         });
       }
     } finally {
       if (mounted) setState(() => sending = false);
     }
+  }
+
+  String _friendlyError(ApiException error) {
+    return switch (error.kind) {
+      ApiErrorKind.network || ApiErrorKind.timeout =>
+        'Connection problem. Check your internet and try again.',
+      ApiErrorKind.rateLimited =>
+        'You are sending messages too quickly. Wait a moment and try again.',
+      ApiErrorKind.provider || ApiErrorKind.server =>
+        'Eazy Assist is temporarily unavailable. Please try again shortly.',
+      _ => 'We could not complete that request. Please try again.',
+    };
   }
 
   void _scrollToEnd() {
@@ -155,12 +166,6 @@ class _AssistPageState extends State<AssistPage> {
               ? const Center(child: CircularProgressIndicator())
               : Column(
                 children: [
-                  if (!providerAvailable)
-                    const _StatusBanner(
-                      icon: Icons.cloud_off_rounded,
-                      message:
-                          'Assist is not enabled on the server yet. Configure the AI provider to send a message.',
-                    ),
                   if (error != null)
                     _StatusBanner(
                       icon: Icons.error_outline_rounded,
@@ -200,7 +205,7 @@ class _AssistPageState extends State<AssistPage> {
                               controller: composer,
                               minLines: 1,
                               maxLines: 5,
-                              enabled: providerAvailable && !sending,
+                              enabled: sessionId != null && !sending,
                               textInputAction: TextInputAction.newline,
                               decoration: const InputDecoration(
                                 hintText: 'Ask Eazy something useful...',
@@ -213,7 +218,7 @@ class _AssistPageState extends State<AssistPage> {
                             height: 54,
                             child: FilledButton(
                               onPressed:
-                                  providerAvailable && !sending ? _send : null,
+                                  sessionId != null && !sending ? _send : null,
                               child:
                                   sending
                                       ? const SizedBox(
