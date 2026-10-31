@@ -920,8 +920,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   String get _username =>
       username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
-  bool _validMoney(String value) =>
-      RegExp(r'^(?:0|[1-9][0-9]{0,17})\.[0-9]{2}$').hasMatch(value);
   bool _validUsername(String value) =>
       RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value);
   Map<String, dynamic> _map(dynamic value) =>
