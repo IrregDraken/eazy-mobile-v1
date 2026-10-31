@@ -73,6 +73,13 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
           ),
     ),
     GoRoute(
+      path: '/u/:username',
+      builder: (_, state) => ProfilePage(
+        auth: auth,
+        username: state.pathParameters['username'],
+      ),
+    ),
+    GoRoute(
       path: '/profile/:username',
       builder:
           (_, state) => ProfilePage(
