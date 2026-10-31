@@ -31,7 +31,11 @@ export class NotificationService {
       } catch { /* persisted notifications remain available through REST when realtime is unavailable */ }
     }
 
-    if (this.push && notification.title && notification.body) {
+    // Financial/order alerts are intentionally wallet-only. Keep them in
+    // Wallet's financial inbox rather than duplicating them in the device
+    // notification tray.
+    const walletOnly = notification.type === 'order' || notification.type === 'payment';
+    if (!walletOnly && this.push && notification.title && notification.body) {
       try {
         await this.push.notify({ userId, title: notification.title, body: notification.body });
       } catch (error) {
