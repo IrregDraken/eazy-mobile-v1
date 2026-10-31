@@ -14,6 +14,7 @@ export interface AIProvider {
 export interface TranslationProvider {
   translate(input: { text: string; source?: string; target: string }): Promise<{ text: string; providerReference?: string }>;
   getCapabilities(): { available: boolean; supportedLanguages: readonly string[] | null };
+  listLanguages?(): Promise<readonly { code: string; name: string }[]>;
 }
 export interface ProviderLocationResult {
   formattedAddress?: string | null;

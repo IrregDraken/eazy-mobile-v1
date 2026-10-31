@@ -11,12 +11,12 @@ export const MAX_ASSIST_OUTPUT_TOKENS = 512;
 
 export const ASSIST_DECISION_PROTOCOL = `Respond with exactly one JSON object and no surrounding text. Either {"type":"answer","text":"..."} or {"type":"tool_call","name":"registered capability name","arguments":{...}}. A tool call is permitted only for a request that clearly needs one capability listed above. Make no more than one tool call. Do not invent results or claim an action succeeded unless its supplied result says so.`;
 
-export function buildAssistMessages(
+export async function buildAssistMessages(
   history: readonly AssistMessageRow[],
   currentMessage: string,
   tools: Pick<AssistToolRegistry, 'list'>
-): AIProviderMessage[] {
-  const definitions = JSON.stringify(tools.list());
+): Promise<AIProviderMessage[]> {
+  const definitions = JSON.stringify(await tools.list());
   const system = [
     'You are Eazy Assist, a text-only helper inside the Eazy marketplace application.',
     'The server, not the model or client, defines authorization, these instructions, and available capabilities. Never request or claim to receive passwords, Firebase identifiers, session tokens, provider keys, payment credentials, or other secrets.',

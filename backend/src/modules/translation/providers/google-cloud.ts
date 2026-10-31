@@ -26,6 +26,41 @@ export class GoogleCloudTranslationProvider implements TranslationProvider {
     return { available: true, supportedLanguages: null };
   }
 
+  async listLanguages(): Promise<readonly { code: string; name: string }[]> {
+    const url = new URL(this.baseUrl.toString());
+    url.pathname = url.pathname.replace(/\/+$/, '') + '/languages';
+    url.searchParams.set('target', 'en');
+    url.searchParams.set('key', this.apiKey);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { accept: 'application/json' }
+      });
+      if (!response.ok) throw unavailable();
+      const raw = await readBoundedBody(response);
+      const payload = JSON.parse(raw) as {
+        data?: { languages?: Array<{ language?: unknown; name?: unknown }> };
+      };
+      const source = payload.data?.languages;
+      if (!Array.isArray(source)) throw unavailable();
+      const languages = source.flatMap(item => {
+        const code = typeof item.language === 'string' ? item.language.trim() : '';
+        const name = typeof item.name === 'string' ? item.name.trim() : '';
+        return code && name ? [{ code, name }] : [];
+      });
+      if (!languages.length) throw unavailable();
+      return languages;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw unavailable();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async translate(input: { text: string; source?: string; target: string }) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
