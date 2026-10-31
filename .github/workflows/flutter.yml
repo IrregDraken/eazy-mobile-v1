@@ -83,6 +83,13 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter build apk --debug --no-tree-shake-icons --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
+      - name: Upload Android debug APK for device smoke testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: eazy-debug-apk-${{ github.sha }}
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
 
   backend-build-test:
     runs-on: ubuntu-latest
