@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:eazy/features/wallet/wallet_amount_input.dart';
+import 'package:eazy_mobile_v1/features/wallet/wallet_amount_input.dart';
 
 void main() {
   group('normalizeWalletAmountInput', () {
