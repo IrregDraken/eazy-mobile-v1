@@ -4,7 +4,7 @@ import { AppError } from './errors.js';
 
 type RequestPart = 'params' | 'query' | 'body' | 'headers';
 
-export function validate(part: RequestPart, schema: z.ZodTypeAny): RequestHandler {
+export function validate(part: RequestPart, schema: z.ZodType): RequestHandler {
   return (request, _response, next) => {
     const result = schema.safeParse(request[part]);
     if (!result.success) {
