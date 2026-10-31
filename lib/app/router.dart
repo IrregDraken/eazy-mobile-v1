@@ -71,6 +71,7 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
           (_, state) => HomeShell(
             auth: auth,
             initialTab: state.uri.queryParameters['tab'],
+            initialAction: state.uri.queryParameters['action'],
           ),
     ),
     GoRoute(
