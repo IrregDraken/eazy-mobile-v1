@@ -43,76 +43,68 @@ class _HomeShellState extends State<HomeShell> {
     body: Stack(
       children: [
         IndexedStack(index: index, children: pages),
-        Positioned(
-          right: 16,
-          bottom: 88,
-          child: SafeArea(
-            child: Tooltip(
-              message: 'Open Eazy Assist',
-              child: Material(
-                color: EazyColors.green,
-                elevation: 12,
-                borderRadius: BorderRadius.circular(28),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(28),
-                  onTap: () => context.push('/assist'),
-                  child: Container(
-                    height: 54,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 17,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(
-                        color: EazyColors.mint.withValues(alpha: .8),
-                        width: 1.4,
+        if (index != 3)
+          Positioned(
+            right: 16,
+            bottom: 90,
+            child: SafeArea(
+              child: Tooltip(
+                message: 'Open Eazy Assist',
+                child: Material(
+                  color: context.eazyAccent,
+                  elevation: 16,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () => context.push('/assist'),
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            context.eazyAccent,
+                            context.eazyAccent.withValues(alpha: .82),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: context.eazyOnAccent.withValues(alpha: .45),
+                          width: 1.3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: context.eazyAccent.withValues(alpha: .36),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: .18),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: EazyColors.green.withValues(alpha: .30),
-                          blurRadius: 18,
-                          spreadRadius: 1,
+                      child: Image.asset(
+                        'assets/images/eazy_logo_mark.png',
+                        width: 31,
+                        height: 31,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => Icon(
+                          Icons.auto_awesome_rounded,
+                          color: context.eazyOnAccent,
+                          size: 28,
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/images/eazy_logo_mark.png',
-                          width: 25,
-                          height: 25,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => const Icon(
-                            Icons.auto_awesome_rounded,
-                            color: EazyColors.canvas,
-                            size: 23,
-                          ),
-                        ),
-                        const SizedBox(width: 9),
-                        const Text(
-                          'Eazy Assist',
-                          style: TextStyle(
-                            color: EazyColors.canvas,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        const Icon(
-                          Icons.arrow_outward_rounded,
-                          color: EazyColors.canvas,
-                          size: 15,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     ),
     bottomNavigationBar: Padding(
