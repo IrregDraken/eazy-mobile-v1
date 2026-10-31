@@ -10,7 +10,7 @@ const answerSchema = z.object({
 
 const toolCallSchema = z.object({
   type: z.literal('tool_call'),
-  name: z.enum(['search_products', 'translate_text']),
+  name: z.enum(['search_products', 'translate_text', 'get_wallet_balance']),
   arguments: z.unknown()
 }).strict();
 
