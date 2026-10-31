@@ -622,7 +622,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Keep your Eazy identity up to date.',
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
@@ -1010,7 +1010,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         padding: const EdgeInsets.only(top: 3),
                         child: Text(
                           profile['category'].toString(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 12,
                           ),
@@ -1191,7 +1191,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         child: Text(
                           error!,
-                          style: const TextStyle(color: Theme.of(context).colorScheme.error),
+                          style: TextStyle(color: Theme.of(context).colorScheme.error),
                         ),
                       ),
                   ],
@@ -1243,7 +1243,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
             SliverToBoxAdapter(
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
                 ),
                 child: Row(
@@ -1316,7 +1316,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 : 'New posts will appear here when they are shared.')
                             : 'Posts tagging this profile will appear here.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                           height: 1.45,
                         ),
@@ -1522,7 +1522,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     people.isEmpty
                                         ? 'No $direction yet.'
                                         : 'No matching people.',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
@@ -1588,7 +1588,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                         child:
                                             avatar == null ||
                                                     !avatar.startsWith('http')
-                                                ? const Icon(
+                                                ? Icon(
                                                   Icons.person_rounded,
                                                   color: Theme.of(context).colorScheme.primary,
                                                 )
@@ -1659,7 +1659,7 @@ class _HighlightsRow extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5),
                     ),
-                    child: const CircleAvatar(
+                    child: CircleAvatar(
                       radius: 27,
                       backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                       child: Icon(Icons.add_rounded, size: 28),
@@ -1696,7 +1696,7 @@ class _HighlightsRow extends StatelessWidget {
                               : null,
                       child:
                           cover == null || !cover.startsWith('http')
-                              ? const Icon(
+                              ? Icon(
                                 Icons.auto_awesome_rounded,
                                 color: Theme.of(context).colorScheme.primary,
                               )
@@ -1764,7 +1764,7 @@ class _Stat extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ],
       ),
