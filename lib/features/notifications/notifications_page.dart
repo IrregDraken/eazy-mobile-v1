@@ -25,7 +25,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
     super.initState();
     load();
     _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen((token) {
-      _registerDeviceToken(token);
+      _registerDeviceToken(token).catchError((error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Push registration failed: $error')),
+        );
+      });
     });
     _registerExistingTokenIfAuthorized();
   }
@@ -45,21 +50,20 @@ class _NotificationsPageState extends State<NotificationsPage> {
       }
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null && token.isNotEmpty) await _registerDeviceToken(token);
-    } catch (_) {
-      // Push registration can retry on the next token refresh or explicit enable.
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not register this device for push notifications: $error')),
+      );
     }
   }
 
   Future<void> _registerDeviceToken(String token) async {
-    try {
-      await api.post(
-        'notifications/devices',
-        body: {'token': token, 'platform': Platform.isIOS ? 'ios' : 'android'},
-        auth: true,
-      );
-    } catch (_) {
-      // A later token refresh or explicit opt-in can retry registration.
-    }
+    await api.post(
+      'notifications/devices',
+      body: {'token': token, 'platform': Platform.isIOS ? 'ios' : 'android'},
+      auth: true,
+    );
   }
 
   Future<void> load() async {
