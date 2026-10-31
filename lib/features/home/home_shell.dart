@@ -178,7 +178,7 @@ class EazyPageHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle!,
-                  style: const TextStyle(color: EazyColors.muted),
+                  style: TextStyle(color: context.eazyMuted),
                 ),
               ],
             ],
