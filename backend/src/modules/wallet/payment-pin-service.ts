@@ -65,6 +65,17 @@ export class PaymentPinService {
     return { changed: true };
   }
 
+  async reset(userId: string, newPin: string, confirmation: string) {
+    this.validatePin(newPin);
+    if (newPin !== confirmation) throw new AppError('VALIDATION_ERROR', 'The new payment PINs do not match');
+    const pinHash = this.hashPin(newPin);
+    await this.pool.query(
+      'INSERT INTO wallet_payment_pins (user_id, pin_hash, failed_attempts, locked_until) VALUES ($1, $2, 0, NULL) ON CONFLICT (user_id) DO UPDATE SET pin_hash = EXCLUDED.pin_hash, failed_attempts = 0, locked_until = NULL, updated_at = now()',
+      [userId, pinHash]
+    );
+    return { reset: true };
+  }
+
   async verify(userId: string, pin: string): Promise<void> {
     this.validatePin(pin);
     const result = await withTransaction(this.pool, async client => {
