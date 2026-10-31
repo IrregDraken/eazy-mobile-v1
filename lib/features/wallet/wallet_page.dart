@@ -1376,82 +1376,16 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> _showAllTransactions() async {
-    showModalBottomSheet<void>(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder:
-          (sheetContext) => SafeArea(
-            child: FutureBuilder<Map<String, dynamic>>(
-              future: api.get(
-                'wallet/transactions?page=1&limit=100',
-                auth: true,
-              ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const Padding(
-                    padding: EdgeInsets.all(36),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      'Could not load transaction history: ${snapshot.error}',
-                    ),
-                  );
-                }
-                final entries =
-                    (snapshot.data?['items'] as List? ?? const [])
-                        .whereType<Map>()
-                        .map((item) => Map<String, dynamic>.from(item))
-                        .toList();
-                if (entries.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(28),
-                    child: Text('No transactions yet.'),
-                  );
-                }
-                return SizedBox(
-                  height: MediaQuery.sizeOf(context).height * .7,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      const Text(
-                        'Transaction history',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      for (final entry in entries)
-                        ListTile(
-                          leading: const Icon(
-                            Icons.receipt_long_rounded,
-                            color: EazyColors.green,
-                          ),
-                          title: Text(
-                            entry['type']?.toString() ?? 'Transaction',
-                          ),
-                          subtitle: Text(
-                            '${entry['status'] ?? 'unknown'} · ${entry['createdAt'] ?? ''}',
-                          ),
-                          trailing: Text(
-                            balanceVisible
-                                ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}'
-                                : '••••••',
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          onTap: () => _showTransactionDetails(entry),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
+      builder: (_) => _TransactionHistorySheet(
+        api: api,
+        currency: _currency,
+        balanceVisible: balanceVisible,
+        onOpenTransaction: _showTransactionDetails,
+      ),
     );
   }
 
@@ -1893,6 +1827,184 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 ),
               ),
             ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _TransactionHistorySheet extends StatefulWidget {
+  const _TransactionHistorySheet({
+    required this.api,
+    required this.currency,
+    required this.balanceVisible,
+    required this.onOpenTransaction,
+  });
+
+  final ApiClient api;
+  final String currency;
+  final bool balanceVisible;
+  final Future<void> Function(Map<String, dynamic> entry) onOpenTransaction;
+
+  @override
+  State<_TransactionHistorySheet> createState() => _TransactionHistorySheetState();
+}
+
+class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
+  static const _pageSize = 20;
+  final _items = <Map<String, dynamic>>[];
+  int _page = 0;
+  bool _loading = false;
+  bool _hasMore = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPage();
+  }
+
+  Future<void> _loadPage({bool refresh = false}) async {
+    if (_loading || (!refresh && !_hasMore)) return;
+    final nextPage = refresh ? 1 : _page + 1;
+    setState(() {
+      _loading = true;
+      _error = null;
+      if (refresh) _hasMore = true;
+    });
+    try {
+      final result = await widget.api.get(
+        'wallet/transactions?page=$nextPage&limit=$_pageSize',
+        auth: true,
+      );
+      final entries = (result['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+      final meta = result['meta'] is Map
+          ? Map<String, dynamic>.from(result['meta'] as Map)
+          : <String, dynamic>{};
+      final totalPages = int.tryParse(meta['pages']?.toString() ?? '');
+      if (!mounted) return;
+      setState(() {
+        if (refresh) _items.clear();
+        final existingIds = _items.map((item) => item['id']?.toString()).toSet();
+        _items.addAll(entries.where(
+          (item) => !existingIds.contains(item['id']?.toString()),
+        ));
+        _page = nextPage;
+        _hasMore = totalPages != null
+            ? nextPage < totalPages
+            : entries.length == _pageSize;
+      });
+    } on ApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Could not load transaction history. Try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: SizedBox(
+      height: MediaQuery.sizeOf(context).height * .78,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+            child: Text(
+              'Transaction history',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => _loadPage(refresh: true),
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+                itemCount: _items.isEmpty ? 2 : _items.length + 1,
+                itemBuilder: (context, index) {
+                  if (_items.isEmpty && index == 0) {
+                    if (_loading) {
+                      return const Padding(
+                        padding: EdgeInsets.all(36),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (_error != null) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          children: [
+                            Text(_error!, textAlign: TextAlign.center),
+                            TextButton(
+                              onPressed: () => _loadPage(refresh: true),
+                              child: const Text('Try again'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const Padding(
+                      padding: EdgeInsets.all(28),
+                      child: Text('No transactions yet.'),
+                    );
+                  }
+                  if (index == _items.length) {
+                    if (_error != null) {
+                      return Center(
+                        child: TextButton(
+                          onPressed: _loadPage,
+                          child: const Text('Could not load more. Try again'),
+                        ),
+                      );
+                    }
+                    if (_hasMore) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: _loading
+                              ? const CircularProgressIndicator(strokeWidth: 2)
+                              : OutlinedButton(
+                                  onPressed: _loadPage,
+                                  child: const Text('Load more'),
+                                ),
+                        ),
+                      );
+                    }
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 18),
+                      child: Center(child: Text('You are all caught up.')),
+                    );
+                  }
+                  final entry = _items[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const Icon(Icons.receipt_long_rounded),
+                      title: Text(entry['type']?.toString() ?? 'Transaction'),
+                      subtitle: Text(
+                        '${entry['status'] ?? 'unknown'} · ${entry['createdAt'] ?? ''}',
+                      ),
+                      trailing: Text(
+                        widget.balanceVisible
+                            ? '${entry['currency'] ?? widget.currency} ${entry['amount'] ?? '0.00'}'
+                            : '••••••',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      onTap: () => widget.onOpenTransaction(entry),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
         ],
       ),
     ),
