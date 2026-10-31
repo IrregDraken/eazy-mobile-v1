@@ -89,8 +89,153 @@ class _ConversationPageState extends State<ConversationPage> {
       final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
       final all = manifest.listAssets().where((asset) {
         final path = asset.toLowerCase();
-        return path.startsWith('assets/images/chat/') &&
-            RegExp(r'\\.(png|jpe?g|webp)
+        final isImage = path.endsWith('.png') ||
+            path.endsWith('.jpg') ||
+            path.endsWith('.jpeg') ||
+            path.endsWith('.webp');
+        return path.startsWith('assets/images/chat/') && isImage;
+      }).toList()..sort();
+      final modeName = dark ? 'dark' : 'light';
+      final preferred = all
+          .where((asset) => asset.toLowerCase().contains(modeName))
+          .toList();
+      final neutral = all.where((asset) {
+        final path = asset.toLowerCase();
+        return !path.contains('light') && !path.contains('dark');
+      }).toList();
+      final choices = [...preferred, ...neutral];
+      final key = 'eazy.chat.wallpaper.' + modeName;
+      final saved = await draftStorage.read(key: key);
+      final selected = choices.contains(saved)
+          ? saved
+          : (preferred.isNotEmpty
+              ? preferred.first
+              : (neutral.isNotEmpty ? neutral.first : null));
+      if (!mounted || _wallpaperDarkMode != dark) return;
+      setState(() {
+        _chatWallpaperChoices = choices;
+        _selectedChatWallpaper = selected;
+      });
+    } catch (_) {
+      if (!mounted || _wallpaperDarkMode != dark) return;
+      setState(() {
+        _chatWallpaperChoices = [];
+        _selectedChatWallpaper = null;
+      });
+    }
+  }
+
+  Future<void> _chooseChatWallpaper() async {
+    if (_chatWallpaperChoices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Chat wallpaper images have not been added to assets/images/chat yet.',
+          ),
+        ),
+      );
+      return;
+    }
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chat wallpaper',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 320,
+                child: GridView.builder(
+                  itemCount: _chatWallpaperChoices.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 1.35,
+                  ),
+                  itemBuilder: (_, index) {
+                    final asset = _chatWallpaperChoices[index];
+                    final selectedAsset = asset == _selectedChatWallpaper;
+                    return InkWell(
+                      onTap: () => Navigator.pop(sheetContext, asset),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: selectedAsset
+                                ? Theme.of(context).colorScheme.primary
+                                : context.eazyBorder,
+                            width: selectedAsset ? 2.5 : 1,
+                          ),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.asset(asset, fit: BoxFit.cover),
+                            if (selectedAsset)
+                              const Align(
+                                alignment: Alignment.topRight,
+                                child: Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: CircleAvatar(
+                                    radius: 13,
+                                    child: Icon(Icons.check, size: 16),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() => _selectedChatWallpaper = selected);
+    try {
+      await draftStorage.write(
+        key: 'eazy.chat.wallpaper.' +
+            (_wallpaperDarkMode == true ? 'dark' : 'light'),
+        value: selected,
+      );
+    } catch (_) {
+      // Keep the selected wallpaper for this conversation session.
+    }
+  }
+
+  Widget _chatWallpaperBackground(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final fallback = CustomPaint(
+      painter: _ChatWallpaperPainter(
+        color: Theme.of(context).colorScheme.primary.withValues(
+          alpha: dark ? .055 : .045,
+        ),
+      ),
+    );
+    final asset = _selectedChatWallpaper;
+    if (asset == null) return fallback;
+    return Image.asset(
+      asset,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => fallback,
+    );
+  }
 
   String get id => widget.conversation['id']?.toString() ?? '';
   String get _draftStorageKey => 'eazy.chat.draft.$id';
