@@ -136,6 +136,20 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         border: Border.all(color: context.eazyBorder),
                       ),
                       child: IconButton(
+                        tooltip: 'Become a Seller',
+                        onPressed: () => context.push('/seller'),
+                        icon: const Icon(Icons.storefront_outlined),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: context.eazyBorder),
+                      ),
+                      child: IconButton(
+                        tooltip: 'Cart',
                         onPressed: () => context.push('/cart'),
                         icon: const Icon(Icons.shopping_bag_outlined),
                       ),
