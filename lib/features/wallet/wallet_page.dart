@@ -919,6 +919,31 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> requestVirtualAccount() async {
+    if (virtualAccount != null || busy) return;
+    final consent = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Create your dedicated bank account?'),
+        content: const Text(
+          'Eazy will ask its bank provider to assign a dedicated NGN account '
+          'for receiving transfers. Your account name, email address and phone '
+          'number from your Eazy profile will be shared with the provider for '
+          'this purpose. Account assignment depends on provider approval. '
+          'You can cancel without creating an account.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('I agree, continue'),
+          ),
+        ],
+      ),
+    );
+    if (consent != true || !mounted) return;
     setState(() => busy = true);
     try {
       final result = await api.post(
