@@ -10,7 +10,7 @@ import type { ProfileService } from '../profiles/service.js';
 import { usernameSchema } from '../profiles/service.js';
 import { SocialRepository } from '../social/repository.js';
 
-const resourceIdSchema = z.string().uuid();
+const resourceIdSchema = z.string().guid();
 const canonicalHost = 'eazy.app';
 
 export interface DeepLinkServices {
