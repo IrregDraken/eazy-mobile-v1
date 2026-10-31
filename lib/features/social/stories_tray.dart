@@ -287,16 +287,16 @@ class _StoryAvatar extends StatelessWidget {
                       bottom: -1,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: EazyColors.green,
+                          color: context.eazyAccent,
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: context.eazyOnAccent,
                             width: 2,
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.add_rounded,
-                          color: EazyColors.canvas,
+                          color: context.eazyOnAccent,
                           size: 17,
                         ),
                       ),
