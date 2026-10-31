@@ -457,7 +457,7 @@ test('QR/payment/wallet requests require authentication, reject forged money sta
     assert.equal((await fetch(`${baseUrl}/v1/payments/initialize`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'valid-payment-123' }, body: JSON.stringify({ purpose: 'wallet_deposit', amount: '1.00', currency: 'NGN', status: 'succeeded' }) })).status, 422);
     assert.equal((await fetch(`${baseUrl}/v1/payments/initialize`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'valid-payment-456' }, body: JSON.stringify({ purpose: 'wallet_deposit', amount: '1.00', currency: 'NGN' }) })).status, 503);
     assert.equal((await fetch(`${baseUrl}/v1/wallet/qr/pay`, { method: 'POST', headers, body: JSON.stringify({ token: 'x'.repeat(43), amount: '1.00', currency: 'NGN', status: 'succeeded' }) })).status, 422);
-    assert.equal((await fetch(`${baseUrl}/v1/wallet/qr/pay`, { method: 'POST', headers, body: JSON.stringify({ token: 'x'.repeat(43), amount: '1.00', currency: 'NGN' }) })).status, 503);
+    assert.equal((await fetch(`${baseUrl}/v1/wallet/qr/pay`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'pin-required-qr-123' }, body: JSON.stringify({ token: 'x'.repeat(43), amount: '1.00', currency: 'NGN' }) })).status, 503);
     assert.equal((await fetch(`${baseUrl}/v1/ledger`, { headers })).status, 404);
   });
 });
