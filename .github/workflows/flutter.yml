@@ -205,7 +205,7 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm install --package-lock-only --ignore-scripts
-      - run: npm audit fix --package-lock-only --ignore-scripts || true
+      - run: npm audit fix --ignore-scripts
       - run: npm ci
       - name: Report backend dependency vulnerabilities
         shell: bash
@@ -221,5 +221,5 @@ jobs:
           path: backend/package-lock.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce high-severity dependency audit
-        run: npm audit --audit-level=high
+      - name: Enforce clean dependency audit
+        run: npm audit --audit-level=moderate
