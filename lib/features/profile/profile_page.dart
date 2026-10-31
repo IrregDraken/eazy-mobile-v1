@@ -128,7 +128,7 @@ class _ProfilePageState extends State<ProfilePage> {
       }
       final results = await Future.wait([
         api.get(
-          'posts/profile/$actualUsername?type=${['grid', 'reels', 'tagged'][contentTab]}&page=1&limit=50',
+          'posts/profile/$actualUsername?type=${['grid', 'tagged'][contentTab]}&page=1&limit=50',
           auth: true,
         ),
         if (own) api.get('profiles/me/stats', auth: true),
@@ -239,7 +239,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final requestedTab = contentTab;
       final nextPage = profilePage + 1;
       final result = await api.get(
-        'posts/profile/$username?type=${['grid', 'reels', 'tagged'][requestedTab]}&page=$nextPage&limit=50',
+        'posts/profile/$username?type=${['grid', 'tagged'][requestedTab]}&page=$nextPage&limit=50',
         auth: true,
       );
       final raw = result['items'] as List? ?? const [];
@@ -526,7 +526,7 @@ class _ProfilePageState extends State<ProfilePage> {
     });
     try {
       final username = profile['username']?.toString() ?? '';
-      final type = ['grid', 'reels', 'tagged'][tab];
+      final type = ['grid', 'tagged'][tab];
       final result = await api.get(
         'posts/profile/$username?type=$type&page=1&limit=50',
         auth: true,
@@ -773,7 +773,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     IconButton(
                       tooltip: 'Settings',
                       onPressed: () => context.push('/settings'),
-                      icon: const Icon(Icons.menu_rounded),
+                      icon: const Icon(Icons.settings_outlined),
                     ),
                   ],
                 ),
@@ -1051,14 +1051,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       onTap: () => _selectContentTab(0),
                     ),
                     ProfileTab(
-                      icon: Icons.play_circle_outline_rounded,
+                      icon: Icons.person_pin_outlined,
                       selected: contentTab == 1,
                       onTap: () => _selectContentTab(1),
-                    ),
-                    ProfileTab(
-                      icon: Icons.person_pin_outlined,
-                      selected: contentTab == 2,
-                      onTap: () => _selectContentTab(2),
                     ),
                   ],
                 ),
@@ -1078,7 +1073,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     crossAxisCount: 3,
                     crossAxisSpacing: 2,
                     mainAxisSpacing: 2,
-                    childAspectRatio: contentTab == 1 ? 9 / 16 : 1,
+                    childAspectRatio: 1,
                   ),
                 ),
               ),
@@ -1091,8 +1086,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       Icon(
                         contentTab == 0
                             ? Icons.add_a_photo_outlined
-                            : contentTab == 1
-                            ? Icons.play_circle_outline_rounded
                             : Icons.person_pin_outlined,
                         size: 42,
                         color: EazyColors.green,
@@ -1105,8 +1098,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 : isOwnProfile
                                 ? 'Share your first moment'
                                 : 'No posts yet')
-                            : contentTab == 1
-                            ? 'No Reels yet'
                             : 'No tagged posts yet',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
@@ -1120,8 +1111,6 @@ class _ProfilePageState extends State<ProfilePage> {
                             ? (isOwnProfile
                                 ? 'Build your corner of Eazy, one post at a time.'
                                 : 'New posts will appear here when they are shared.')
-                            : contentTab == 1
-                            ? 'Video posts from this profile will appear here.'
                             : 'Posts tagging this profile will appear here.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
