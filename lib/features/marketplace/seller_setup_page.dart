@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/media/media_service.dart';
@@ -134,7 +136,7 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
                 border: Border.all(color: context.eazyBorder),
               ),
               child: image?.localPath != null
-                  ? ClipRRect(borderRadius: BorderRadius.circular(20), child: Image.asset(image!.localPath!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.check_circle_outline_rounded, size: 42)))
+                  ? ClipRRect(borderRadius: BorderRadius.circular(20), child: Image.file(File(image!.localPath!), fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.check_circle_outline_rounded, size: 42)))
                   : Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                       Icon(uploading ? Icons.cloud_upload_outlined : Icons.add_photo_alternate_outlined, size: 36, color: context.eazyAccent),
                       const SizedBox(height: 8),
