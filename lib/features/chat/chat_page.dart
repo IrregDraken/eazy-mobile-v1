@@ -101,7 +101,7 @@ class _ConversationPageState extends State<ConversationPage> {
                 person['username'])
             ?.toString()
             .trim();
-    return name == null || name.isEmpty ? 'Eazy Chat' : name;
+    return name == null || name.isEmpty ? 'Chat' : name;
   }
 
   @override
