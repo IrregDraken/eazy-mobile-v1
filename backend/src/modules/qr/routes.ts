@@ -21,7 +21,7 @@ export function createQrRouter(qrService: QrService, walletService: WalletServic
   if (paymentPin) {
     router.post('/pay', payLimit, requirePaymentPin(paymentPin), validate('body', qrPaymentSchema), controller.pay);
   } else {
-    router.post('/pay', payLimit, (_request, _response, next) => {
+    router.post('/pay', payLimit, validate('body', qrPaymentSchema), (_request, _response, next) => {
       next(new AppError('SERVICE_UNAVAILABLE', 'Payment PIN authorization is unavailable'));
     });
   }
