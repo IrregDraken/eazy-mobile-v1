@@ -90,6 +90,7 @@ jobs:
         with:
           channel: stable
           cache: true
+      - uses: gradle/actions/setup-gradle@v4
       - run: flutter pub get
       - name: Check release signing secrets
         id: signing
@@ -171,6 +172,7 @@ jobs:
         with:
           channel: stable
           cache: true
+      - uses: gradle/actions/setup-gradle@v4
       - run: flutter pub get
       - run: flutter build apk --debug --no-tree-shake-icons --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
       - name: Upload Android debug APK for device smoke testing
