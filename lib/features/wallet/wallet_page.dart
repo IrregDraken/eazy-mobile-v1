@@ -1928,7 +1928,7 @@ class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
               child: ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-                itemCount: _items.isEmpty ? 2 : _items.length + 1,
+                itemCount: _items.isEmpty ? 1 : _items.length + 1,
                 itemBuilder: (context, index) {
                   if (_items.isEmpty && index == 0) {
                     if (_loading) {
