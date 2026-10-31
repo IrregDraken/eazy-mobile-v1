@@ -220,7 +220,7 @@ class _StoriesTrayState extends State<StoriesTray> {
               onTap: load,
               child: const Padding(
                 padding: EdgeInsets.all(8),
-                child: Icon(Icons.refresh_rounded, color: EazyColors.muted),
+                child: Icon(Icons.refresh_rounded, color: context.eazyMuted),
               ),
             ),
         ],
@@ -258,7 +258,7 @@ class _StoryAvatar extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: seen ? EazyColors.border : EazyColors.green,
+                  color: seen ? context.eazyBorder : context.eazyAccent,
                   width: seen ? 1.4 : 2.4,
                 ),
               ),
@@ -276,7 +276,7 @@ class _StoryAvatar extends StatelessWidget {
                         imageUrl == null || !imageUrl!.startsWith('http')
                             ? const Icon(
                               Icons.person_rounded,
-                              color: EazyColors.green,
+                              color: context.eazyAccent,
                               size: 28,
                             )
                             : null,
@@ -290,7 +290,7 @@ class _StoryAvatar extends StatelessWidget {
                           color: EazyColors.green,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: EazyColors.canvas,
+                            color: context.eazyOnAccent,
                             width: 2,
                           ),
                         ),
