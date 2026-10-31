@@ -54,8 +54,8 @@ export const productSearchSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20)
 }).strict().superRefine((value, ctx) => {
-  if (value.minPrice && value.maxPrice && Number(value.minPrice) > Number(value.maxPrice)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['maxPrice'], message: 'maxPrice must be greater than or equal to minPrice' });
-  if (value.categoryId && value.categoryIds) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['categoryIds'], message: 'Use either categoryId or categoryIds, not both' });
+  if (value.minPrice && value.maxPrice && Number(value.minPrice) > Number(value.maxPrice)) ctx.addIssue({ code: 'custom', path: ['maxPrice'], message: 'maxPrice must be greater than or equal to minPrice' });
+  if (value.categoryId && value.categoryIds) ctx.addIssue({ code: 'custom', path: ['categoryIds'], message: 'Use either categoryId or categoryIds, not both' });
 });
 
 export class MarketplaceService {
