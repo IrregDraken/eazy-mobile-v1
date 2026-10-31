@@ -116,6 +116,16 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               .whereType<Map>()
               .map((entry) => Map<String, dynamic>.from(entry))
               .toList();
+      final pendingDeposit = transactions.firstWhere(
+        (entry) =>
+            entry['type']?.toString().toLowerCase() == 'deposit' &&
+            entry['status']?.toString().toLowerCase() == 'pending',
+        orElse: () => const <String, dynamic>{},
+      );
+      final pendingDepositId = pendingDeposit['id']?.toString();
+      if (pendingDepositId != null && pendingDepositId.isNotEmpty) {
+        await storage.write(key: 'eazy.pendingPayment', value: pendingDepositId);
+      }
       try {
         final accountResult = await api.get(
           'wallet/virtual-account',
@@ -175,6 +185,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         );
       }
     } on ApiException catch (e) {
+      // Refresh the activity list because the backend may have persisted a pending
+      // payment intent even when the provider initialization response timed out.
+      await load();
       _showError(e.message);
     } finally {
       if (mounted) setState(() => busy = false);
@@ -1186,6 +1199,18 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               ],
             ),
             actions: [
+              if (id != null &&
+                  id.isNotEmpty &&
+                  detail['type']?.toString().toLowerCase() == 'deposit' &&
+                  detail['status']?.toString().toLowerCase() == 'pending')
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(dialogContext);
+                    await storage.write(key: 'eazy.pendingPayment', value: id);
+                    await _reconcilePendingPayment(silent: false);
+                  },
+                  child: const Text('Verify payment'),
+                ),
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('Close'),
