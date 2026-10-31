@@ -145,7 +145,7 @@ class _CartPageState extends State<CartPage> {
                 ),
               )
               : items.isEmpty
-              ? const Center(
+              ? Center(
                 child: Text(
                   'Your bag is empty.',
                   style: TextStyle(color: context.eazyMuted),

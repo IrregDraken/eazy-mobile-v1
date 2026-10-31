@@ -85,7 +85,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'When were you born?',

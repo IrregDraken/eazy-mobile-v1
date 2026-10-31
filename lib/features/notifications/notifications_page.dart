@@ -188,7 +188,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               ? ListView(
                 children: [
                   const SizedBox(height: 180),
-                  const Center(
+                  Center(
                     child: Text(
                       'You’re all caught up.',
                       style: TextStyle(color: context.eazyMuted),

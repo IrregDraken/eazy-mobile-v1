@@ -286,16 +286,16 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
             ),
             const SizedBox(height: 4),
             if (search.text.trim().length < 2)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
                   'Search for at least 2 characters to find Eazy users.',
                   style: TextStyle(color: context.eazyMuted),
                 ),
               )
             else if (!peopleLoading && people.isEmpty && error == null)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
                   'No matching people yet. Try another name or username.',
                   style: TextStyle(color: context.eazyMuted),
@@ -329,8 +329,8 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               )
             else if (products.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
                   'No listings are available yet. You can come back later.',
                   style: TextStyle(color: context.eazyMuted),

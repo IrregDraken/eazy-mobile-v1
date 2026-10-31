@@ -79,8 +79,8 @@ class _BlocksPageState extends State<BlocksPage> {
                         style: TextStyle(color: Theme.of(context).colorScheme.error),
                       ),
                     if (items.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(40),
+                      Padding(
+                        padding: const EdgeInsets.all(40),
                         child: Center(
                           child: Text(
                             'No blocked accounts.',

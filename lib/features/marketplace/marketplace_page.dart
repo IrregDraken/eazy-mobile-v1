@@ -108,7 +108,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -538,7 +538,7 @@ class _ProductPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     color: Theme.of(context).colorScheme.surfaceContainerHighest,
-    child: const Center(
+    child: Center(
       child: Icon(
         Icons.shopping_bag_outlined,
         size: 42,

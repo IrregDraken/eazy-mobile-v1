@@ -144,7 +144,7 @@ class _AssistPageState extends State<AssistPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Eazy Assist', style: TextStyle(fontWeight: FontWeight.w900)),
@@ -255,7 +255,7 @@ class _ThinkingBubble extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
