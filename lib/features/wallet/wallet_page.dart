@@ -489,7 +489,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     final newPin = TextEditingController();
     final confirmation = TextEditingController();
     final changing = paymentPinConfigured;
-    final submitted = await showDialog<bool>(
+    final action = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(changing ? 'Change payment PIN' : 'Create payment PIN'),
@@ -532,20 +532,31 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
           ],
         ),
         actions: [
+          if (changing)
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, 'reset'),
+              child: const Text('Forgot PIN?'),
+            ),
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
+            onPressed: () => Navigator.pop(dialogContext, 'save'),
             child: Text(changing ? 'Save new PIN' : 'Create PIN'),
           ),
         ],
       ),
     );
-    if (submitted == true && mounted) {
+    if (action != null && mounted) {
       try {
-        if (changing) {
+        if (action == 'reset') {
+          await api.post(
+            'wallet/payment-pin/reset',
+            auth: true,
+            body: {'pin': newPin.text, 'confirmation': confirmation.text},
+          );
+        } else if (changing) {
           await api.post(
             'wallet/payment-pin/change',
             auth: true,
