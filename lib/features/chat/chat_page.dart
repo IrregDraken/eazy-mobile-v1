@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -434,6 +435,31 @@ class _ConversationPageState extends State<ConversationPage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
+  Future<void> _pickCamera() async {
+    if (sending) return;
+    try {
+      final upload = await media.pickAndUpload(
+        kind: 'message',
+        source: ImageSource.camera,
+      );
+      if (upload != null && mounted) {
+        setState(() => pendingAttachments.add(upload));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not capture a photo. Please try again.')),
+        );
       }
     }
   }
@@ -1042,12 +1068,22 @@ class _ConversationPageState extends State<ConversationPage> {
                         ),
                         icon: const Icon(Icons.add_rounded, size: 25),
                       ),
+                      IconButton(
+                        tooltip: 'Take a photo',
+                        onPressed: sending ? null : _pickCamera,
+                        visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          foregroundColor: context.eazyAccent,
+                        ),
+                        icon: const Icon(Icons.camera_alt_outlined, size: 21),
+                      ),
                       Expanded(
                         child: TextField(
                           controller: draft,
                           maxLines: 5,
                           minLines: 1,
                           textCapitalization: TextCapitalization.sentences,
+                          onSubmitted: (_) => send(),
                           decoration: InputDecoration(
                             filled: false,
                             border: InputBorder.none,
