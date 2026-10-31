@@ -391,12 +391,12 @@ class _SocialPageState extends State<SocialPage> {
             ),
           ),
           SliverToBoxAdapter(child: StoriesTray(api: api, media: media)),
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Divider(height: 1, color: context.eazyBorder),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 10)),
+          SliverToBoxAdapter(child: SizedBox(height: 10)),
           if (loading && posts.isEmpty)
-            const SliverToBoxAdapter(child: _FeedLoadingSkeleton()),
+            SliverToBoxAdapter(child: _FeedLoadingSkeleton()),
           if (!loading && error != null && posts.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
@@ -411,7 +411,7 @@ class _SocialPageState extends State<SocialPage> {
               ),
             ),
           if (loading && posts.isNotEmpty)
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: LinearProgressIndicator(minHeight: 2),
             ),
           if (!loading && error != null && posts.isNotEmpty)
@@ -423,19 +423,19 @@ class _SocialPageState extends State<SocialPage> {
                 ),
                 child: Text(
                   'Could not refresh feed: $error',
-                  style: const TextStyle(color: EazyColors.red),
+                  style: TextStyle(color: EazyColors.red),
                 ),
               ),
             ),
           if (posts.isNotEmpty && loadingMore)
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.all(22),
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               ),
             ),
           if (!loading && !hasMore && posts.isNotEmpty)
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(20, 12, 20, 100),
                 child: Card(
@@ -686,7 +686,7 @@ class _PostState extends State<_Post> {
                                         Text(
                                           commentError!,
                                           textAlign: TextAlign.center,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             color: context.eazyMuted,
                                           ),
                                         ),
@@ -763,7 +763,7 @@ class _PostState extends State<_Post> {
                               Expanded(
                                 child: Text(
                                   'Replying to @$replyToName',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: context.eazyMuted,
                                     fontSize: 12,
                                   ),
@@ -926,13 +926,13 @@ class _PostState extends State<_Post> {
                         children: [
                           Text(
                             author['displayName']?.toString() ?? 'Eazy user',
-                            style: const TextStyle(fontWeight: FontWeight.w800),
+                            style: TextStyle(fontWeight: FontWeight.w800),
                           ),
                           Text(
                             author['username']?.toString().isNotEmpty == true
                                 ? '@${author['username']}'
                                 : 'Eazy',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: context.eazyMuted,
                               fontSize: 12,
                             ),
@@ -1099,7 +1099,7 @@ class _PostState extends State<_Post> {
               const SizedBox(height: 14),
               Text(
                 widget.post['content']?.toString() ?? '',
-                style: const TextStyle(height: 1.45, fontSize: 15),
+                style: TextStyle(height: 1.45, fontSize: 15),
               ),
               if (widget.post['taggedUsers'] is List &&
                   (widget.post['taggedUsers'] as List).isNotEmpty)
@@ -1113,7 +1113,7 @@ class _PostState extends State<_Post> {
                             .map(
                               (person) => Text(
                                 '@${person['username']}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: context.eazyAccent,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
@@ -1462,7 +1462,7 @@ class _CommentTileState extends State<_CommentTile> {
                         name.isEmpty
                             ? 'E'
                             : name.characters.first.toUpperCase(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: context.eazyAccent,
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
@@ -1477,7 +1477,7 @@ class _CommentTileState extends State<_CommentTile> {
                 children: [
                   Text(
                     username == null || username.isEmpty ? name : '@$username',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 12,
                     ),
@@ -1485,7 +1485,7 @@ class _CommentTileState extends State<_CommentTile> {
                   const SizedBox(height: 3),
                   Text(
                     widget.comment['content']?.toString() ?? '',
-                    style: const TextStyle(height: 1.4),
+                    style: TextStyle(height: 1.4),
                   ),
                   Row(
                     children: [
@@ -1496,7 +1496,7 @@ class _CommentTileState extends State<_CommentTile> {
                             created.length >= 10
                                 ? created.substring(0, 10)
                                 : created,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: context.eazyMuted,
                               fontSize: 10,
                             ),
@@ -1535,7 +1535,7 @@ class _CommentTileState extends State<_CommentTile> {
                 if (likes > 0)
                   Text(
                     '$likes',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       color: context.eazyMuted,
                     ),
@@ -1648,7 +1648,7 @@ class _SuggestedAccounts extends StatelessWidget {
                                   name.isEmpty
                                       ? 'E'
                                       : name.characters.first.toUpperCase(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: context.eazyAccent,
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -1660,7 +1660,7 @@ class _SuggestedAccounts extends StatelessWidget {
                         name.isEmpty ? 'Eazy member' : name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
                         ),
@@ -1669,7 +1669,7 @@ class _SuggestedAccounts extends StatelessWidget {
                         username.isEmpty ? 'On Eazy' : '@$username',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: context.eazyMuted,
                           fontSize: 10,
                         ),
@@ -1686,7 +1686,7 @@ class _SuggestedAccounts extends StatelessWidget {
                           ),
                           child: Text(
                             isFollowed ? 'Following' : 'Follow',
-                            style: const TextStyle(fontSize: 11),
+                            style: TextStyle(fontSize: 11),
                           ),
                         ),
                       ),
