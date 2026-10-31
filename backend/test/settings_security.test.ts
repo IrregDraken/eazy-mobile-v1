@@ -30,15 +30,15 @@ function fakePool(client: { query: (sql: string, values?: unknown[]) => Promise<
 
 function authFixture() {
   const sessions = new Map<string, { id: string; user_id: string; provider_session_id: string; expires_at: string; created_at: string; revoked_at: string | null }>();
-  const profiles = new Map<string, { user_id: string; username: string; display_name: string }>();
+  const profiles = new Map<string, { user_id: string; username: string; display_name: string; onboarding_status: 'profile_incomplete' | 'onboarding_complete' }>();
   const security: Array<{ event: string; metadata: string }> = [];
   const pool = fakePool({
     async query(sql: string, values: unknown[] = []) {
       if (/^(BEGIN|COMMIT|ROLLBACK)$/.test(sql)) return { rows: [], rowCount: 0 };
       if (sql.includes('INSERT INTO users')) return { rows: [{ id: userA, firebase_uid: 'firebase-a', email: null, phone: null, status: 'active' }], rowCount: 1 };
-      if (sql.includes('SELECT user_id, username, display_name FROM profiles')) return { rows: profiles.has(userA) ? [profiles.get(userA)] : [], rowCount: profiles.has(userA) ? 1 : 0 };
+      if (sql.includes('SELECT user_id, username, display_name, onboarding_status FROM profiles')) return { rows: profiles.has(userA) ? [profiles.get(userA)] : [], rowCount: profiles.has(userA) ? 1 : 0 };
       if (sql.includes('INSERT INTO profiles')) {
-        const row = { user_id: userA, username: 'user_firebasea', display_name: 'A' };
+        const row = { user_id: userA, username: 'user_firebasea', display_name: 'A', onboarding_status: 'profile_incomplete' as const };
         profiles.set(userA, row);
         return { rows: [row], rowCount: 1 };
       }
