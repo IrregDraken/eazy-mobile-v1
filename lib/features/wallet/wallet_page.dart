@@ -576,6 +576,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<String?> _requestPaymentPin() async {
+    if (!paymentPinConfigured) {
+      _showError('Create a payment PIN in Wallet settings before sending money.');
+      return null;
+    }
     final controller = TextEditingController();
     final pin = await showDialog<String>(
       context: context,
@@ -1091,6 +1095,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       _showMessage('Transfer completed and wallet activity refreshed.');
     } on ApiException catch (e) {
       _showError(e.message);
+    } catch (_) {
+      _showError('Payment authorization could not be completed. No payment was submitted.');
     } finally {
       if (mounted) setState(() => busy = false);
     }
