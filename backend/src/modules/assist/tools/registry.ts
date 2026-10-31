@@ -88,7 +88,7 @@ export class AssistToolRegistry {
       return { tool: 'get_wallet_balance', wallet: safeWallet.data };
     }
     if (name === 'translate_text') {
-      if (!this.translationAvailable()) throw new AppError('SERVICE_UNAVAILABLE', 'Eazy Translation provider is unavailable');
+      if (!await this.translationAvailable()) throw new AppError('SERVICE_UNAVAILABLE', 'Eazy Translation provider is unavailable');
       const parsed = translateSchema.safeParse(input);
       if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid translation request');
       const result = await this.translation.translate(userId, parsed.data);
@@ -102,8 +102,8 @@ export class AssistToolRegistry {
     throw new AppError('BAD_REQUEST', 'Unsupported Assist capability');
   }
 
-  private translationAvailable(): boolean {
-    try { return this.translation.capabilities().providerAvailable; } catch { return false; }
+  private async translationAvailable(): Promise<boolean> {
+    try { return (await this.translation.capabilities()).providerAvailable; } catch { return false; }
   }
 }
 
