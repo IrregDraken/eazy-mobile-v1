@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:io';
@@ -18,10 +19,43 @@ class _NotificationsPageState extends State<NotificationsPage> {
   int unread = 0;
   String error = '';
   bool loading = true, pushBusy = false;
+  StreamSubscription<String>? _tokenRefreshSubscription;
   @override
   void initState() {
     super.initState();
     load();
+    _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+      _registerDeviceToken(token);
+    });
+    _registerExistingTokenIfAuthorized();
+  }
+
+  @override
+  void dispose() {
+    _tokenRefreshSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _registerExistingTokenIfAuthorized() async {
+    try {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized &&
+          settings.authorizationStatus != AuthorizationStatus.provisional) {
+        return;
+      }
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) await _registerDeviceToken(token);
+    } catch (_) {
+      // Push registration can retry on the next token refresh or explicit enable.
+    }
+  }
+
+  Future<void> _registerDeviceToken(String token) async {
+    await api.post(
+      'notifications/devices',
+      body: {'token': token, 'platform': Platform.isIOS ? 'ios' : 'android'},
+      auth: true,
+    );
   }
 
   Future<void> load() async {
