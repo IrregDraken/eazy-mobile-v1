@@ -15,7 +15,7 @@ export async function buildAssistMessages(
   history: readonly AssistMessageRow[],
   currentMessage: string,
   tools: Pick<AssistToolRegistry, 'list'>
-): AIProviderMessage[] {
+): Promise<AIProviderMessage[]> {
   const definitions = JSON.stringify(await tools.list());
   const system = [
     'You are Eazy Assist, a text-only helper inside the Eazy marketplace application.',
