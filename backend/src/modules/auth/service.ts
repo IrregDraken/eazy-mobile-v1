@@ -10,11 +10,12 @@ import type { AppConfig } from '../../config/env.js';
 export interface AuthenticatedIdentity extends AuthContext {
   firebaseUid: string;
   sessionId: string;
+  account: { user: AuthUserRecord['user']; profile: AuthUserRecord['profile'] };
 }
 
 export interface AuthUserRecord {
   user: { id: string; firebase_uid: string; email: string | null; phone: string | null; status: string };
-  profile: { user_id: string; username: string; display_name: string } | null;
+  profile: { user_id: string; username: string; display_name: string; onboarding_status: 'profile_incomplete' | 'onboarding_complete' } | null;
   session: { id: string; expires_at: string; created_at: string };
 }
 
@@ -139,7 +140,7 @@ export class AuthService {
   }
 
   private async ensureProfile(client: DbClient, userId: string, firebaseUid: string, claims: Record<string, unknown>) {
-    const existing = await client.query<{ user_id: string; username: string; display_name: string }>('SELECT user_id, username, display_name FROM profiles WHERE user_id = $1 LIMIT 1', [userId]);
+    const existing = await client.query<{ user_id: string; username: string; display_name: string; onboarding_status: 'profile_incomplete' | 'onboarding_complete' }>('SELECT user_id, username, display_name, onboarding_status FROM profiles WHERE user_id = $1 LIMIT 1', [userId]);
     if (existing.rows[0]) return existing.rows[0] ?? null;
     const email = stringClaim(claims, 'email') ?? '';
     const preferred = stringClaim(claims, 'name') ?? email.split('@')[0] ?? '';
@@ -149,8 +150,8 @@ export class AuthService {
       const suffix = attempt === 0 ? '' : `_${attempt + 1}`;
       const username = `${base.slice(0, 32 - suffix.length)}${suffix}`;
       try {
-        const created = await client.query<{ user_id: string; username: string; display_name: string }>(
-          `INSERT INTO profiles (user_id, username, display_name) VALUES ($1, $2, $3) RETURNING user_id, username, display_name`,
+        const created = await client.query<{ user_id: string; username: string; display_name: string; onboarding_status: 'profile_incomplete' | 'onboarding_complete' }>(
+          `INSERT INTO profiles (user_id, username, display_name) VALUES ($1, $2, $3) RETURNING user_id, username, display_name, onboarding_status`,
           [userId, username, stringClaim(claims, 'name') ?? 'Eazy User']
         );
         return created.rows[0] ?? null;
