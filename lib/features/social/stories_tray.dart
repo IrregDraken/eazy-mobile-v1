@@ -77,12 +77,12 @@ class _StoriesTrayState extends State<StoriesTray> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.image_outlined),
+                    leading: Icon(Icons.image_outlined),
                     title: const Text('Photo story'),
                     onTap: () => Navigator.pop(ctx, 'image'),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.video_library_outlined),
+                    leading: Icon(Icons.video_library_outlined),
                     title: const Text('Video story'),
                     onTap: () => Navigator.pop(ctx, 'video'),
                   ),
@@ -218,9 +218,9 @@ class _StoriesTrayState extends State<StoriesTray> {
           if (error != null && stories.isEmpty)
             InkWell(
               onTap: load,
-              child: const Padding(
-                padding: EdgeInsets.all(8),
-                child: Icon(Icons.refresh_rounded, color: EazyColors.muted),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(Icons.refresh_rounded, color: context.eazyMuted),
               ),
             ),
         ],
@@ -258,7 +258,7 @@ class _StoryAvatar extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: seen ? EazyColors.border : EazyColors.green,
+                  color: seen ? context.eazyBorder : context.eazyAccent,
                   width: seen ? 1.4 : 2.4,
                 ),
               ),
@@ -274,9 +274,9 @@ class _StoryAvatar extends StatelessWidget {
                             : null,
                     child:
                         imageUrl == null || !imageUrl!.startsWith('http')
-                            ? const Icon(
+                            ? Icon(
                               Icons.person_rounded,
-                              color: EazyColors.green,
+                              color: context.eazyAccent,
                               size: 28,
                             )
                             : null,
@@ -287,16 +287,16 @@ class _StoryAvatar extends StatelessWidget {
                       bottom: -1,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: EazyColors.green,
+                          color: context.eazyAccent,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: EazyColors.canvas,
+                            color: context.eazyOnAccent,
                             width: 2,
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.add_rounded,
-                          color: EazyColors.canvas,
+                          color: context.eazyOnAccent,
                           size: 17,
                         ),
                       ),
@@ -493,7 +493,7 @@ class _StoryViewerState extends State<StoryViewer> {
                       width: double.infinity,
                       height: double.infinity,
                       errorBuilder:
-                          (_, _, _) => const Icon(
+                          (_, _, _) => Icon(
                             Icons.broken_image_outlined,
                             color: Colors.white,
                             size: 48,
@@ -594,14 +594,14 @@ class _StoryViewerState extends State<StoryViewer> {
                             }
                           }
                         },
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.delete_outline_rounded,
                           color: Colors.white,
                         ),
                       ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close_rounded,
                         color: Colors.white,
                       ),
@@ -691,7 +691,7 @@ class _StoryViewerState extends State<StoryViewer> {
                                       color: Colors.white,
                                     ),
                                   )
-                                  : const Icon(
+                                  : Icon(
                                     Icons.send_rounded,
                                     color: Colors.white,
                                   ),

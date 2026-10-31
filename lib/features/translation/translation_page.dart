@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/ui/eazy_assist_fab.dart';
 
 class TranslationPage extends StatefulWidget {
   const TranslationPage({super.key});
@@ -38,6 +39,7 @@ class _TranslationPageState extends State<TranslationPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    floatingActionButton: const EazyAssistFab(),
     appBar: AppBar(
       title: const Text(
         'Translation',
@@ -47,16 +49,6 @@ class _TranslationPageState extends State<TranslationPage> {
     body: ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Card(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'Translation uses the production provider boundary. If no vendor is configured, Eazy reports that honestly instead of fabricating a result.',
-              style: TextStyle(color: EazyColors.muted, height: 1.35),
-            ),
-          ),
-        ),
-        const SizedBox(height: 18),
         TextField(
           controller: input,
           minLines: 6,

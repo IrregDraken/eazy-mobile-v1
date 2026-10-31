@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -35,6 +34,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   String? username;
   List<Map<String, dynamic>> transactions = [];
   Map<String, dynamic>? pendingDeposit;
+  List<Map<String, dynamic>> walletAlerts = [];
 
   @override
   void initState() {
@@ -129,6 +129,22 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         await storage.write(key: 'eazy.pendingPayment', value: pendingDepositId);
       } else {
         await storage.delete(key: 'eazy.pendingPayment');
+      }
+      try {
+        final alertResult = await api.get(
+          'notifications?page=1&limit=50',
+          auth: true,
+        );
+        walletAlerts = (alertResult['items'] as List? ?? const [])
+            .whereType<Map>()
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .where((entry) {
+              final type = entry['type']?.toString().toLowerCase();
+              return type == 'payment' || type == 'order';
+            })
+            .toList();
+      } catch (_) {
+        walletAlerts = [];
       }
       try {
         final accountResult = await api.get(
@@ -1145,6 +1161,13 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> _readWalletAlert(String id) async {
+    try {
+      await api.post('notifications/$id/read', auth: true);
+      await load();
+    } catch (_) {}
+  }
+
   Future<void> _showAllTransactions() async {
     showModalBottomSheet<void>(
       context: context,
@@ -1513,6 +1536,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               ],
             ),
           ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(error!, style: const TextStyle(color: EazyColors.red)),
+          ],
           if (pendingDeposit != null) ...[
             const SizedBox(height: 12),
             Card(
@@ -1523,7 +1550,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.hourglass_top_rounded, color: EazyColors.muted),
+                        Icon(Icons.hourglass_top_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
@@ -1541,9 +1568,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'This deposit has not been credited yet. Check its status before starting another funding attempt.',
-                      style: TextStyle(color: EazyColors.muted, height: 1.4),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -1559,64 +1586,50 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               ),
             ),
           ],
-          if (error != null) ...[
-            const SizedBox(height: 12),
-            Text(error!, style: const TextStyle(color: EazyColors.red)),
-          ],
           const SizedBox(height: 22),
-          Card(
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => context.push('/assist'),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: EazyColors.green.withValues(alpha: .14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: EazyColors.green,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Easy Access',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Tap to open Eazy Assist and get help with your wallet.',
-                            style: TextStyle(
-                              color: EazyColors.muted,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: EazyColors.muted,
-                    ),
-                  ],
+          if (walletAlerts.isNotEmpty) [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Wallet alerts',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                  ),
                 ),
-              ),
+                Text('${walletAlerts.length}'),
+              ],
             ),
-          ),
-          const SizedBox(height: 22),
+            const SizedBox(height: 10),
+            ...walletAlerts.take(5).map((alert) {
+              final id = alert['id']?.toString();
+              final isRead = alert['isRead'] == true;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: EazyColors.green.withValues(alpha: .12),
+                    child: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: EazyColors.green,
+                    ),
+                  ),
+                  title: Text(
+                    alert['title']?.toString() ?? 'Wallet update',
+                    style: TextStyle(
+                      fontWeight: isRead ? FontWeight.w600 : FontWeight.w900,
+                    ),
+                  ),
+                  subtitle: Text(alert['body']?.toString() ?? ''),
+                  trailing: isRead
+                      ? null
+                      : const Icon(Icons.circle, size: 9, color: EazyColors.green),
+                  onTap: id == null ? null : () => _readWalletAlert(id),
+                ),
+              );
+            }),
+            const SizedBox(height: 14),
+          ],
+                    const SizedBox(height: 22),
           Row(
             children: [
               const Expanded(
