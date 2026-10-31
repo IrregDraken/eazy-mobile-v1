@@ -65,19 +65,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Future<void> load() async {
     if (mounted) setState(() => error = '');
     try {
-      final responses = await Future.wait([
-        api.get('notifications?page=1&limit=30', auth: true),
-        api.get('notifications/unread-count', auth: true),
-      ]);
-      final r = responses[0];
-      final c = responses[1];
+      final result = await api.get('notifications?page=1&limit=50', auth: true);
       if (mounted) {
         setState(() {
-          items = (r['items'] as List? ?? [])
+          items = (result['items'] as List? ?? [])
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
+              .where((item) {
+                final type = item['type']?.toString().toLowerCase();
+                return type != 'payment' && type != 'order';
+              })
               .toList();
-          unread = (c['unreadCount'] as num?)?.toInt() ?? 0;
+          unread = items.where((item) => item['isRead'] != true).length;
         });
       }
     } on ApiException catch (e) {
