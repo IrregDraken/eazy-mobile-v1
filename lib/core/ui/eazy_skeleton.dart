@@ -20,9 +20,8 @@ class EazySkeletonBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: EazyColors.surfaceRaised,
+        color: context.eazySurfaceRaised,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: EazyColors.border.withValues(alpha: .7)),
       ),
     ),
   );
@@ -91,16 +90,25 @@ class _EazyShimmerState extends State<_EazyShimmer>
       shaderCallback: (bounds) {
         final progress = _controller.value;
         final start = -1.0 + (progress * 3);
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return LinearGradient(
           begin: Alignment(start - .7, 0),
           end: Alignment(start + .7, 0),
-          colors: const [
-            Color(0xFF102119),
-            Color(0xFF1C3B2B),
-            Color(0xFF48F59A),
-            Color(0xFF1C3B2B),
-            Color(0xFF102119),
-          ],
+          colors: isDark
+              ? const [
+                  Color(0xFF102119),
+                  Color(0xFF1C3B2B),
+                  Color(0xFF48F59A),
+                  Color(0xFF1C3B2B),
+                  Color(0xFF102119),
+                ]
+              : const [
+                  Color(0xFFF0F5F1),
+                  Color(0xFFE3EEE7),
+                  Color(0xFFD1E6D8),
+                  Color(0xFFE3EEE7),
+                  Color(0xFFF0F5F1),
+                ],
           stops: const [0, .32, .5, .68, 1],
         ).createShader(bounds);
       },
