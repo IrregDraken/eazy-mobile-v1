@@ -48,7 +48,7 @@ export class ProfileService {
     if (!usernamePattern.test(normalized)) throw new AppError('VALIDATION_ERROR', 'Invalid username');
     const profile = await this.repository.getPublicByUsername(normalized, viewerId);
     if (!profile) throw new AppError('NOT_FOUND', 'Profile not found');
-    return { userId: profile.user_id, username: profile.username, displayName: profile.display_name, firstName: profile.first_name, lastName: profile.last_name, bio: profile.bio, avatarUrl: await this.resolveAvatar(profile.user_id, profile.avatar_url) };
+    return { username: profile.username, displayName: profile.display_name, firstName: profile.first_name, lastName: profile.last_name, bio: profile.bio, avatarUrl: await this.resolveAvatar(profile.user_id, profile.avatar_url) };
   }
 
   async searchPublic(query: string, viewerId: string) {

@@ -148,9 +148,9 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         if (!own) api.get('social/relationship/$actualUsername', auth: true),
         api.get(
-          'marketplace/products?sellerId=' +
-              Uri.encodeComponent(nextProfile['userId'].toString()) +
-              '&status=active&page=1&limit=6',
+          'marketplace/sellers/' +
+              Uri.encodeComponent(actualUsername) +
+              '/products?page=1&limit=6',
           auth: true,
         ),
       ]);
@@ -1344,9 +1344,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             if (error != null && ownPosts.isEmpty && !loading)
-              const SliverToBoxAdapter(
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(20),
                   child: Text(
                     'Could not refresh all profile content. Pull down to retry.',
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),

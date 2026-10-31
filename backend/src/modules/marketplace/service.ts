@@ -37,6 +37,9 @@ export const productUpdateSchema = z.object({
 
 export const inventorySchema = z.object({ availableQuantity: z.number().int().min(0).max(1_000_000) }).strict();
 export const productIdSchema = z.object({ id: z.string().uuid() });
+export const sellerUsernameSchema = z.object({
+  username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9_.]+$/)
+}).strict();
 export const productSearchSchema = z.object({
   q: z.string().trim().min(2).max(80).optional(),
   categoryId: z.string().uuid().optional(),
@@ -67,6 +70,13 @@ export class MarketplaceService {
     const result = await this.repository.products({ ...input, viewerId } as ProductFilters);
     const items = await Promise.all(result.items.map(product => this.attachMediaUrls(product)));
     return { items, meta: paginationMeta(input, result.total) };
+  }
+
+  async sellerProductsByUsername(username: string, input: z.infer<typeof productSearchSchema>, viewerId?: string) {
+    const sellerId = await this.repository.userIdByUsername(username);
+    if (!sellerId) throw new AppError('NOT_FOUND', 'Seller not found');
+    const query = productSearchSchema.parse({ ...input, sellerId, status: 'active' });
+    return this.search(query, viewerId);
   }
 
   async detail(productId: string, viewerId?: string) {
