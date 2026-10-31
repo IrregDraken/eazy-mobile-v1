@@ -575,7 +575,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         }
         if (mounted) {
           setState(() => paymentPinConfigured = true);
-          _showMessage(changing ? 'Payment PIN updated.' : 'Payment PIN created.');
+          _showMessage(action == 'reset' ? 'Payment PIN reset.' : changing ? 'Payment PIN updated.' : 'Payment PIN created.');
         }
       } on ApiException catch (e) {
         _showError(e.message);
