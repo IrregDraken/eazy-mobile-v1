@@ -16,4 +16,4 @@ export const translateSchema = z.object({
   }
 });
 
-export const translationRequestIdSchema = z.object({ requestId: z.string().uuid() }).strict();
+export const translationRequestIdSchema = z.object({ requestId: z.string().guid() }).strict();
