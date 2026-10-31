@@ -210,8 +210,7 @@ class _ConversationPageState extends State<ConversationPage> {
     setState(() => _selectedChatWallpaper = selected);
     try {
       await draftStorage.write(
-        key: 'eazy.chat.wallpaper.' +
-            (_wallpaperDarkMode == true ? 'dark' : 'light'),
+        key: _wallpaperPreferenceKey,
         value: selected,
       );
     } catch (_) {
