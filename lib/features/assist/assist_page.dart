@@ -150,7 +150,7 @@ class _AssistPageState extends State<AssistPage> {
             Text('Eazy Assist', style: TextStyle(fontWeight: FontWeight.w900)),
             Text(
               'Useful help, grounded in your Eazy context',
-              style: TextStyle(fontSize: 11, color: EazyColors.muted),
+              style: TextStyle(fontSize: 11, color: context.eazyMuted),
             ),
           ],
         ),
@@ -264,7 +264,7 @@ class _ThinkingBubble extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
           SizedBox(width: 9),
-          Text('Eazy is thinking…', style: TextStyle(color: EazyColors.muted)),
+          Text('Eazy is thinking…', style: TextStyle(color: context.eazyMuted)),
         ],
       ),
     ),
@@ -329,25 +329,25 @@ class _EmptyAssist extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: EazyColors.green.withValues(alpha: .12),
+              color: context.eazyAccent.withValues(alpha: .12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.auto_awesome_rounded,
               size: 34,
-              color: EazyColors.green,
+              color: context.eazyAccent,
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Ask Eazy',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Get help with your Eazy experience when the AI provider is available.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: EazyColors.muted, height: 1.4),
+            style: TextStyle(color: context.eazyMuted, height: 1.4),
           ),
         ],
       ),
@@ -371,12 +371,12 @@ class _StatusBanner extends StatelessWidget {
     margin: const EdgeInsets.fromLTRB(14, 10, 14, 0),
     padding: const EdgeInsets.all(13),
     decoration: BoxDecoration(
-      color: (isError ? EazyColors.red : EazyColors.amber).withValues(
+      color: (isError ? Theme.of(context).colorScheme.error : EazyColors.amber).withValues(
         alpha: .10,
       ),
       borderRadius: BorderRadius.circular(14),
       border: Border.all(
-        color: (isError ? EazyColors.red : EazyColors.amber).withValues(
+        color: (isError ? Theme.of(context).colorScheme.error : EazyColors.amber).withValues(
           alpha: .30,
         ),
       ),
@@ -386,13 +386,13 @@ class _StatusBanner extends StatelessWidget {
         Icon(
           icon,
           size: 19,
-          color: isError ? EazyColors.red : EazyColors.amber,
+          color: isError ? Theme.of(context).colorScheme.error : EazyColors.amber,
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             message,
-            style: const TextStyle(color: EazyColors.muted, height: 1.35),
+            style: TextStyle(color: context.eazyMuted, height: 1.35),
           ),
         ),
       ],

@@ -423,7 +423,7 @@ class _SocialPageState extends State<SocialPage> {
                 ),
                 child: Text(
                   'Could not refresh feed: $error',
-                  style: TextStyle(color: EazyColors.red),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
             ),
@@ -1225,7 +1225,7 @@ class _PostState extends State<_Post> {
                             ),
                     icon: Icon(
                       liked ? Icons.favorite : Icons.favorite_border,
-                      color: liked ? EazyColors.red : null,
+                      color: liked ? Theme.of(context).colorScheme.error : null,
                     ),
                     label: Text('${widget.post['likeCount'] ?? 0}'),
                   ),
@@ -1354,7 +1354,7 @@ class _CommentTileState extends State<_CommentTile> {
                   ListTile(
                     leading: Icon(
                       Icons.delete_outline_rounded,
-                      color: EazyColors.red,
+                      color: Theme.of(context).colorScheme.error,
                     ),
                     title: const Text('Delete comment'),
                     onTap: () => Navigator.pop(ctx, 'delete'),
@@ -1528,7 +1528,7 @@ class _CommentTileState extends State<_CommentTile> {
                     liked
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
-                    color: liked ? EazyColors.red : context.eazyMuted,
+                    color: liked ? Theme.of(context).colorScheme.error : context.eazyMuted,
                     size: 18,
                   ),
                 ),

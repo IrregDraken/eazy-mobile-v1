@@ -215,7 +215,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
       actions: [
         TextButton(
           onPressed: () => context.go('/home'),
-          child: const Text('Skip'),
+          child: Text('Skip'),
         ),
       ],
     ),
@@ -237,7 +237,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
             Text(
               'Follow friends, start conversations, and make Eazy yours.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: EazyColors.muted,
+                color: context.eazyMuted,
                 height: 1.4,
               ),
             ),
@@ -259,7 +259,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
                       _searchPeople(search.text.trim());
                     }
                   },
-                  icon: const Icon(Icons.search_rounded),
+                  icon: Icon(Icons.search_rounded),
                   tooltip: 'Search people',
                 ),
               ),
@@ -290,7 +290,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text(
                   'Search for at least 2 characters to find Eazy users.',
-                  style: TextStyle(color: EazyColors.muted),
+                  style: TextStyle(color: context.eazyMuted),
                 ),
               )
             else if (!peopleLoading && people.isEmpty && error == null)
@@ -298,19 +298,19 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text(
                   'No matching people yet. Try another name or username.',
-                  style: TextStyle(color: EazyColors.muted),
+                  style: TextStyle(color: context.eazyMuted),
                 ),
               )
             else
               ...people.map(_personTile),
             if (error != null) ...[
               const SizedBox(height: 8),
-              Text(error!, style: const TextStyle(color: EazyColors.red)),
+              Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
                   onPressed: load,
-                  child: const Text('Try again'),
+                  child: Text('Try again'),
                 ),
               ),
             ],
@@ -333,7 +333,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text(
                   'No listings are available yet. You can come back later.',
-                  style: TextStyle(color: EazyColors.muted),
+                  style: TextStyle(color: context.eazyMuted),
                 ),
               )
             else
@@ -396,15 +396,15 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
                         name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                        style: TextStyle(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         username.isEmpty ? 'Eazy member' : '@$username',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: EazyColors.muted,
+                        style: TextStyle(
+                          color: context.eazyMuted,
                           fontSize: 13,
                         ),
                       ),
@@ -502,12 +502,12 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
           ),
           title: Text(
             product['name']?.toString() ?? 'Eazy listing',
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: TextStyle(fontWeight: FontWeight.w800),
           ),
           subtitle: Text(
             '${product['currency'] ?? 'NGN'} ${product['priceAmount'] ?? ''}',
-            style: const TextStyle(
-              color: EazyColors.greenDeep,
+            style: TextStyle(
+              color: context.eazyAccent,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -518,8 +518,8 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
   }
 
   Widget _productPlaceholder() => Container(
-    color: EazyColors.greenDeep.withValues(alpha: .10),
+    color: context.eazyAccent.withValues(alpha: .10),
     alignment: Alignment.center,
-    child: const Icon(Icons.shopping_bag_outlined, color: EazyColors.greenDeep),
+    child: Icon(Icons.shopping_bag_outlined, color: context.eazyAccent),
   );
 }

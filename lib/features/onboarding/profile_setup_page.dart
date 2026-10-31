@@ -71,7 +71,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: EazyColors.border),
+                border: Border.all(color: context.eazyBorder),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -80,7 +80,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     width: 38,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: EazyColors.muted.withValues(alpha: .35),
+                      color: context.eazyMuted.withValues(alpha: .35),
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
@@ -97,7 +97,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'You must be at least 18 to use Eazy.',
-                      style: TextStyle(color: EazyColors.muted),
+                      style: TextStyle(color: context.eazyMuted),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -254,16 +254,16 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'A few details unlock your social identity, wallet and marketplace experience.',
-            style: TextStyle(color: EazyColors.muted, height: 1.5),
+            style: TextStyle(color: context.eazyMuted, height: 1.5),
           ),
           Center(
             child: Column(
               children: [
                 CircleAvatar(
                   radius: 42,
-                  backgroundColor: EazyColors.green.withValues(alpha: .10),
+                  backgroundColor: context.eazyAccent.withValues(alpha: .10),
                   backgroundImage: avatarLocalPath != null
                       ? FileImage(File(avatarLocalPath!))
                       : widget.auth.profile?['avatarUrl'] is String
@@ -271,20 +271,20 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                           : null,
                   child: avatarLocalPath != null || widget.auth.profile?['avatarUrl'] is String
                       ? null
-                      : const Icon(Icons.person_rounded, size: 38, color: EazyColors.green),
+                      : Icon(Icons.person_rounded, size: 38, color: context.eazyAccent),
                 ),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: busy || avatarBusy ? null : pickAvatar,
                   icon: avatarBusy
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.add_a_photo_outlined),
+                      : Icon(Icons.add_a_photo_outlined),
                   label: Text(avatarBusy ? 'Uploading photo…' : avatarPath != null ? 'Photo uploaded' : 'Add profile photo'),
                 ),
-                const Text(
+                Text(
                   'Add a clear photo so people can recognise you.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: EazyColors.muted, fontSize: 12),
+                  style: TextStyle(color: context.eazyMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -295,12 +295,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               padding: const EdgeInsets.all(14),
               margin: const EdgeInsets.only(bottom: 14),
               decoration: BoxDecoration(
-                color: EazyColors.red.withValues(alpha: .1),
+                color: Theme.of(context).colorScheme.error.withValues(alpha: .1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
                 error!,
-                style: const TextStyle(color: EazyColors.red),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
           TextField(
@@ -350,9 +350,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                         ),
                       )
                       : available == true
-                      ? const Icon(Icons.check_circle, color: EazyColors.green)
+                      ? Icon(Icons.check_circle, color: context.eazyAccent)
                       : available == false
-                      ? const Icon(Icons.cancel, color: EazyColors.red)
+                      ? Icon(Icons.cancel, color: Theme.of(context).colorScheme.error)
                       : null,
             ),
           ),
@@ -362,9 +362,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             tileColor: Theme.of(context).colorScheme.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(EazyRadius.md),
-              side: const BorderSide(color: EazyColors.border),
+              side: BorderSide(color: context.eazyBorder),
             ),
-            leading: const Icon(Icons.cake_outlined, color: EazyColors.green),
+            leading: Icon(Icons.cake_outlined, color: context.eazyAccent),
             title: Text(
               dob == null
                   ? 'Date of birth'

@@ -123,7 +123,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                           SizedBox(height: 3),
                           Text(
                             'Discover things worth having',
-                            style: TextStyle(color: EazyColors.muted),
+                            style: TextStyle(color: context.eazyMuted),
                           ),
                         ],
                       ),
@@ -132,7 +132,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
                         shape: BoxShape.circle,
-                        border: Border.all(color: EazyColors.border),
+                        border: Border.all(color: context.eazyBorder),
                       ),
                       child: IconButton(
                         onPressed: () => context.push('/cart'),
@@ -238,7 +238,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: EazyColors.border),
+                          border: Border.all(color: context.eazyBorder),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
@@ -280,7 +280,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                   child: Text(
                     'Could not refresh listings: $error',
-                    style: const TextStyle(color: EazyColors.red),
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ),
               ),
@@ -338,16 +338,16 @@ class _CategoryTile extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           decoration: BoxDecoration(
-            color: EazyColors.surfaceRaised,
+            color: context.eazySurfaceRaised,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: selected ? EazyColors.mint : EazyColors.border,
+              color: selected ? EazyColors.mint : context.eazyBorder,
               width: selected ? 2 : 1,
             ),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: EazyColors.green.withValues(alpha: .20),
+                      color: context.eazyAccent.withValues(alpha: .20),
                       blurRadius: 16,
                       spreadRadius: 1,
                     ),
@@ -427,11 +427,11 @@ class _CategoryTile extends StatelessWidget {
   );
 
   Widget _fallback(BuildContext context) => DecoratedBox(
-    decoration: const BoxDecoration(
+    decoration: BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [EazyColors.greenDeep, EazyColors.canvas],
+        colors: [context.eazyAccent, EazyColors.canvas],
       ),
     ),
     child: Center(
@@ -489,7 +489,7 @@ class _Product extends StatelessWidget {
                           context,
                         ).scaffoldBackgroundColor.withValues(alpha: .72),
                         shape: BoxShape.circle,
-                        border: Border.all(color: EazyColors.border),
+                        border: Border.all(color: context.eazyBorder),
                       ),
                       child: const Icon(
                         Icons.favorite_border_rounded,
@@ -509,7 +509,7 @@ class _Product extends StatelessWidget {
                     product['name']?.toString() ?? 'Product',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
                       height: 1.15,
                     ),
@@ -517,8 +517,8 @@ class _Product extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     '${product['currency'] ?? 'NGN'} $price',
-                    style: const TextStyle(
-                      color: EazyColors.green,
+                    style: TextStyle(
+                      color: context.eazyAccent,
                       fontWeight: FontWeight.w900,
                       fontSize: 15,
                     ),
@@ -542,7 +542,7 @@ class _ProductPlaceholder extends StatelessWidget {
       child: Icon(
         Icons.shopping_bag_outlined,
         size: 42,
-        color: EazyColors.green,
+        color: context.eazyAccent,
       ),
     ),
   );
@@ -560,16 +560,16 @@ class _State extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.storefront_outlined,
             size: 44,
-            color: EazyColors.green,
+            color: context.eazyAccent,
           ),
           const SizedBox(height: 12),
           Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: EazyColors.muted),
+            style: TextStyle(color: context.eazyMuted),
           ),
           if (action != null) ...[
             const SizedBox(height: 12),
