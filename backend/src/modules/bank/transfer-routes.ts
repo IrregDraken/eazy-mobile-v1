@@ -28,7 +28,7 @@ export function createBankTransferRouter(service: BankTransferService, virtualAc
   router.use(requireAuth);
   router.get('/capabilities', controller.capabilities);
   if (paymentPin) {
-    router.post('/', mutationLimit, requireIdempotencyKey, requirePaymentPin(paymentPin), validate('body', bankTransferSchema), controller.initiate);
+    router.post('/', mutationLimit, requireIdempotencyKey, validate('body', bankTransferSchema), requirePaymentPin(paymentPin), controller.initiate);
   } else {
     router.post('/', mutationLimit, requireIdempotencyKey, validate('body', bankTransferSchema), (_request, _response, next) => {
       next(new AppError('SERVICE_UNAVAILABLE', 'Payment PIN authorization is unavailable'));
