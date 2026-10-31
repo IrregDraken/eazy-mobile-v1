@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/auth/auth_controller.dart';
 import '../features/auth/auth_page.dart';
+import '../features/assist/assist_page.dart';
 import '../features/location/location_page.dart';
 import '../features/translation/translation_page.dart';
 import '../features/notifications/notifications_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/security/security_page.dart';
+import '../features/settings/account_settings_page.dart';
 import '../features/security/blocks_page.dart';
 import '../features/home/home_shell.dart';
 import '../features/profile/profile_page.dart';
@@ -26,14 +28,10 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
 
     if (auth.isRestoring) return null;
 
-    // Keep the retired Assist deep link from falling through to the error screen.
-    if (path == '/assist') {
-      return !signedIn ? '/auth' : onboarding ? '/onboarding' : '/home';
-    }
-
     if (!signedIn) {
-      if (path == '/splash' || path == '/welcome' || path == '/auth')
+      if (path == '/splash' || path == '/welcome' || path == '/auth') {
         return null;
+      }
       return '/auth';
     }
 
@@ -51,8 +49,8 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
     return null;
   },
   routes: [
-    GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
-    GoRoute(path: '/welcome', builder: (_, __) => const WelcomePage()),
+    GoRoute(path: '/splash', builder: (_, _) => const SplashPage()),
+    GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
     GoRoute(
       path: '/auth',
       builder:
@@ -63,21 +61,44 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
     ),
     GoRoute(
       path: '/onboarding',
-      builder: (_, __) => ProfileSetupPage(auth: auth),
+      builder: (_, _) => ProfileSetupPage(auth: auth),
     ),
-    GoRoute(path: '/discovery', builder: (_, __) => const DiscoveryPage()),
-    GoRoute(path: '/cart', builder: (_, __) => const CartPage()),
-    GoRoute(path: '/home', builder: (_, state) => HomeShell(auth: auth, initialTab: state.uri.queryParameters['tab'])),
-    GoRoute(path: '/profile/:username', builder: (_, state) => ProfilePage(auth: auth, username: state.pathParameters['username'])),
-    GoRoute(path: '/translation', builder: (_, __) => const TranslationPage()),
-    GoRoute(path: '/location', builder: (_, __) => const LocationPage()),
+    GoRoute(path: '/discovery', builder: (_, _) => const DiscoveryPage()),
+    GoRoute(path: '/cart', builder: (_, _) => const CartPage()),
+    GoRoute(
+      path: '/home',
+      builder:
+          (_, state) => HomeShell(
+            auth: auth,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
+    ),
+    GoRoute(
+      path: '/u/:username',
+      builder: (_, state) => ProfilePage(
+        auth: auth,
+        username: state.pathParameters['username'],
+      ),
+    ),
+    GoRoute(
+      path: '/profile/:username',
+      builder:
+          (_, state) => ProfilePage(
+            auth: auth,
+            username: state.pathParameters['username'],
+          ),
+    ),
+    GoRoute(path: '/assist', builder: (_, _) => const AssistPage()),
+    GoRoute(path: '/translation', builder: (_, _) => const TranslationPage()),
+    GoRoute(path: '/location', builder: (_, _) => const LocationPage()),
     GoRoute(
       path: '/notifications',
-      builder: (_, __) => const NotificationsPage(),
+      builder: (_, _) => const NotificationsPage(),
     ),
-    GoRoute(path: '/settings', builder: (_, __) => SettingsPage(auth: auth)),
-    GoRoute(path: '/security', builder: (_, __) => SecurityPage(auth: auth)),
-    GoRoute(path: '/blocks', builder: (_, __) => const BlocksPage()),
+    GoRoute(path: '/settings', builder: (_, _) => SettingsPage(auth: auth)),
+    GoRoute(path: '/account-settings', builder: (_, _) => AccountSettingsPage(auth: auth)),
+    GoRoute(path: '/security', builder: (_, _) => SecurityPage(auth: auth)),
+    GoRoute(path: '/blocks', builder: (_, _) => const BlocksPage()),
   ],
   errorBuilder:
       (context, state) => Scaffold(
