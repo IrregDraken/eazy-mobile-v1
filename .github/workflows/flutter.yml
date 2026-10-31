@@ -218,7 +218,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eazy-backend-package-lock-${{ github.sha }}
-          path: package-lock.json
+          path: backend/package-lock.json
           if-no-files-found: error
           retention-days: 7
       - name: Enforce high-severity dependency audit
