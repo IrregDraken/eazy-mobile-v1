@@ -77,26 +77,26 @@ class _LocationPageState extends State<LocationPage> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Card(
+            Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
                 child: Text(
                   'Eazy does not persist precise location. It receives coordinates only for an explicit lookup.',
-                  style: TextStyle(color: EazyColors.muted, height: 1.35),
+                  style: TextStyle(color: context.eazyMuted, height: 1.35),
                 ),
               ),
             ),
             const SizedBox(height: 18),
             FilledButton.icon(
               onPressed: busy ? null : locate,
-              icon: const Icon(Icons.my_location_rounded),
+              icon: Icon(Icons.my_location_rounded),
               label: Text(busy ? 'Finding you...' : 'Use my current location'),
             ),
             const SizedBox(height: 18),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: EazyColors.muted),
+              style: TextStyle(color: context.eazyMuted),
             ),
           ],
         ),

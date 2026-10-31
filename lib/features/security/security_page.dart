@@ -102,17 +102,17 @@ class _SecurityPageState extends State<SecurityPage> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  const Card(
+                  Card(
                     child: Padding(
                       padding: EdgeInsets.all(16),
                       child: Text(
                         'Eazy sessions are server-side sessions bound to your verified Firebase identity. Revoking one blocks further API use from that session.',
-                        style: TextStyle(color: EazyColors.muted, height: 1.35),
+                        style: TextStyle(color: context.eazyMuted, height: 1.35),
                       ),
                     ),
                   ),
                   if (error.isNotEmpty)
-                    Text(error, style: const TextStyle(color: EazyColors.red)),
+                    Text(error, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   ...sessions.map(
                     (s) => Card(
                       child: ListTile(
@@ -120,7 +120,7 @@ class _SecurityPageState extends State<SecurityPage> {
                           s['isCurrent'] == true
                               ? Icons.phone_android_rounded
                               : Icons.devices_other_rounded,
-                          color: EazyColors.green,
+                          color: context.eazyAccent,
                         ),
                         title: Text(
                           s['isCurrent'] == true

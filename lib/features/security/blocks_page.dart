@@ -76,15 +76,15 @@ class _BlocksPageState extends State<BlocksPage> {
                     if (error.isNotEmpty)
                       Text(
                         error,
-                        style: const TextStyle(color: EazyColors.red),
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
                       ),
                     if (items.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(40),
+                      Padding(
+                        padding: const EdgeInsets.all(40),
                         child: Center(
                           child: Text(
                             'No blocked accounts.',
-                            style: TextStyle(color: EazyColors.muted),
+                            style: TextStyle(color: context.eazyMuted),
                           ),
                         ),
                       ),

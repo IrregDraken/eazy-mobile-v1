@@ -179,7 +179,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     padding: const EdgeInsets.all(24),
                     child: Text(
                       error,
-                      style: const TextStyle(color: EazyColors.red),
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
                     ),
                   ),
                 ],
@@ -188,10 +188,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
               ? ListView(
                 children: [
                   const SizedBox(height: 180),
-                  const Center(
+                  Center(
                     child: Text(
                       'You’re all caught up.',
-                      style: TextStyle(color: EazyColors.muted),
+                      style: TextStyle(color: context.eazyMuted),
                     ),
                   ),
                 ],
@@ -216,10 +216,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       trailing:
                           n['isRead'] == true
                               ? null
-                              : const Icon(
+                              : Icon(
                                 Icons.circle,
                                 size: 9,
-                                color: EazyColors.green,
+                                color: context.eazyAccent,
                               ),
                     ),
                   );

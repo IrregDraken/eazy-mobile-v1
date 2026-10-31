@@ -483,7 +483,7 @@ class _NewChatScreenState extends State<_NewChatScreen> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     appBar: AppBar(
-      title: const Text('Find people on Eazy'),
+      title: Text('Find people on Eazy'),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     ),
     body: Column(

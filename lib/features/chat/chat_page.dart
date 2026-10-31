@@ -402,27 +402,27 @@ class _ConversationPageState extends State<ConversationPage> {
             child: Wrap(
               children: [
                 ListTile(
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.photo_library_outlined,
-                    color: EazyColors.green,
+                    color: context.eazyAccent,
                   ),
-                  title: const Text('Photo'),
-                  subtitle: const Text('Choose an image'),
+                  title: Text('Photo'),
+                  subtitle: Text('Choose an image'),
                   onTap: () => Navigator.pop(sheet, 'photo'),
                 ),
                 ListTile(
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.video_library_outlined,
-                    color: EazyColors.green,
+                    color: context.eazyAccent,
                   ),
-                  title: const Text('Video'),
-                  subtitle: const Text('Choose a video'),
+                  title: Text('Video'),
+                  subtitle: Text('Choose a video'),
                   onTap: () => Navigator.pop(sheet, 'video'),
                 ),
                 ListTile(
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.attach_file_rounded,
-                    color: EazyColors.green,
+                    color: context.eazyAccent,
                   ),
                   title: const Text('File or document'),
                   subtitle: const Text('PDF, Word, TXT or CSV, up to 25 MB'),
@@ -810,9 +810,9 @@ class _ConversationPageState extends State<ConversationPage> {
             ),
             Text(
               _conversationUsername,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: EazyColors.muted,
+                color: context.eazyMuted,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -932,7 +932,7 @@ class _ConversationPageState extends State<ConversationPage> {
                                 : item.contentType.startsWith('video/')
                                 ? Icons.video_file_outlined
                                 : Icons.description_outlined,
-                            color: EazyColors.green,
+                            color: context.eazyAccent,
                             size: 18,
                           ),
                           const SizedBox(width: 6),
@@ -970,7 +970,7 @@ class _ConversationPageState extends State<ConversationPage> {
                       tooltip: 'Attach photo, video or document',
                       onPressed: sending ? null : _pickAttachment,
                       style: IconButton.styleFrom(
-                        foregroundColor: EazyColors.green,
+                        foregroundColor: context.eazyAccent,
                       ),
                       icon: const Icon(
                         Icons.add_circle_outline_rounded,
@@ -1001,21 +1001,21 @@ class _ConversationPageState extends State<ConversationPage> {
                       tooltip: 'Open Eazy Assist',
                       onPressed: () => context.push('/assist'),
                       style: IconButton.styleFrom(
-                        foregroundColor: EazyColors.green,
+                        foregroundColor: context.eazyAccent,
                       ),
                       icon: Image.asset(
                         'assets/images/eazy_logo_mark.png',
                         width: 23,
                         height: 23,
                         errorBuilder:
-                            (_, _, _) => const Icon(Icons.auto_awesome_rounded),
+                            (_, _, _) => Icon(Icons.auto_awesome_rounded),
                       ),
                     ),
                     IconButton(
                       tooltip: 'Translate draft to English',
                       onPressed: _translateDraft,
                       style: IconButton.styleFrom(
-                        foregroundColor: EazyColors.green,
+                        foregroundColor: context.eazyAccent,
                       ),
                       icon: const Icon(Icons.translate_rounded),
                     ),
@@ -1097,8 +1097,8 @@ class _MessageBubble extends StatelessWidget {
               border: Border.all(
                 color:
                     isMine
-                        ? EazyColors.green.withValues(alpha: .24)
-                        : EazyColors.border,
+                        ? context.eazyAccent.withValues(alpha: .24)
+                        : context.eazyBorder,
               ),
             ),
             child: Column(
@@ -1109,8 +1109,8 @@ class _MessageBubble extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
                       sender['displayName'].toString(),
-                      style: const TextStyle(
-                        color: EazyColors.green,
+                      style: TextStyle(
+                        color: context.eazyAccent,
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
                         letterSpacing: .2,
@@ -1124,7 +1124,7 @@ class _MessageBubble extends StatelessWidget {
                   style: TextStyle(
                     color:
                         deleted
-                            ? EazyColors.muted
+                            ? context.eazyMuted
                             : (isMine
                                 ? Theme.of(context).colorScheme.onPrimary
                                 : Theme.of(context).colorScheme.onSurface),
@@ -1140,8 +1140,8 @@ class _MessageBubble extends StatelessWidget {
                       '↳ ${message['replyTo']['body'] ?? 'Deleted message'}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: EazyColors.muted,
+                      style: TextStyle(
+                        color: context.eazyMuted,
                         fontSize: 11,
                       ),
                     ),
@@ -1204,7 +1204,7 @@ class _MessageBubble extends StatelessWidget {
                                           : type.startsWith('video/')
                                           ? Icons.video_file_outlined
                                           : Icons.description_outlined,
-                                      color: EazyColors.green,
+                                      color: context.eazyAccent,
                                       size: 18,
                                     ),
                                     const SizedBox(width: 7),
@@ -1218,9 +1218,9 @@ class _MessageBubble extends StatelessWidget {
                                     const SizedBox(width: 7),
                                     Text(
                                       size,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 10,
-                                        color: EazyColors.muted,
+                                        color: context.eazyMuted,
                                       ),
                                     ),
                                   ],
@@ -1288,8 +1288,8 @@ class _MessageBubble extends StatelessWidget {
                     Expanded(
                       child: Text(
                         _time(message['createdAt'] ?? message['created_at']),
-                        style: const TextStyle(
-                          color: EazyColors.muted,
+                        style: TextStyle(
+                          color: context.eazyMuted,
                           fontSize: 9,
                         ),
                       ),
@@ -1297,8 +1297,8 @@ class _MessageBubble extends StatelessWidget {
                     if (!deleted)
                       TextButton.icon(
                         onPressed: onTranslate,
-                        icon: const Icon(Icons.translate_rounded, size: 13),
-                        label: const Text(
+                        icon: Icon(Icons.translate_rounded, size: 13),
+                        label: Text(
                           'Translate',
                           style: TextStyle(
                             fontSize: 10,
@@ -1306,7 +1306,7 @@ class _MessageBubble extends StatelessWidget {
                           ),
                         ),
                         style: TextButton.styleFrom(
-                          foregroundColor: EazyColors.green,
+                          foregroundColor: context.eazyAccent,
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                         ),
@@ -1354,8 +1354,8 @@ class _ContextBar extends StatelessWidget {
           width: 3,
           height: 31,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [EazyColors.green, EazyColors.mint],
+            gradient: LinearGradient(
+              colors: [context.eazyAccent, EazyColors.mint],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -1369,8 +1369,8 @@ class _ContextBar extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  color: EazyColors.green,
+                style: TextStyle(
+                  color: context.eazyAccent,
                   fontSize: 9,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1,
@@ -1380,7 +1380,7 @@ class _ContextBar extends StatelessWidget {
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: EazyColors.muted, fontSize: 11),
+                style: TextStyle(color: context.eazyMuted, fontSize: 11),
               ),
             ],
           ),
@@ -1407,21 +1407,21 @@ class _ChatState extends StatelessWidget {
           width: 68,
           height: 68,
           decoration: BoxDecoration(
-            color: EazyColors.green.withValues(alpha: .08),
+            color: context.eazyAccent.withValues(alpha: .08),
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: EazyColors.border),
+            border: Border.all(color: context.eazyBorder),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.forum_outlined,
             size: 32,
-            color: EazyColors.green,
+            color: context.eazyAccent,
           ),
         ),
         const SizedBox(height: 12),
         Text(
           message,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: EazyColors.muted, height: 1.4),
+          style: TextStyle(color: context.eazyMuted, height: 1.4),
         ),
         if (action != null) ...[
           const SizedBox(height: 14),

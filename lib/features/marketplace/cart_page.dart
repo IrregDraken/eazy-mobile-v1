@@ -145,10 +145,10 @@ class _CartPageState extends State<CartPage> {
                 ),
               )
               : items.isEmpty
-              ? const Center(
+              ? Center(
                 child: Text(
                   'Your bag is empty.',
-                  style: TextStyle(color: EazyColors.muted),
+                  style: TextStyle(color: context.eazyMuted),
                 ),
               )
               : Column(
@@ -183,9 +183,9 @@ class _CartPageState extends State<CartPage> {
                                         ).colorScheme.surfaceContainerHighest,
                                     borderRadius: BorderRadius.circular(16),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.shopping_bag_outlined,
-                                    color: EazyColors.green,
+                                    color: context.eazyAccent,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -196,23 +196,23 @@ class _CartPageState extends State<CartPage> {
                                     children: [
                                       Text(
                                         productName,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w800,
                                         ),
                                       ),
                                       const SizedBox(height: 3),
                                       Text(
                                         seller,
-                                        style: const TextStyle(
-                                          color: EazyColors.muted,
+                                        style: TextStyle(
+                                          color: context.eazyMuted,
                                           fontSize: 12,
                                         ),
                                       ),
                                       const SizedBox(height: 7),
                                       Text(
                                         '$currency ${x['unitPrice'] ?? '0.00'}',
-                                        style: const TextStyle(
-                                          color: EazyColors.green,
+                                        style: TextStyle(
+                                          color: context.eazyAccent,
                                           fontWeight: FontWeight.w800,
                                         ),
                                       ),
@@ -228,9 +228,9 @@ class _CartPageState extends State<CartPage> {
                                               : () => remove(
                                                 x['productId'].toString(),
                                               ),
-                                      icon: const Icon(
+                                      icon: Icon(
                                         Icons.delete_outline,
-                                        color: EazyColors.red,
+                                        color: Theme.of(context).colorScheme.error,
                                       ),
                                     ),
                                     Row(
@@ -281,8 +281,8 @@ class _CartPageState extends State<CartPage> {
                   ),
                   Container(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                    decoration: const BoxDecoration(
-                      border: Border(top: BorderSide(color: EazyColors.border)),
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: context.eazyBorder)),
                     ),
                     child: Column(
                       children: [
