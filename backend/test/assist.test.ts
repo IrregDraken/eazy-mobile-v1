@@ -301,10 +301,10 @@ test('Eazy Assist uses the authenticated wallet balance capability when asked', 
 
 test('translation capability delegates only through existing TranslationService and is hidden when unavailable', async () => {
   const unavailable = createHarness();
-  assert.deepEqual(unavailable.tools.list().map(item => item.name), ['search_products', 'get_wallet_balance']);
+  assert.deepEqual((await unavailable.tools.list()).map(item => item.name), ['search_products', 'get_wallet_balance']);
   await assert.rejects(() => unavailable.tools.execute('translate_text', { text: 'hello', targetLanguage: 'fr' }, 'user-a'), (error: unknown) => error instanceof AppError && error.code === 'SERVICE_UNAVAILABLE');
   const configured = createHarness({ translationAvailable: true });
-  assert.deepEqual(configured.tools.list().map(item => item.name), ['search_products', 'get_wallet_balance', 'translate_text']);
+  assert.deepEqual((await configured.tools.list()).map(item => item.name), ['search_products', 'get_wallet_balance', 'translate_text']);
   const result = await configured.tools.execute('translate_text', { text: 'hello', targetLanguage: 'fr' }, 'user-a');
   assert.deepEqual(result, { tool: 'translate_text', translation: { sourceLanguage: 'auto', targetLanguage: 'fr', translatedText: 'Bonjour' } });
   assert.equal(configured.translatedUser, 'user-a');

@@ -36,8 +36,8 @@ export class AssistToolRegistry {
     private readonly wallet: Pick<WalletService, 'getWallets'>
   ) {}
 
-  list() {
-    return this.translationAvailable()
+  async list() {
+    return await this.translationAvailable()
       ? [searchProductsDefinition, getWalletBalanceDefinition, translateTextDefinition]
       : [searchProductsDefinition, getWalletBalanceDefinition];
   }

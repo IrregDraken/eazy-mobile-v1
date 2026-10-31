@@ -4,7 +4,7 @@ import { sendSuccess } from '../../utils/http.js';
 import { AssistService } from './service.js';
 
 export function createAssistController(service: AssistService) {
-  const capabilities: RequestHandler = (_request, response) => sendSuccess(response, service.capabilities());
+  const capabilities: RequestHandler = async (_request, response, next) => { try { sendSuccess(response, await service.capabilities()); } catch (error) { next(error); } };
   const createSession: RequestHandler = async (request, response) => response.status(201).json({ success: true, data: await service.createSession(currentUserId(request)), meta: {} });
   const listSessions: RequestHandler = async (request, response) => sendSuccess(response, await service.listSessions(currentUserId(request), request.query as never));
   const getSession: RequestHandler = async (request, response) => sendSuccess(response, await service.getSession(currentUserId(request), String(request.params.id)));

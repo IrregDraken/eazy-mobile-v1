@@ -18,10 +18,10 @@ export class AssistService {
     private readonly tools: AssistToolRegistry
   ) {}
 
-  capabilities() {
+  async capabilities() {
     let providerAvailable = false;
     try { providerAvailable = this.provider.getCapabilities().available; } catch { /* report unavailable */ }
-    return { providerAvailable, streaming: false, tools: this.tools.list() };
+    return { providerAvailable, streaming: false, tools: await this.tools.list() };
   }
 
   async createSession(userId: string) {
