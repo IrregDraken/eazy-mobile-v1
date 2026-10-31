@@ -222,7 +222,7 @@ class _SocialPageState extends State<SocialPage> {
                         children: [
                           OutlinedButton.icon(
                             onPressed: () => chooseMedia(false, setSheetState),
-                            icon: const Icon(Icons.photo_outlined),
+                            icon: Icon(Icons.photo_outlined),
                             label: Text(
                               attachment != null &&
                                       !attachment!.contentType.startsWith(
@@ -234,7 +234,7 @@ class _SocialPageState extends State<SocialPage> {
                           ),
                           OutlinedButton.icon(
                             onPressed: () => chooseMedia(true, setSheetState),
-                            icon: const Icon(Icons.video_library_outlined),
+                            icon: Icon(Icons.video_library_outlined),
                             label: Text(
                               attachment != null &&
                                       attachment!.contentType.startsWith(
@@ -245,7 +245,7 @@ class _SocialPageState extends State<SocialPage> {
                             ),
                           ),
                           if (attachment != null)
-                            const Icon(
+                            Icon(
                               Icons.check_circle,
                               color: context.eazyAccent,
                             ),
@@ -324,7 +324,7 @@ class _SocialPageState extends State<SocialPage> {
                   IconButton(
                     tooltip: 'Notifications',
                     onPressed: () => context.push('/notifications'),
-                    icon: const Icon(Icons.notifications_none_rounded),
+                    icon: Icon(Icons.notifications_none_rounded),
                   ),
                   IconButton(
                     onPressed: posting ? null : compose,
@@ -353,7 +353,7 @@ class _SocialPageState extends State<SocialPage> {
                         );
                       }
                     },
-                    icon: const Icon(Icons.arrow_upward_rounded, size: 16),
+                    icon: Icon(Icons.arrow_upward_rounded, size: 16),
                     label: const Text('New posts'),
                   ),
                 ),
@@ -677,7 +677,7 @@ class _PostState extends State<_Post> {
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.chat_bubble_outline_rounded,
                                           size: 34,
                                           color: context.eazyMuted,
@@ -776,7 +776,7 @@ class _PostState extends State<_Post> {
                                       replyToId = null;
                                       replyToName = null;
                                     }),
-                                icon: const Icon(Icons.close_rounded, size: 18),
+                                icon: Icon(Icons.close_rounded, size: 18),
                               ),
                             ],
                           ),
@@ -863,7 +863,7 @@ class _PostState extends State<_Post> {
                                             strokeWidth: 2,
                                           ),
                                         )
-                                        : const Icon(
+                                        : Icon(
                                           Icons.send_rounded,
                                           color: context.eazyAccent,
                                         ),
@@ -909,7 +909,7 @@ class _PostState extends State<_Post> {
                                 true)
                             ? NetworkImage(author['avatarUrl'])
                             : null,
-                    child: const Icon(Icons.person_rounded),
+                    child: Icon(Icons.person_rounded),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -943,7 +943,7 @@ class _PostState extends State<_Post> {
                   ),
                   PopupMenuButton<String>(
                     tooltip: 'Post options',
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.more_horiz_rounded,
                       color: context.eazyMuted,
                     ),
@@ -1191,7 +1191,7 @@ class _PostState extends State<_Post> {
                                 child: AnimatedOpacity(
                                   opacity: showHeart ? 1 : 0,
                                   duration: const Duration(milliseconds: 180),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.favorite_rounded,
                                     color: Colors.white,
                                     size: 86,
@@ -1231,7 +1231,7 @@ class _PostState extends State<_Post> {
                   ),
                   TextButton.icon(
                     onPressed: busy ? null : comment,
-                    icon: const Icon(Icons.chat_bubble_outline_rounded),
+                    icon: Icon(Icons.chat_bubble_outline_rounded),
                     label: Text('${widget.post['commentCount'] ?? 0}'),
                   ),
                   IconButton(
@@ -1246,7 +1246,7 @@ class _PostState extends State<_Post> {
                         );
                       }
                     },
-                    icon: const Icon(Icons.send_outlined),
+                    icon: Icon(Icons.send_outlined),
                   ),
                   const Spacer(),
                   IconButton(
@@ -1352,7 +1352,7 @@ class _CommentTileState extends State<_CommentTile> {
               children: [
                 if (isMine)
                   ListTile(
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.delete_outline_rounded,
                       color: EazyColors.red,
                     ),
@@ -1360,7 +1360,7 @@ class _CommentTileState extends State<_CommentTile> {
                     onTap: () => Navigator.pop(ctx, 'delete'),
                   ),
                 ListTile(
-                  leading: const Icon(Icons.flag_outlined),
+                  leading: Icon(Icons.flag_outlined),
                   title: const Text('Report comment'),
                   onTap: () => Navigator.pop(ctx, 'report'),
                 ),
@@ -1624,7 +1624,7 @@ class _SuggestedAccounts extends StatelessWidget {
                             minWidth: 24,
                             minHeight: 24,
                           ),
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.close_rounded,
                             size: 16,
                             color: context.eazyMuted,
@@ -1775,7 +1775,7 @@ class _State extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.dynamic_feed_outlined,
             size: 44,
             color: context.eazyAccent,
