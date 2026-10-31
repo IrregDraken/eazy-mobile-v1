@@ -54,14 +54,50 @@ class AuthController extends ChangeNotifier {
       if (!firebaseReady) return;
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-      await _syncFirebaseUser(user, forceRefresh: true);
+
+      final cachedProfile = await api.readProfileSnapshot();
+      if (cachedProfile != null) {
+        final token = await user.getIdToken(false);
+        if (token == null || token.isEmpty) {
+          throw const ApiException('Firebase did not return a session token.');
+        }
+        await api.saveToken(token);
+        _firebaseUser = user;
+        _profile = cachedProfile;
+        _restoring = false;
+        notifyListeners();
+        unawaited(_refreshRestoredProfile(user));
+        return;
+      }
+
+      await _syncFirebaseUser(user, forceRefresh: false);
     } catch (_) {
-      await api.clearToken();
-      _firebaseUser = null;
-      _profile = null;
+      if (_profile == null) {
+        await api.clearToken();
+        _firebaseUser = null;
+      }
     } finally {
-      _restoring = false;
+      if (_restoring) {
+        _restoring = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> _refreshRestoredProfile(User user) async {
+    try {
+      await _syncFirebaseUser(user, forceRefresh: false);
       notifyListeners();
+    } on ApiException catch (error) {
+      if (error.statusCode == 401) {
+        await api.clearToken();
+        await api.clearProfileSnapshot();
+        _firebaseUser = null;
+        _profile = null;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Keep the cached session usable when the backend is temporarily unreachable.
     }
   }
 
@@ -563,6 +599,7 @@ class AuthController extends ChangeNotifier {
       await GoogleSignIn.instance.signOut();
     } catch (_) {}
     await api.clearToken();
+    await api.clearProfileSnapshot();
     _firebaseUser = null;
     _profile = null;
     notifyListeners();
@@ -574,13 +611,17 @@ class AuthController extends ChangeNotifier {
       throw const ApiException('Firebase did not return a session token.');
     }
     await api.saveToken(token);
+    unawaited(PushRegistrationService.instance.start(api));
     try {
       final result = await api.get('auth/me', auth: true);
       _profile = _normalizeProfile(result['profile'] as Map? ?? {});
       _firebaseUser = user;
-      unawaited(PushRegistrationService.instance.start(api));
-    } catch (_) {
-      await api.clearToken();
+      await api.saveProfileSnapshot(_profile!);
+    } catch (error) {
+      if (error is ApiException && error.statusCode == 401) {
+        await api.clearToken();
+        await api.clearProfileSnapshot();
+      }
       rethrow;
     }
   }
