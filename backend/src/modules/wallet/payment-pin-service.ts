@@ -33,6 +33,7 @@ export class PaymentPinService {
     if (pin !== confirmation) throw new AppError('VALIDATION_ERROR', 'The payment PINs do not match');
     const pinHash = this.hashPin(pin);
     await withTransaction(this.pool, async client => {
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['wallet-payment-pin:' + userId]);
       const existing = await client.query(
         'SELECT user_id FROM wallet_payment_pins WHERE user_id = $1 FOR UPDATE',
         [userId]
@@ -54,10 +55,13 @@ export class PaymentPinService {
     if (currentPin === newPin) throw new AppError('VALIDATION_ERROR', 'Choose a different payment PIN');
     await this.verify(userId, currentPin);
     const pinHash = this.hashPin(newPin);
-    await this.pool.query(
+    const updated = await this.pool.query(
       'UPDATE wallet_payment_pins SET pin_hash = $2, failed_attempts = 0, locked_until = NULL, updated_at = now() WHERE user_id = $1',
       [userId, pinHash]
     );
+    if (updated.rowCount !== 1) {
+      throw new AppError('CONFLICT', 'Payment PIN changed while this request was being processed. Try again.');
+    }
     return { changed: true };
   }
 
