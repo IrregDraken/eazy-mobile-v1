@@ -12,13 +12,13 @@ const mediaSchema = z.object({ storageKey: z.string().trim().min(1).max(1024), p
 const statusSchema = z.enum(['draft', 'active', 'archived', 'sold_out']);
 const categoryIdsSchema = z.preprocess(
   value => typeof value === 'string' ? value.split(',').map(id => id.trim()).filter(Boolean) : value,
-  z.array(z.string().uuid()).min(1).max(50).transform(ids => [...new Set(ids)])
+  z.array(z.string().guid()).min(1).max(50).transform(ids => [...new Set(ids)])
 );
 
 export const productCreateSchema = z.object({
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().max(5000).optional(),
-  categoryId: z.string().uuid().optional(),
+  categoryId: z.string().guid().optional(),
   priceAmount: priceSchema,
   currency: currencySchema,
   status: statusSchema.default('draft'),
@@ -29,22 +29,22 @@ export const productCreateSchema = z.object({
 export const productUpdateSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   description: z.string().trim().max(5000).nullable().optional(),
-  categoryId: z.string().uuid().nullable().optional(),
+  categoryId: z.string().guid().nullable().optional(),
   priceAmount: priceSchema.optional(),
   currency: currencySchema.optional(),
   status: statusSchema.optional()
 }).strict().refine(value => Object.keys(value).length > 0, 'At least one product field is required');
 
 export const inventorySchema = z.object({ availableQuantity: z.number().int().min(0).max(1_000_000) }).strict();
-export const productIdSchema = z.object({ id: z.string().uuid() });
+export const productIdSchema = z.object({ id: z.string().guid() });
 export const sellerUsernameSchema = z.object({
   username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9_.]+$/)
 }).strict();
 export const productSearchSchema = z.object({
   q: z.string().trim().min(2).max(80).optional(),
-  categoryId: z.string().uuid().optional(),
+  categoryId: z.string().guid().optional(),
   categoryIds: categoryIdsSchema.optional(),
-  sellerId: z.string().uuid().optional(),
+  sellerId: z.string().guid().optional(),
   minPrice: priceSchema.optional(),
   maxPrice: priceSchema.optional(),
   currency: currencySchema.optional(),
