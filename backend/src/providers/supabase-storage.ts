@@ -56,7 +56,16 @@ export class SupabaseStorageProvider {
   }
   private encodePath(path: string) { return path.split('/').filter(Boolean).map(segment => encodeURIComponent(segment)).join('/'); }
   private async request(path: string, init: RequestInit = {}) {
-    const response = await fetch(this.baseUrl + path, { ...init, headers: { authorization: 'Bearer ' + this.config.SUPABASE_SERVICE_ROLE_KEY, apikey: this.config.SUPABASE_SERVICE_ROLE_KEY!, 'content-type': 'application/json', ...(init.headers ?? {}) } });
+    const headers = new Headers(init.headers);
+    headers.set('authorization', 'Bearer ' + this.config.SUPABASE_SERVICE_ROLE_KEY);
+    headers.set('apikey', this.config.SUPABASE_SERVICE_ROLE_KEY!);
+    // Supabase Storage rejects an empty request body when JSON content-type is set.
+    // Signed-upload URL creation intentionally has no body, so only label requests
+    // as JSON when a JSON payload is actually present.
+    if (init.body !== undefined && init.body !== null && !headers.has('content-type')) {
+      headers.set('content-type', 'application/json');
+    }
+    const response = await fetch(this.baseUrl + path, { ...init, headers });
     const text = await response.text();
     let body: any = {};
     try { body = text ? JSON.parse(text) : {}; } catch { /* provider may return an empty body */ }
