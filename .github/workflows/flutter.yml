@@ -133,9 +133,13 @@ jobs:
         run: flutter build apk --release --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
       - name: Verify signed Android outputs
         if: steps.signing.outputs.configured == 'true'
+        shell: bash
         run: |
           jarsigner -verify build/app/outputs/bundle/release/app-release.aab
-          apksigner verify --verbose build/app/outputs/flutter-apk/app-release.apk
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
+          apksigner="$(find "$sdk_root/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$apksigner"
+          "$apksigner" verify --verbose build/app/outputs/flutter-apk/app-release.apk
       - name: Upload signed Android release artifacts
         if: steps.signing.outputs.configured == 'true'
         uses: actions/upload-artifact@v4
