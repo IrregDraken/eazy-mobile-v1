@@ -2,14 +2,17 @@ import { z } from 'zod';
 import { AppError } from '../../../middleware/errors.js';
 import type { MarketplaceService } from '../../marketplace/service.js';
 import type { TranslationService } from '../../translation/service.js';
+import type { WalletService } from '../../wallet/service.js';
 import { translateSchema } from '../../translation/schemas.js';
 import { searchProductsInputSchema, type AssistProductResult } from './product-search.js';
 
 export type AssistToolResult =
   | { tool: 'search_products'; products: AssistProductResult[] }
-  | { tool: 'translate_text'; translation: { sourceLanguage: string; targetLanguage: string; translatedText: string } };
+  | { tool: 'translate_text'; translation: { sourceLanguage: string; targetLanguage: string; translatedText: string } }
+  | { tool: 'get_wallet_balance'; wallet: { balance: string; currency: string; status: string } | null };
 
 const searchProductsDefinition = { name: 'search_products', description: 'Search active in-stock Eazy marketplace products. For an explicit budget, provide both maxPrice and the exact three-letter currency code used by the listing.', inputSchema: { type: 'object', additionalProperties: false, required: ['query'], dependentRequired: { maxPrice: ['currency'], currency: ['maxPrice'] }, properties: { query: { type: 'string', minLength: 2, maxLength: 80 }, maxPrice: { type: 'string', pattern: '^\\d{1,18}(\\.\\d{1,2})?$' }, currency: { type: 'string', pattern: '^[A-Za-z]{3}$' } } } };
+const getWalletBalanceDefinition = { name: 'get_wallet_balance', description: 'Read the current ledger balance of the authenticated user’s Eazy wallet. This is read-only and cannot move money.', inputSchema: { type: 'object', additionalProperties: false, properties: {} } };
 const translateTextDefinition = { name: 'translate_text', description: 'Translate the supplied text with the configured Eazy Translation service.', inputSchema: { type: 'object', additionalProperties: false, required: ['text', 'targetLanguage'], properties: { text: { type: 'string', minLength: 1, maxLength: 5000 }, targetLanguage: { type: 'string', minLength: 2, maxLength: 35 }, sourceLanguage: { type: 'string', minLength: 2, maxLength: 35 } } } };
 const productResultSchema = z.object({
   id: z.string().uuid(),
@@ -22,18 +25,21 @@ const productResultSchema = z.object({
   category: z.string().max(120).nullable(),
   seller: z.object({ username: z.string().max(32), displayName: z.string().max(80) }).strict()
 }).strict();
+const walletBalanceInputSchema = z.object({}).strict();
+const walletBalanceResultSchema = z.object({ balance: z.string().regex(/^\d{1,18}(\.\d{2})?$/), currency: z.string().regex(/^[A-Z]{3}$/), status: z.string().max(24) }).strict();
 const translationResultSchema = z.object({ sourceLanguage: z.string().max(35), targetLanguage: z.string().max(35), translatedText: z.string().min(1).max(5000) }).strict();
 
 export class AssistToolRegistry {
   constructor(
     private readonly marketplace: Pick<MarketplaceService, 'search'>,
-    private readonly translation: Pick<TranslationService, 'translate' | 'capabilities'>
+    private readonly translation: Pick<TranslationService, 'translate' | 'capabilities'>,
+    private readonly wallet: Pick<WalletService, 'getWallets'>
   ) {}
 
   list() {
     return this.translationAvailable()
-      ? [searchProductsDefinition, translateTextDefinition]
-      : [searchProductsDefinition];
+      ? [searchProductsDefinition, getWalletBalanceDefinition, translateTextDefinition]
+      : [searchProductsDefinition, getWalletBalanceDefinition];
   }
 
   async execute(name: string, input: unknown, userId: string): Promise<AssistToolResult> {
@@ -67,6 +73,19 @@ export class AssistToolRegistry {
       if (!safeProducts.success) throw new AppError('INTERNAL_ERROR', 'Marketplace capability data is invalid');
       const products: AssistProductResult[] = safeProducts.data;
       return { tool: 'search_products', products };
+    }
+    if (name === 'get_wallet_balance') {
+      const parsed = walletBalanceInputSchema.safeParse(input);
+      if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid wallet balance request');
+      const result = await this.wallet.getWallets(userId);
+      if (!result.wallet) return { tool: 'get_wallet_balance', wallet: null };
+      const safeWallet = walletBalanceResultSchema.safeParse({
+        balance: result.wallet.balance,
+        currency: result.wallet.currency,
+        status: result.wallet.status
+      });
+      if (!safeWallet.success) throw new AppError('INTERNAL_ERROR', 'Wallet balance data is invalid');
+      return { tool: 'get_wallet_balance', wallet: safeWallet.data };
     }
     if (name === 'translate_text') {
       if (!this.translationAvailable()) throw new AppError('SERVICE_UNAVAILABLE', 'Eazy Translation provider is unavailable');
