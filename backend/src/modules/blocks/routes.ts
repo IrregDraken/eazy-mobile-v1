@@ -7,8 +7,8 @@ import { paginationQuerySchema } from '../../utils/pagination.js';
 import { sendSuccess } from '../../utils/http.js';
 import type { SocialService } from '../social/service.js';
 
-const createBlockSchema = z.object({ userId: z.string().uuid() }).strict();
-const blockParamsSchema = z.object({ userId: z.string().uuid() }).strict();
+const createBlockSchema = z.object({ userId: z.string().guid() }).strict();
+const blockParamsSchema = z.object({ userId: z.string().guid() }).strict();
 
 export function createBlockRouter(service: SocialService): Router {
   const router = Router();
