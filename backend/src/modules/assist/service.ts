@@ -60,6 +60,20 @@ export class AssistService {
 
     const userRow = await withTransaction(this.pool, client => this.repository.insertMessage(client, userId, sessionId, 'user', input.content));
     if (!userRow) throw new AppError('NOT_FOUND', 'Assist session not found');
+
+    if (isWalletBalanceIntent(input.content)) {
+      const toolResult = await this.tools.execute('get_wallet_balance', {}, userId);
+      if (toolResult.tool !== 'get_wallet_balance') {
+        throw new AppError('INTERNAL_ERROR', 'Wallet balance capability returned an invalid result');
+      }
+      const content = formatWalletBalance(toolResult.wallet);
+      const assistantRow = await withTransaction(this.pool, client =>
+        this.repository.insertMessage(client, userId, sessionId, 'assistant', content)
+      );
+      if (!assistantRow) throw new AppError('NOT_FOUND', 'Assist session not found');
+      return { userMessage: toAssistMessage(userRow), assistantMessage: toAssistMessage(assistantRow) };
+    }
+
     const history = await this.repository.recentMessages(userId, sessionId, MAX_ASSIST_HISTORY_MESSAGES);
     const orderedHistory = [...history].reverse().filter(row => row.id !== userRow.id);
     const messages = await buildAssistMessages(orderedHistory, input.content, this.tools);
@@ -105,4 +119,24 @@ export class AssistService {
     return session;
   }
 
+}
+
+
+function isWalletBalanceIntent(content: string): boolean {
+  const normalized = content.toLowerCase();
+  const asksForBalance = /\b(balance|available funds|wallet funds)\b/.test(normalized);
+  const refersToAnotherPerson = /\b(their|his|her|someone else's|another user's)\b/.test(normalized);
+  return asksForBalance && !refersToAnotherPerson;
+}
+
+function formatWalletBalance(wallet: { balance: string; currency: string; status: string } | null): string {
+  if (!wallet) return "You do not have an active Eazy wallet yet.";
+  if (wallet.status !== 'active') return "Your Eazy wallet is currently inactive, so I cannot show an available balance.";
+  const [whole, fraction = '00'] = wallet.balance.split('.');
+  const grouped = whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const decimal = fraction.padEnd(2, '0').slice(0, 2);
+  const amount = wallet.currency === 'NGN'
+    ? '₦' + grouped + '.' + decimal
+    : wallet.currency + ' ' + grouped + '.' + decimal;
+  return 'Your Eazy wallet balance is ' + amount + '.';
 }
