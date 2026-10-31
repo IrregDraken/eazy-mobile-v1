@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/ui/eazy_assist_fab.dart';
