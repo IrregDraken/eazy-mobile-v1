@@ -108,7 +108,7 @@ class _AssistPageState extends State<AssistPage> {
       if (mounted) {
         setState(() {
           if (composer.text.trim().isEmpty) composer.text = content;
-          error = e.message;
+          error = _friendlyError(e);
         });
       }
     } finally {
