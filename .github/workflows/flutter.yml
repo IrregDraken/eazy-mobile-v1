@@ -204,6 +204,8 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
+      - run: npm install --package-lock-only --ignore-scripts
+      - run: npm audit fix --package-lock-only --ignore-scripts || true
       - run: npm ci
       - name: Report backend dependency vulnerabilities
         shell: bash
@@ -212,3 +214,12 @@ jobs:
           node --input-type=module -e "import fs from 'node:fs'; const audit = JSON.parse(fs.readFileSync('/tmp/eazy-npm-audit.json', 'utf8')); for (const [name, item] of Object.entries(audit.vulnerabilities ?? {})) console.log(JSON.stringify({name, severity:item.severity, direct:item.isDirect, range:item.range, fixAvailable:item.fixAvailable, via:item.via.map(v => typeof v === 'string' ? v : {title:v.title, url:v.url, range:v.range})}));"
       - run: npm run build
       - run: npm test
+      - name: Upload refreshed backend lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: eazy-backend-package-lock-${{ github.sha }}
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce high-severity dependency audit
+        run: npm audit --audit-level=high
