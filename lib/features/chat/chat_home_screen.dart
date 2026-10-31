@@ -267,7 +267,6 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final chats = _filtered;
-    final unreadTotal = _items.fold<int>(0, (sum, c) => sum + _unread(c));
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
@@ -561,45 +560,6 @@ class _NewChatScreenState extends State<_NewChatScreen> {
                   ),
         ),
       ],
-    ),
-  );
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip(this.label, this.selected, this.onTap);
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Material(
-    color:
-        selected
-            ? context.eazyAccent.withValues(alpha: .13)
-            : Theme.of(context).colorScheme.surface,
-    borderRadius: BorderRadius.circular(EazyRadius.sm),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(EazyRadius.sm),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(EazyRadius.sm),
-          border: Border.all(
-            color:
-                selected
-                    ? context.eazyAccent.withValues(alpha: .5)
-                    : context.eazyBorder,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? context.eazyAccent : context.eazyMuted,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
     ),
   );
 }
