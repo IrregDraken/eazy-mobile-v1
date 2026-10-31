@@ -1587,7 +1587,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             ),
           ],
           const SizedBox(height: 22),
-          if (walletAlerts.isNotEmpty) [
+          if (walletAlerts.isNotEmpty) ...[
             Row(
               children: [
                 const Expanded(
