@@ -899,7 +899,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     IconButton(
                       tooltip: 'Create a post',
-                      onPressed: () => context.go('/home'),
+                      onPressed: () => context.go('/home?action=create'),
                       icon: const Icon(Icons.add_box_outlined),
                     ),
                     IconButton(
