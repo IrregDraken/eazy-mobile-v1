@@ -16,11 +16,11 @@ export function createWalletRouter(service: WalletService, paymentPin?: PaymentP
   const controller = createWalletController(service);
   const rateLimit = createRateLimiter({ name: 'wallet-transfer', windowMs: 60_000, max: 10 });
   const pinMutationLimit = createRateLimiter({ name: 'wallet-payment-pin', windowMs: 10 * 60_000, max: 5 });
-  const setupPinSchema = z.object({ pin: z.string().regex(/^\\d{6}$/), confirmation: z.string().regex(/^\\d{6}$/) }).strict();
+  const setupPinSchema = z.object({ pin: z.string().regex(/^\d{6}$/), confirmation: z.string().regex(/^\d{6}$/) }).strict();
   const changePinSchema = z.object({
-    currentPin: z.string().regex(/^\\d{6}$/),
-    newPin: z.string().regex(/^\\d{6}$/),
-    confirmation: z.string().regex(/^\\d{6}$/)
+    currentPin: z.string().regex(/^\d{6}$/),
+    newPin: z.string().regex(/^\d{6}$/),
+    confirmation: z.string().regex(/^\d{6}$/)
   }).strict();
   router.use(requireAuth);
   router.get('/', controller.getWallet);
