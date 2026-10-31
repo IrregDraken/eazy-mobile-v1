@@ -10,12 +10,10 @@ export interface VerifiedPayment {
 
 export class PaystackPaymentProvider implements PaymentProvider {
   private readonly secretKey: string;
-  private readonly webhookSecret: string;
   private readonly enabled: boolean;
 
   constructor(private readonly config: AppConfig) {
     this.secretKey = config.PAYSTACK_SECRET_KEY ?? '';
-    this.webhookSecret = config.PAYSTACK_WEBHOOK_SECRET || this.secretKey;
     this.enabled = config.PAYSTACK_ENABLED === true && Boolean(this.secretKey);
   }
 
