@@ -2,16 +2,36 @@ import { AppError } from '../../middleware/errors.js';
 import type { TranslationInput, TranslationProvider, TranslationRecord, TranslationRepositoryContract } from './types.js';
 import { canonicalLanguageCode } from './types.js';
 
+export interface TranslationLanguage {
+  code: string;
+  name: string;
+}
+
 export class TranslationService {
+  private languageCache: { expiresAt: number; languages: TranslationLanguage[] | null } | null = null;
+  private languageRequest: Promise<TranslationLanguage[] | null> | null = null;
+
   constructor(private readonly provider: TranslationProvider, private readonly repository: TranslationRepositoryContract) {}
 
-  capabilities() {
+  async capabilities() {
+    let capabilities: ReturnType<TranslationProvider['getCapabilities']>;
     try {
-      const capabilities = this.provider.getCapabilities();
-      return { providerAvailable: capabilities.available, supportedLanguages: this.cleanLanguageList(capabilities.supportedLanguages) };
+      capabilities = this.provider.getCapabilities();
     } catch {
-      return { providerAvailable: false, supportedLanguages: null };
+      return { providerAvailable: false, supportedLanguages: null, languages: [] as TranslationLanguage[] };
     }
+    if (!capabilities.available) {
+      return { providerAvailable: false, supportedLanguages: null, languages: [] as TranslationLanguage[] };
+    }
+    const languages = await this.readLanguageCatalog(capabilities.supportedLanguages);
+    if (!languages?.length) {
+      return { providerAvailable: false, supportedLanguages: null, languages: [] as TranslationLanguage[] };
+    }
+    return {
+      providerAvailable: true,
+      supportedLanguages: languages.map(language => language.code),
+      languages
+    };
   }
 
   async translate(userId: string, input: TranslationInput) {
@@ -24,11 +44,14 @@ export class TranslationService {
     let capabilities: ReturnType<TranslationProvider['getCapabilities']>;
     try { capabilities = this.provider.getCapabilities(); }
     catch { return this.failUnavailable(userId, request.id); }
-    const supported = this.cleanLanguageList(capabilities.supportedLanguages);
     if (!capabilities.available) return this.failUnavailable(userId, request.id);
-    if (supported && (!supported.includes(input.targetLanguage) || (input.sourceLanguage && !supported.includes(input.sourceLanguage)))) {
+
+    const languages = await this.readLanguageCatalog(capabilities.supportedLanguages);
+    if (!languages?.length) return this.failUnavailable(userId, request.id);
+    const supported = new Set(languages.map(language => language.code));
+    if (!supported.has(input.targetLanguage) || (input.sourceLanguage && !supported.has(input.sourceLanguage))) {
       await this.repository.markFailed(userId, request.id);
-      throw new AppError('VALIDATION_ERROR', 'The requested language is not supported by the configured translation provider', { requestId: request.id });
+      throw new AppError('VALIDATION_ERROR', 'The selected language is not supported by the translation service', { requestId: request.id });
     }
 
     let result: { text: string; providerReference?: string };
@@ -62,15 +85,48 @@ export class TranslationService {
     return { request };
   }
 
-  private async failUnavailable(userId: string, requestId: string): Promise<never> {
-    await this.repository.markFailed(userId, requestId);
-    throw new AppError('SERVICE_UNAVAILABLE', 'Translation provider is unavailable', { requestId });
+  private async readLanguageCatalog(fallback: readonly string[] | null): Promise<TranslationLanguage[] | null> {
+    if (this.languageCache && this.languageCache.expiresAt > Date.now()) return this.languageCache.languages;
+    if (this.languageRequest) return this.languageRequest;
+    this.languageRequest = (async () => {
+      try {
+        let languages: readonly { code: string; name: string }[] | null = null;
+        if (this.provider.listLanguages) {
+          languages = await this.provider.listLanguages();
+        } else if (fallback !== null) {
+          languages = fallback.map(code => ({ code, name: code }));
+        }
+        if (languages === null) {
+          this.languageCache = { expiresAt: Date.now() + 60_000, languages: null };
+          return null;
+        }
+        const cleaned = new Map<string, TranslationLanguage>();
+        for (const language of languages) {
+          if (typeof language.code !== 'string' || typeof language.name !== 'string') continue;
+          let code: string;
+          try { code = canonicalLanguageCode(language.code); } catch { continue; }
+          const name = language.name.trim();
+          if (!name || name.length > 80) continue;
+          cleaned.set(code, { code, name });
+        }
+        const result = [...cleaned.values()].sort((a, b) => a.name.localeCompare(b.name));
+        this.languageCache = {
+          expiresAt: Date.now() + (result.length ? 6 * 60 * 60_000 : 60_000),
+          languages: result.length ? result : null
+        };
+        return this.languageCache.languages;
+      } catch {
+        this.languageCache = { expiresAt: Date.now() + 60_000, languages: null };
+        return null;
+      } finally {
+        this.languageRequest = null;
+      }
+    })();
+    return this.languageRequest;
   }
 
-  private cleanLanguageList(languages: readonly string[] | null): string[] | null {
-    if (languages === null) return null;
-    return [...new Set(languages.filter(code => {
-      try { return Intl.getCanonicalLocales(code).length === 1; } catch { return false; }
-    }).map(canonicalLanguageCode))];
+  private async failUnavailable(userId: string, requestId: string): Promise<never> {
+    await this.repository.markFailed(userId, requestId);
+    throw new AppError('SERVICE_UNAVAILABLE', 'Translation is temporarily unavailable', { requestId });
   }
 }

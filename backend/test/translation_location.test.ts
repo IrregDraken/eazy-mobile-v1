@@ -88,6 +88,52 @@ test('translation input canonicalizes BCP 47 language tags and rejects invalid o
   assert.throws(() => translationRequestIdSchema.parse({ requestId, user_id: userB }));
 });
 
+
+test('translation capabilities expose and cache the provider language catalogue', async () => {
+  const { repository } = translationRepository();
+  let calls = 0;
+  const provider: TranslationProvider = {
+    getCapabilities: () => ({ available: true, supportedLanguages: null }),
+    listLanguages: async () => {
+      calls += 1;
+      return [
+        { code: 'en', name: 'English' },
+        { code: 'fr', name: 'French' },
+        { code: 'pt-BR', name: 'Portuguese (Brazil)' }
+      ];
+    },
+    translate: async () => ({ text: 'Bonjour' })
+  };
+  const service = new TranslationService(provider, repository);
+  const expected = {
+    providerAvailable: true,
+    supportedLanguages: ['en', 'fr', 'pt-BR'],
+    languages: [
+      { code: 'en', name: 'English' },
+      { code: 'fr', name: 'French' },
+      { code: 'pt-BR', name: 'Portuguese (Brazil)' }
+    ]
+  };
+  assert.deepEqual(await service.capabilities(), expected);
+  assert.deepEqual(await service.capabilities(), expected);
+  assert.equal(calls, 1);
+});
+
+test('translation capabilities report unavailable when provider language discovery fails', async () => {
+  const { repository } = translationRepository();
+  const provider: TranslationProvider = {
+    getCapabilities: () => ({ available: true, supportedLanguages: null }),
+    listLanguages: async () => { throw new Error('private provider error'); },
+    translate: async () => ({ text: 'Bonjour' })
+  };
+  const service = new TranslationService(provider, repository);
+  assert.deepEqual(await service.capabilities(), {
+    providerAvailable: false,
+    supportedLanguages: null,
+    languages: []
+  });
+});
+
 test('translation service calls the injected provider, persists the result, and returns no provider reference', async () => {
   const { repository, records } = translationRepository();
   let providerInput: TranslationInput | null = null;
@@ -102,12 +148,12 @@ test('translation service calls the injected provider, persists the result, and 
   assert.equal(result.status, 'succeeded');
   assert.equal(JSON.stringify(result).includes('provider-secret'), false);
   assert.equal(records.get(result.id)?.providerReference, 'provider-secret-internal-id');
-  assert.deepEqual(service.capabilities(), { providerAvailable: true, supportedLanguages: ['en', 'fr'] });
+  assert.deepEqual(await service.capabilities(), { providerAvailable: true, supportedLanguages: ['en', 'fr'], languages: [{ code: 'en', name: 'en' }, { code: 'fr', name: 'fr' }] });
 });
 
 test('translation persists source mode as auto without claiming language detection', async () => {
   const { repository, records } = translationRepository();
-  const provider: TranslationProvider = { getCapabilities: () => ({ available: true, supportedLanguages: null }), translate: async () => ({ text: 'Salut' }) };
+  const provider: TranslationProvider = { getCapabilities: () => ({ available: true, supportedLanguages: null }), listLanguages: async () => [{ code: 'en', name: 'English' }, { code: 'fr', name: 'French' }], translate: async () => ({ text: 'Salut' }) };
   const result = await new TranslationService(provider, repository).translate(userA, { text: 'Hi', targetLanguage: 'fr' });
   assert.equal(result.sourceLanguage, 'auto');
   assert.equal(records.get(result.id)?.sourceLanguage, 'auto');
@@ -125,7 +171,7 @@ test('translation rejects provider-unsupported languages without calling it and 
 test('unavailable translation provider returns 503 and stores a failed request without translated content', async () => {
   const { repository, records } = translationRepository();
   const service = new TranslationService(new UnavailableTranslationProvider(), repository);
-  assert.deepEqual(service.capabilities(), { providerAvailable: false, supportedLanguages: null });
+  assert.deepEqual(await service.capabilities(), { providerAvailable: false, supportedLanguages: null, languages: [] });
   await assert.rejects(() => service.translate(userA, { text: 'Hello', targetLanguage: 'fr' }), (error: unknown) => error instanceof AppError && error.code === 'SERVICE_UNAVAILABLE' && error.statusCode === 503);
   assert.equal([...records.values()][0]?.status, 'failed');
   assert.equal([...records.values()][0]?.translatedContent, null);
@@ -133,7 +179,7 @@ test('unavailable translation provider returns 503 and stores a failed request w
 
 test('translation history is owner-scoped and omits internal provider metadata', async () => {
   const { repository } = translationRepository();
-  const provider: TranslationProvider = { getCapabilities: () => ({ available: true, supportedLanguages: null }), translate: async () => ({ text: 'Salut', providerReference: 'private-ref' }) };
+  const provider: TranslationProvider = { getCapabilities: () => ({ available: true, supportedLanguages: null }), listLanguages: async () => [{ code: 'en', name: 'English' }, { code: 'fr', name: 'French' }], translate: async () => ({ text: 'Salut', providerReference: 'private-ref' }) };
   const service = new TranslationService(provider, repository);
   const result = await service.translate(userA, { text: 'Hi', targetLanguage: 'fr' });
   assert.equal((await service.getRequest(userA, result.id)).request.translatedContent, 'Salut');
@@ -143,7 +189,7 @@ test('translation history is owner-scoped and omits internal provider metadata',
 
 test('translation provider exceptions persist failure and return a generic 503', async () => {
   const { repository, records } = translationRepository();
-  const provider: TranslationProvider = { getCapabilities: () => ({ available: true, supportedLanguages: null }), translate: async () => { throw new Error('secret token=do-not-leak'); } };
+  const provider: TranslationProvider = { getCapabilities: () => ({ available: true, supportedLanguages: null }), listLanguages: async () => [{ code: 'en', name: 'English' }, { code: 'fr', name: 'French' }], translate: async () => { throw new Error('secret token=do-not-leak'); } };
   const error = await new TranslationService(provider, repository).translate(userA, { text: 'Hello', targetLanguage: 'fr' }).then(() => null, caught => caught);
   assert.ok(error instanceof AppError);
   assert.equal(error.code, 'SERVICE_UNAVAILABLE');

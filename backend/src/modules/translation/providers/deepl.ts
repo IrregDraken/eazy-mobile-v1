@@ -29,6 +29,60 @@ export class DeepLTranslationProvider implements TranslationProvider {
     return { available: true, supportedLanguages: null };
   }
 
+  async listLanguages(): Promise<readonly { code: string; name: string }[]> {
+    const endpoints = this.config.TRANSLATION_PROVIDER_BASE_URL
+      ? [this.languageEndpoint(this.endpoint)]
+      : [
+          new URL('https://api-free.deepl.com/v2/languages?type=target'),
+          new URL('https://api.deepl.com/v2/languages?type=target')
+        ];
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      for (let index = 0; index < endpoints.length; index += 1) {
+        const response = await fetch(endpoints[index]!, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: {
+            accept: 'application/json',
+            authorization: 'DeepL-Auth-Key ' + this.apiKey
+          }
+        });
+        if (!response.ok) {
+          await response.body?.cancel().catch(() => undefined);
+          if ([401, 403].includes(response.status) && index < endpoints.length - 1) continue;
+          throw unavailable();
+        }
+        const raw = await readBoundedBody(response);
+        const payload = JSON.parse(raw) as Array<{ language?: unknown; name?: unknown }>;
+        if (!Array.isArray(payload)) throw unavailable();
+        const languages = payload.flatMap(item => {
+          const code = typeof item.language === 'string' ? item.language.trim() : '';
+          const name = typeof item.name === 'string' ? item.name.trim() : '';
+          return code && name ? [{ code, name }] : [];
+        });
+        if (!languages.length) throw unavailable();
+        return languages;
+      }
+      throw unavailable();
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw unavailable();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private languageEndpoint(endpoint: URL): URL {
+    const url = new URL(endpoint.toString());
+    const languagePath = url.pathname.replace(/\/translate\/?$/, '/languages');
+    if (languagePath === url.pathname) throw unavailable();
+    url.pathname = languagePath;
+    url.search = '';
+    url.searchParams.set('type', 'target');
+    return url;
+  }
+
   async translate(input: { text: string; source?: string; target: string }) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
