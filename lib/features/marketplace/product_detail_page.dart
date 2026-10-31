@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../app/theme/eazy_theme.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 
@@ -84,30 +84,41 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           const SizedBox(height: 8),
           Text(
             '${p['currency'] ?? 'NGN'} $price',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
-              color: EazyColors.green,
+              color: Theme.of(context).colorScheme.primary,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 16),
           Text(
             p['description']?.toString() ?? 'No description provided.',
-            style: const TextStyle(color: EazyColors.muted, height: 1.55),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.55),
           ),
           const SizedBox(height: 20),
           if (p['seller'] is Map)
             Card(
               child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.person_rounded)),
+                leading: CircleAvatar(
+                  backgroundImage: (p['seller'] as Map)['avatarUrl']?.toString().startsWith('http') == true
+                      ? NetworkImage((p['seller'] as Map)['avatarUrl'].toString())
+                      : null,
+                  child: (p['seller'] as Map)['avatarUrl']?.toString().startsWith('http') == true
+                      ? null
+                      : const Icon(Icons.person_rounded),
+                ),
                 title: Text(
                   (p['seller'] as Map)['displayName']?.toString() ?? 'Seller',
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 subtitle: Text(
                   '@${(p['seller'] as Map)['username'] ?? ''}',
-                  style: const TextStyle(color: EazyColors.muted),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
+                onTap: () {
+                  final username = (p['seller'] as Map)['username']?.toString() ?? '';
+                  if (username.isNotEmpty) context.push('/u/' + Uri.encodeComponent(username));
+                },
               ),
             ),
           const SizedBox(height: 12),
@@ -162,11 +173,11 @@ class _Placeholder extends StatelessWidget {
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(24),
     ),
-    child: const Center(
+    child: Center(
       child: Icon(
         Icons.shopping_bag_outlined,
         size: 72,
-        color: EazyColors.green,
+        color: Theme.of(context).colorScheme.primary,
       ),
     ),
   );

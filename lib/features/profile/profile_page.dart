@@ -9,6 +9,8 @@ import '../../core/ui/eazy_skeleton.dart';
 import '../../core/ui/eazy_assist_fab.dart';
 import '../social/stories_tray.dart';
 import '../social/video_media.dart';
+import '../../core/media/media_service.dart';
+import '../marketplace/product_detail_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.auth, this.username});
@@ -27,6 +29,8 @@ class _ProfilePageState extends State<ProfilePage> {
   late Map<String, dynamic> profile;
   List<Map<String, dynamic>> ownPosts = [];
   List<Map<String, dynamic>> highlights = [];
+  List<Map<String, dynamic>> sellerProducts = [];
+  bool avatarBusy = false;
   String? error;
   int contentTab = 0;
   bool isFollowing = false;
@@ -143,6 +147,12 @@ class _ProfilePageState extends State<ProfilePage> {
             auth: true,
           ),
         if (!own) api.get('social/relationship/$actualUsername', auth: true),
+        api.get(
+          'marketplace/sellers/' +
+              Uri.encodeComponent(actualUsername) +
+              '/products?page=1&limit=6',
+          auth: true,
+        ),
       ]);
       final postResult = results[0];
       final rawPosts = postResult['items'] as List? ?? const [];
@@ -152,6 +162,11 @@ class _ProfilePageState extends State<ProfilePage> {
               ? const <String, dynamic>{}
               : Map<String, dynamic>.from(results[3] as Map);
       final followState = own ? false : relationship['following'] == true;
+      final sellerResult = own ? results[2] : results[4];
+      final loadedSellerProducts = (sellerResult['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
       final newStats =
           own && fetchedStats is Map
               ? Map<String, dynamic>.from(fetchedStats)
@@ -221,6 +236,7 @@ class _ProfilePageState extends State<ProfilePage> {
               total == null ? rawPosts.length >= 50 : rawPosts.length < total;
           isFollowing = followState;
           highlights = loadedHighlights;
+          sellerProducts = loadedSellerProducts;
         });
       }
     } on ApiException catch (e) {
@@ -606,9 +622,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Keep your Eazy identity up to date.',
-                      style: TextStyle(color: EazyColors.muted),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 18),
                     TextFormField(
@@ -709,6 +725,117 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _changeAvatar() async {
+    if (!isOwnProfile || avatarBusy) return;
+    setState(() => avatarBusy = true);
+    try {
+      final upload = await EazyMediaService(api).pickAndUpload(kind: 'avatar');
+      if (upload == null) return;
+      await api.patch(
+        'profiles/me',
+        auth: true,
+        body: {'avatarUrl': upload.path},
+      );
+      await load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile photo updated')),
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('We could not update your profile photo. Try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => avatarBusy = false);
+    }
+  }
+
+  Future<void> _copyProfileLink() async {
+    final username = profile['username']?.toString() ?? '';
+    if (username.isEmpty) return;
+    final link = 'https://eazy.app/u/' + username;
+    await Clipboard.setData(ClipboardData(text: link));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile link copied')),
+      );
+    }
+  }
+
+  Widget _sellerProductCard(BuildContext context, Map<String, dynamic> product) {
+    final media = (product['media'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+    final imageUrl = media.isEmpty ? null : media.first['url']?.toString();
+    final currency = product['currency']?.toString() ?? 'NGN';
+    final price = product['priceAmount']?.toString() ?? '0.00';
+    return SizedBox(
+      width: 154,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ProductDetailPage(product: product)),
+        ),
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 112,
+                width: double.infinity,
+                child: imageUrl == null
+                    ? Container(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        child: Icon(Icons.shopping_bag_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      )
+                    : Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          child: Icon(Icons.image_not_supported_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 9, 10, 3),
+                child: Text(
+                  product['name']?.toString() ?? 'Product',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  (currency == 'NGN' ? '₦' : currency + ' ') + price,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final username = profile['username']?.toString() ?? '';
@@ -766,6 +893,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     IconButton(
+                      tooltip: 'Copy profile link',
+                      onPressed: username.isEmpty ? null : _copyProfileLink,
+                      icon: const Icon(Icons.ios_share_rounded),
+                    ),
+                    IconButton(
                       tooltip: 'Create a post',
                       onPressed: () => context.go('/home'),
                       icon: const Icon(Icons.add_box_outlined),
@@ -793,25 +925,63 @@ class _ProfilePageState extends State<ProfilePage> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: EazyColors.green.withValues(alpha: .75),
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: .75),
                               width: 2,
                             ),
                           ),
-                          child: CircleAvatar(
-                            radius: 43,
-                            backgroundColor: EazyColors.surfaceRaised,
-                            backgroundImage:
-                                avatar != null && avatar.startsWith('http')
-                                    ? NetworkImage(avatar)
-                                    : null,
-                            child:
-                                avatar == null || !avatar.startsWith('http')
-                                    ? const Icon(
-                                      Icons.person_rounded,
-                                      size: 42,
-                                      color: EazyColors.green,
-                                    )
-                                    : null,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              CircleAvatar(
+                                radius: 43,
+                                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                backgroundImage:
+                                    avatar != null && avatar.startsWith('http')
+                                        ? NetworkImage(avatar)
+                                        : null,
+                                child:
+                                    avatar == null || !avatar.startsWith('http')
+                                        ? Icon(
+                                            Icons.person_rounded,
+                                            size: 42,
+                                            color: Theme.of(context).colorScheme.primary,
+                                          )
+                                        : null,
+                              ),
+                              if (isOwnProfile)
+                                Positioned(
+                                  right: -3,
+                                  bottom: -3,
+                                  child: Material(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    shape: const CircleBorder(),
+                                    child: InkWell(
+                                      customBorder: const CircleBorder(),
+                                      onTap: avatarBusy ? null : _changeAvatar,
+                                      child: SizedBox(
+                                        width: 30,
+                                        height: 30,
+                                        child: Center(
+                                          child: avatarBusy
+                                              ? SizedBox(
+                                                  width: 14,
+                                                  height: 14,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Theme.of(context).colorScheme.onPrimary,
+                                                  ),
+                                                )
+                                              : Icon(
+                                                  Icons.camera_alt_rounded,
+                                                  size: 15,
+                                                  color: Theme.of(context).colorScheme.onPrimary,
+                                                ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 22),
@@ -840,8 +1010,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         padding: const EdgeInsets.only(top: 3),
                         child: Text(
                           profile['category'].toString(),
-                          style: const TextStyle(
-                            color: EazyColors.muted,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 12,
                           ),
                         ),
@@ -1016,12 +1186,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         margin: const EdgeInsets.only(top: 6),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: EazyColors.red.withValues(alpha: .10),
+                          color: Theme.of(context).colorScheme.error.withValues(alpha: .10),
                           borderRadius: BorderRadius.circular(EazyRadius.md),
                         ),
                         child: Text(
                           error!,
-                          style: const TextStyle(color: EazyColors.red),
+                          style: TextStyle(color: Theme.of(context).colorScheme.error),
                         ),
                       ),
                   ],
@@ -1038,10 +1208,43 @@ class _ProfilePageState extends State<ProfilePage> {
                   onDelete: _deleteHighlight,
                 ),
               ),
+            if (sellerProducts.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Shop',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      Text(
+                        sellerProducts.length.toString() + ' listed',
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 218,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: sellerProducts.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) => _sellerProductCard(context, sellerProducts[index]),
+                  ),
+                ),
+              ),
+            ],
             SliverToBoxAdapter(
               child: Container(
-                decoration: const BoxDecoration(
-                  border: Border(top: BorderSide(color: EazyColors.border)),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
                 ),
                 child: Row(
                   children: [
@@ -1088,7 +1291,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ? Icons.add_a_photo_outlined
                             : Icons.person_pin_outlined,
                         size: 42,
-                        color: EazyColors.green,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -1113,8 +1316,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 : 'New posts will appear here when they are shared.')
                             : 'Posts tagging this profile will appear here.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: EazyColors.muted,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           height: 1.45,
                         ),
                       ),
@@ -1141,12 +1344,12 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             if (error != null && ownPosts.isEmpty && !loading)
-              const SliverToBoxAdapter(
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(20),
                   child: Text(
                     'Could not refresh all profile content. Pull down to retry.',
-                    style: TextStyle(color: EazyColors.muted),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ),
               ),
@@ -1319,8 +1522,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                     people.isEmpty
                                         ? 'No $direction yet.'
                                         : 'No matching people.',
-                                    style: const TextStyle(
-                                      color: EazyColors.muted,
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 )
@@ -1376,7 +1579,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     return ListTile(
                                       leading: CircleAvatar(
                                         backgroundColor:
-                                            EazyColors.surfaceRaised,
+                                            Theme.of(context).colorScheme.surfaceContainerHighest,
                                         backgroundImage:
                                             avatar != null &&
                                                     avatar.startsWith('http')
@@ -1385,9 +1588,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                         child:
                                             avatar == null ||
                                                     !avatar.startsWith('http')
-                                                ? const Icon(
+                                                ? Icon(
                                                   Icons.person_rounded,
-                                                  color: EazyColors.green,
+                                                  color: Theme.of(context).colorScheme.primary,
                                                 )
                                                 : null,
                                       ),
@@ -1454,11 +1657,11 @@ class _HighlightsRow extends StatelessWidget {
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: EazyColors.border, width: 1.5),
+                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5),
                     ),
-                    child: const CircleAvatar(
+                    child: CircleAvatar(
                       radius: 27,
-                      backgroundColor: EazyColors.surfaceRaised,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                       child: Icon(Icons.add_rounded, size: 28),
                     ),
                   ),
@@ -1482,20 +1685,20 @@ class _HighlightsRow extends StatelessWidget {
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: EazyColors.border, width: 1.5),
+                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1.5),
                     ),
                     child: CircleAvatar(
                       radius: 27,
-                      backgroundColor: EazyColors.surfaceRaised,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                       backgroundImage:
                           cover != null && cover.startsWith('http')
                               ? NetworkImage(cover)
                               : null,
                       child:
                           cover == null || !cover.startsWith('http')
-                              ? const Icon(
+                              ? Icon(
                                 Icons.auto_awesome_rounded,
-                                color: EazyColors.green,
+                                color: Theme.of(context).colorScheme.primary,
                               )
                               : null,
                     ),
@@ -1561,7 +1764,7 @@ class _Stat extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: EazyColors.muted),
+            style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -1588,7 +1791,7 @@ class ProfileTab extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: selected ? EazyColors.green : Colors.transparent,
+              color: selected ? Theme.of(context).colorScheme.primary : Colors.transparent,
               width: 2,
             ),
           ),
@@ -1598,7 +1801,7 @@ class ProfileTab extends StatelessWidget {
           color:
               selected
                   ? Theme.of(context).colorScheme.primary
-                  : EazyColors.muted,
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
           size: 22,
         ),
       ),

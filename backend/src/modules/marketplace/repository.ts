@@ -26,6 +26,14 @@ const productSelect = `p.id, p.name, p.description, p.price_amount::text AS "pri
 export class MarketplaceRepository {
   constructor(private readonly pool: Pool) {}
 
+  async userIdByUsername(username: string): Promise<string | null> {
+    const result = await this.pool.query<{ user_id: string }>(
+      'SELECT user_id FROM profiles WHERE lower(username) = lower($1) LIMIT 1',
+      [username]
+    );
+    return result.rows[0]?.user_id ?? null;
+  }
+
   async categories(page: number, limit: number): Promise<{ items: { id: string; name: string; slug: string }[]; total: number }> {
     const count = await this.pool.query<{ count: string }>('SELECT count(*)::text AS count FROM categories');
     const result = await this.pool.query<{ id: string; name: string; slug: string }>('SELECT id, name, slug FROM categories ORDER BY name ASC, id ASC LIMIT $1 OFFSET $2', [limit, (page - 1) * limit]);
