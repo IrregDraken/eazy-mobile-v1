@@ -162,7 +162,7 @@ class AuthController extends ChangeNotifier {
     if (current != null && current.email != null) {
       await current.reload();
       final refreshed = FirebaseAuth.instance.currentUser ?? current;
-      if (refreshed.email!.trim().toLowerCase() != normalizedEmail) {
+      if (refreshed.email?.trim().toLowerCase() != normalizedEmail) {
         throw const ApiException(
           'Sign out of the current account before creating another Eazy account.',
         );
