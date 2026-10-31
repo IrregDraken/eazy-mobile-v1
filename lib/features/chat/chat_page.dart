@@ -239,9 +239,34 @@ class _ConversationPageState extends State<ConversationPage> {
   Future<void> send() async {
     final body = draft.text.trim();
     if ((body.isEmpty && pendingAttachments.isEmpty) || sending) return;
-    setState(() => sending = true);
+    final pendingId = 'pending-${DateTime.now().microsecondsSinceEpoch}';
+    final isEditing = editing != null;
+    if (!isEditing && body.isNotEmpty) {
+      setState(() {
+        sending = true;
+        messages.add({
+          'id': pendingId,
+          'body': body,
+          'sender': {'username': currentUsername},
+          'createdAt': DateTime.now().toIso8601String(),
+          'status': 'sending',
+        });
+        draft.clear();
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (scroll.hasClients) {
+          scroll.animateTo(
+            scroll.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    } else {
+      setState(() => sending = true);
+    }
     try {
-      if (editing != null) {
+      if (isEditing) {
         final r = await widget.api.patch(
           'chat/messages/${editing!['id']}',
           auth: true,
@@ -284,6 +309,7 @@ class _ConversationPageState extends State<ConversationPage> {
           },
         );
         final m = r['message'];
+        messages.removeWhere((message) => message['id'] == pendingId);
         if (m is Map && !messages.any((x) => x['id'] == m['id'])) {
           messages.add(Map<String, dynamic>.from(m));
         }
@@ -303,7 +329,11 @@ class _ConversationPageState extends State<ConversationPage> {
         }
       });
     } on ApiException catch (e) {
+      messages.removeWhere((message) => message['id'] == pendingId);
       if (mounted) {
+        setState(() {
+          if (draft.text.trim().isEmpty) draft.text = body;
+        });
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(e.message)));
@@ -950,9 +980,14 @@ class _ConversationPageState extends State<ConversationPage> {
                     Expanded(
                       child: TextField(
                         controller: draft,
-                        maxLines: 5,
+                        maxLines: 4,
                         minLines: 1,
                         decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                           hintText:
                               editing != null
                                   ? 'Edit message…'
