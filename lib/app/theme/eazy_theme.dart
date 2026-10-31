@@ -20,16 +20,12 @@ abstract final class EazyColors {
 
 abstract final class _DarkColors {
   static const ink = Color(0xFFF4F8F5);
-  static const muted = Color(0xFF9AA79F);
   static const canvas = Color(0xFF06100B);
   static const surface = Color(0xFF0C1711);
   static const surfaceRaised = Color(0xFF122119);
   static const border = Color(0xFF20352A);
   static const green = Color(0xFF48F59A);
-  static const mint = Color(0xFFB9FFD9);
   static const red = Color(0xFFFF746E);
-  static const amber = Color(0xFFFFC96B);
-  static const blue = Color(0xFF75B9FF);
 }
 
 abstract final class EazyRadius {

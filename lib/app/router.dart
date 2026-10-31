@@ -7,6 +7,7 @@ import '../features/location/location_page.dart';
 import '../features/translation/translation_page.dart';
 import '../features/notifications/notifications_page.dart';
 import '../features/settings/settings_page.dart';
+import '../features/settings/account_settings_page.dart';
 import '../features/security/security_page.dart';
 import '../features/security/blocks_page.dart';
 import '../features/home/home_shell.dart';
@@ -80,6 +81,7 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
       builder: (_, __) => const NotificationsPage(),
     ),
     GoRoute(path: '/settings', builder: (_, __) => SettingsPage(auth: auth)),
+    GoRoute(path: '/account-settings', builder: (_, __) => AccountSettingsPage(auth: auth)),
     GoRoute(path: '/security', builder: (_, __) => SecurityPage(auth: auth)),
     GoRoute(path: '/blocks', builder: (_, __) => const BlocksPage()),
   ],
