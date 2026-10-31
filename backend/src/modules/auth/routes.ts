@@ -9,7 +9,7 @@ import { createRateLimiter } from '../../middleware/rate-limit.js';
 import { z } from 'zod';
 import { validate } from '../../middleware/validate.js';
 
-const sessionParamsSchema = z.object({ id: z.string().uuid() }).strict();
+const sessionParamsSchema = z.object({ id: z.string().guid() }).strict();
 const sessionMutationLimit = createRateLimiter({ name: 'auth-session-mutation', windowMs: 60_000, max: 10 });
 const sessionReadLimit = createRateLimiter({ name: 'auth-session-read', windowMs: 60_000, max: 60 });
 const accountDeletionLimit = createRateLimiter({ name: 'auth-account-deletion', windowMs: 10 * 60_000, max: 6 });
