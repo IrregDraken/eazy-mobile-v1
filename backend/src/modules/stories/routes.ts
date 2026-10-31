@@ -13,9 +13,9 @@ const createStorySchema = z.object({
   mediaType: z.enum(['image', 'video']).default('image'),
   caption: z.string().trim().max(500).default('')
 }).strict();
-const storyIdSchema = z.object({ storyId: z.string().uuid() });
-const highlightIdSchema = z.object({ highlightId: z.string().uuid() });
-const createHighlightSchema = z.object({ title: z.string().trim().min(1).max(40), storyIds: z.array(z.string().uuid()).min(1).max(100) }).strict();
+const storyIdSchema = z.object({ storyId: z.string().guid() });
+const highlightIdSchema = z.object({ highlightId: z.string().guid() });
+const createHighlightSchema = z.object({ title: z.string().trim().min(1).max(40), storyIds: z.array(z.string().guid()).min(1).max(100) }).strict();
 const usernameSchema = z.object({ username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,32}$/) });
 
 export class StoryService {
