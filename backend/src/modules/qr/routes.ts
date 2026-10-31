@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../../middleware/auth.js';
+import { AppError } from '../../middleware/errors.js';
 import { createRateLimiter } from '../../middleware/rate-limit.js';
 import { validate } from '../../middleware/validate.js';
 import type { WalletService } from '../wallet/service.js';
@@ -20,7 +21,9 @@ export function createQrRouter(qrService: QrService, walletService: WalletServic
   if (paymentPin) {
     router.post('/pay', payLimit, requirePaymentPin(paymentPin), validate('body', qrPaymentSchema), controller.pay);
   } else {
-    router.post('/pay', payLimit, validate('body', qrPaymentSchema), controller.pay);
+    router.post('/pay', payLimit, (_request, _response, next) => {
+      next(new AppError('SERVICE_UNAVAILABLE', 'Payment PIN authorization is unavailable'));
+    });
   }
   return router;
 }
