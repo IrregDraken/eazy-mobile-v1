@@ -43,6 +43,11 @@ class PushRegistrationService {
     final api = _api;
     if (api == null || token.isEmpty) return;
     try {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized &&
+          settings.authorizationStatus != AuthorizationStatus.provisional) {
+        return;
+      }
       final response = await api.post(
         'notifications/devices',
         body: {'token': token, 'platform': Platform.isIOS ? 'ios' : 'android'},
