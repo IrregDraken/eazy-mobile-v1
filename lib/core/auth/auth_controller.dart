@@ -10,6 +10,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../network/api_client.dart';
+import '../notifications/push_registration_service.dart';
 import '../network/api_exception.dart';
 
 class EmailVerificationChallenge {
@@ -556,6 +557,7 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    await PushRegistrationService.instance.unregister(api);
     if (firebaseReady) await FirebaseAuth.instance.signOut();
     try {
       await GoogleSignIn.instance.signOut();
@@ -576,6 +578,7 @@ class AuthController extends ChangeNotifier {
       final result = await api.get('auth/me', auth: true);
       _profile = _normalizeProfile(result['profile'] as Map? ?? {});
       _firebaseUser = user;
+      unawaited(PushRegistrationService.instance.start(api));
     } catch (_) {
       await api.clearToken();
       rethrow;
