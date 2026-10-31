@@ -8,7 +8,7 @@ import type { EmailVerificationService } from './email-verification.js';
 import type { FirebaseAuthProvider } from '../../providers/firebase-auth.js';
 
 const requestSchema = z.object({ email: z.string().trim().email() }).strict();
-const verifySchema = z.object({ challengeId: z.string().uuid(), code: z.string().trim().regex(/^\d{6}$/) }).strict();
+const verifySchema = z.object({ challengeId: z.string().guid(), code: z.string().trim().regex(/^\d{6}$/) }).strict();
 const requestLimit = createRateLimiter({ name: 'email-verification-request', windowMs: 10 * 60_000, max: 5 });
 const verifyLimit = createRateLimiter({ name: 'email-verification-verify', windowMs: 10 * 60_000, max: 20 });
 
