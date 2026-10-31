@@ -62,11 +62,11 @@ export class AssistService {
     if (!userRow) throw new AppError('NOT_FOUND', 'Assist session not found');
     const history = await this.repository.recentMessages(userId, sessionId, MAX_ASSIST_HISTORY_MESSAGES);
     const orderedHistory = [...history].reverse().filter(row => row.id !== userRow.id);
-    const messages = buildAssistMessages(orderedHistory, input.content, this.tools);
+    const messages = await buildAssistMessages(orderedHistory, input.content, this.tools);
 
     const first = await this.complete(messages);
     if (Array.from(first.text).length > MAX_ASSIST_TOOL_CALL_CHARS) throw providerFailure();
-    const allowedTools = this.tools.list().map(tool => tool.name);
+    const allowedTools = (await this.tools.list()).map(tool => tool.name);
     const decision = parseDecision(first.text, allowedTools);
     let generated: string;
     if (decision.type === 'answer') {
