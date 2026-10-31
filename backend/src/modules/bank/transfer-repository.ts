@@ -72,12 +72,21 @@ export class BankTransferRepository implements BankTransferRepositoryContract {
   async settle(client: DbClient, transactionId: string, status: 'succeeded' | 'failed' | 'reversed', providerReference?: string) {
     const current = await this.getTransactionForSettlement(client, transactionId);
     if (!current) return null;
-    if (current.status !== 'pending') return current;
-    await client.query(
-      `UPDATE transactions SET status = $2, provider_reference = COALESCE($3, provider_reference), updated_at = now()
-       WHERE id = $1 AND status = 'pending'`,
-      [transactionId, status, providerReference ?? null]
-    );
+    if (current.status === 'pending') {
+      await client.query(
+        `UPDATE transactions SET status = $2, provider_reference = COALESCE($3, provider_reference), updated_at = now()
+         WHERE id = $1 AND status = 'pending'`,
+        [transactionId, status, providerReference ?? null]
+      );
+    } else if (current.status === 'succeeded' && status === 'reversed') {
+      await client.query(
+        `UPDATE transactions SET status = 'reversed', provider_reference = COALESCE($2, provider_reference), updated_at = now()
+         WHERE id = $1 AND status = 'succeeded'`,
+        [transactionId, providerReference ?? null]
+      );
+    } else {
+      return current;
+    }
     const result = await client.query<BankTransferRecord>(`SELECT ${projection} WHERE t.id = $1`, [transactionId]);
     return result.rows[0] ?? null;
   }
