@@ -15,21 +15,30 @@ export class NotificationService {
   async create(input: NotificationInput): Promise<string | null> {
     if (input.actorUserId && input.actorUserId === input.recipientUserId) return null;
     const id = await withTransaction(this.pool, db => this.repository.create(db, input));
-    if (id) {
-      await this.publishCreated(input.recipientUserId, id);
-      if (this.push && input.title && input.body) {
-        try { await this.push.notify({ userId: input.recipientUserId, title: input.title, body: input.body }); } catch { /* REST notification remains truthful when delivery fails. */ }
-      }
-    }
+    if (id) await this.publishCreated(input.recipientUserId, id);
     return id;
   }
 
   async publishCreated(userId: string, id: string): Promise<void> {
-    if (!this.realtime) return;
+    let notification;
     try {
-      const notification = await this.repository.get(userId, id);
-      if (notification) await this.realtime.publishToUser(userId, eventForNotification(notification));
-    } catch { /* persisted notifications remain available through REST when realtime is unavailable */ }
+      notification = await this.repository.get(userId, id);
+    } catch {
+      return;
+    }
+    if (!notification) return;
+
+    if (this.realtime) {
+      try {
+        await this.realtime.publishToUser(userId, eventForNotification(notification));
+      } catch { /* persisted notifications remain available through REST when realtime is unavailable */ }
+    }
+
+    if (this.push && notification.title && notification.body) {
+      try {
+        await this.push.notify({ userId, title: notification.title, body: notification.body });
+      } catch { /* persisted notifications remain truthful when push delivery fails */ }
+    }
   }
 
   async createInTransaction(db: DbClient, input: NotificationInput) {
