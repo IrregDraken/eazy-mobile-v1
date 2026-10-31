@@ -55,7 +55,7 @@ export function createWalletRouter(service: WalletService, paymentPin?: PaymentP
     });
     router.post('/transfers', rateLimit, requirePaymentPin(paymentPin), validate('body', transferSchema), controller.transfer);
   } else {
-    router.post('/transfers', rateLimit, (_request, _response, next) => {
+    router.post('/transfers', rateLimit, validate('body', transferSchema), (_request, _response, next) => {
       next(new AppError('SERVICE_UNAVAILABLE', 'Payment PIN authorization is unavailable'));
     });
   }
