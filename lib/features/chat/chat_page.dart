@@ -62,6 +62,9 @@ class _ConversationPageState extends State<ConversationPage> {
   String? currentUsername;
   WebSocket? socket;
   StreamSubscription? subscription;
+  Timer? realtimeReconnectTimer;
+  bool connectingRealtime = false;
+  int realtimeReconnectAttempts = 0;
 
   String get id => widget.conversation['id']?.toString() ?? '';
   String get _draftStorageKey => 'eazy.chat.draft.$id';
@@ -185,6 +188,7 @@ class _ConversationPageState extends State<ConversationPage> {
     draftSaveTimer?.cancel();
     draft.removeListener(_scheduleDraftSave);
     unawaited(_persistDraft());
+    realtimeReconnectTimer?.cancel();
     subscription?.cancel();
     socket?.close();
     draft.dispose();
@@ -230,9 +234,14 @@ class _ConversationPageState extends State<ConversationPage> {
   }
 
   Future<void> connectRealtime() async {
+    if (!mounted || connectingRealtime || socket != null) return;
+    connectingRealtime = true;
     try {
       final token = await widget.api.readToken();
-      if (token == null || token.isEmpty) return;
+      if (token == null || token.isEmpty) {
+        _scheduleRealtimeReconnect();
+        return;
+      }
       final base = Uri.parse(widget.api.baseUrl);
       final scheme = base.scheme == 'https' ? 'wss' : 'ws';
       final wsUri = Uri(
@@ -244,42 +253,82 @@ class _ConversationPageState extends State<ConversationPage> {
       final ws = await WebSocket.connect(
         wsUri.toString(),
         headers: {'Authorization': 'Bearer $token'},
-      );
+      ).timeout(const Duration(seconds: 10));
+      if (!mounted) {
+        await ws.close();
+        return;
+      }
       socket = ws;
+      realtimeReconnectTimer?.cancel();
+      realtimeReconnectTimer = null;
+      realtimeReconnectAttempts = 0;
       ws.add(
         jsonEncode({'type': 'subscribe', 'channel': 'conversation', 'id': id}),
       );
-      subscription = ws.listen((raw) {
-        try {
-          final frame = jsonDecode(raw.toString());
-          if (frame is! Map || frame['type'] != 'event') return;
-          if (frame['event'] == 'message.created' &&
-              frame['data'] is Map &&
-              frame['data']['message'] is Map) {
-            final m = Map<String, dynamic>.from(
-              frame['data']['message'] as Map,
-            );
-            if (m['conversationId']?.toString() == id &&
-                !messages.any((x) => x['id'] == m['id'])) {
-              if (mounted) setState(() => messages.add(m));
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (scroll.hasClients) {
-                  scroll.animateTo(
-                    scroll.position.maxScrollExtent,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOut,
-                  );
-                }
-              });
-              unawaited(markRead());
+      subscription = ws.listen(
+        (raw) {
+          try {
+            final frame = jsonDecode(raw.toString());
+            if (frame is! Map || frame['type'] != 'event') return;
+            if (frame['event'] == 'message.created' &&
+                frame['data'] is Map &&
+                frame['data']['message'] is Map) {
+              final m = Map<String, dynamic>.from(
+                frame['data']['message'] as Map,
+              );
+              if (m['conversationId']?.toString() == id &&
+                  !messages.any((x) => x['id'] == m['id'])) {
+                if (mounted) setState(() => messages.add(m));
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (scroll.hasClients) {
+                    scroll.animateTo(
+                      scroll.position.maxScrollExtent,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                });
+                unawaited(markRead());
+              }
+            } else if (frame['event'] == 'message.reaction.created' ||
+                frame['event'] == 'message.reaction.deleted') {
+              unawaited(loadMessages());
             }
-          } else if (frame['event'] == 'message.reaction.created' ||
-              frame['event'] == 'message.reaction.deleted') {
-            unawaited(loadMessages());
-          }
-        } catch (_) {}
-      }, onError: (_) {});
-    } catch (_) {}
+          } catch (_) {}
+        },
+        onDone: () => _handleRealtimeDisconnect(ws),
+        onError: (_) => _handleRealtimeDisconnect(ws),
+        cancelOnError: true,
+      );
+    } catch (_) {
+      _scheduleRealtimeReconnect();
+    } finally {
+      connectingRealtime = false;
+    }
+  }
+
+  void _handleRealtimeDisconnect(WebSocket disconnectedSocket) {
+    if (!identical(socket, disconnectedSocket)) return;
+    socket = null;
+    subscription = null;
+    _scheduleRealtimeReconnect();
+  }
+
+  void _scheduleRealtimeReconnect() {
+    if (!mounted || realtimeReconnectTimer != null) return;
+    final delaySeconds = switch (realtimeReconnectAttempts) {
+      0 => 1,
+      1 => 2,
+      2 => 4,
+      3 => 8,
+      4 => 16,
+      _ => 30,
+    };
+    if (realtimeReconnectAttempts < 5) realtimeReconnectAttempts++;
+    realtimeReconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      realtimeReconnectTimer = null;
+      unawaited(connectRealtime());
+    });
   }
 
   Future<void> send() async {
