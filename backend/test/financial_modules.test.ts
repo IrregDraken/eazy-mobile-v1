@@ -453,9 +453,11 @@ test('QR/payment/wallet requests require authentication, reject forged money sta
     const headers = { authorization: 'Bearer test-token', 'content-type': 'application/json' };
     assert.equal((await fetch(`${baseUrl}/v1/wallet/transfers`, { method: 'POST', headers, body: JSON.stringify({ recipientUsername: 'recipient', amount: '1.00', currency: 'NGN' }) })).status, 422);
     assert.equal((await fetch(`${baseUrl}/v1/wallet/transfers`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'valid-transfer-123' }, body: JSON.stringify({ recipientUsername: 'recipient', amount: '1.00', currency: 'NGN', userId: userB, balance: '100.00' }) })).status, 422);
+    assert.equal((await fetch(`${baseUrl}/v1/wallet/transfers`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'pin-required-transfer-123' }, body: JSON.stringify({ recipientUsername: 'recipient', amount: '1.00', currency: 'NGN' }) })).status, 503);
     assert.equal((await fetch(`${baseUrl}/v1/payments/initialize`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'valid-payment-123' }, body: JSON.stringify({ purpose: 'wallet_deposit', amount: '1.00', currency: 'NGN', status: 'succeeded' }) })).status, 422);
     assert.equal((await fetch(`${baseUrl}/v1/payments/initialize`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'valid-payment-456' }, body: JSON.stringify({ purpose: 'wallet_deposit', amount: '1.00', currency: 'NGN' }) })).status, 503);
     assert.equal((await fetch(`${baseUrl}/v1/wallet/qr/pay`, { method: 'POST', headers, body: JSON.stringify({ token: 'x'.repeat(43), amount: '1.00', currency: 'NGN', status: 'succeeded' }) })).status, 422);
+    assert.equal((await fetch(`${baseUrl}/v1/wallet/qr/pay`, { method: 'POST', headers, body: JSON.stringify({ token: 'x'.repeat(43), amount: '1.00', currency: 'NGN' }) })).status, 503);
     assert.equal((await fetch(`${baseUrl}/v1/ledger`, { headers })).status, 404);
   });
 });
