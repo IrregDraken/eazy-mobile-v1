@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import type { Pool } from 'pg';
+import type { Logger } from 'pino';
+import { safeErrorSummary } from '../../config/redaction.js';
 import { withTransaction, type DbClient } from '../../database/client.js';
 import { AppError } from '../../middleware/errors.js';
 import { paginationMeta, type Pagination } from '../../utils/pagination.js';
@@ -10,7 +12,7 @@ import { eventForNotification } from '../realtime/events.js';
 import type { NotificationProvider } from '../../providers/interfaces.js';
 
 export class NotificationService {
-  constructor(private readonly pool: Pool, private readonly repository = new NotificationRepository(pool), private readonly realtime?: RealtimePublisher, private readonly push?: NotificationProvider) {}
+  constructor(private readonly pool: Pool, private readonly repository = new NotificationRepository(pool), private readonly realtime?: RealtimePublisher, private readonly push?: NotificationProvider, private readonly logger?: Logger) {}
 
   async create(input: NotificationInput): Promise<string | null> {
     if (input.actorUserId && input.actorUserId === input.recipientUserId) return null;
@@ -32,7 +34,17 @@ export class NotificationService {
     if (this.push && notification.title && notification.body) {
       try {
         await this.push.notify({ userId, title: notification.title, body: notification.body });
-      } catch { /* persisted notifications remain truthful when push delivery fails */ }
+      } catch (error) {
+        this.logger?.warn(
+          {
+            event: 'notification.push_delivery_failed',
+            userId,
+            notificationId: id,
+            error: safeErrorSummary(error),
+          },
+          'push notification delivery failed',
+        );
+      }
     }
   }
 
