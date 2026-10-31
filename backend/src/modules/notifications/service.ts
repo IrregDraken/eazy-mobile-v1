@@ -20,12 +20,7 @@ export class NotificationService {
   }
 
   async publishCreated(userId: string, id: string): Promise<void> {
-    let notification;
-    try {
-      notification = await this.repository.get(userId, id);
-    } catch {
-      return;
-    }
+    const notification = await this.repository.get(userId, id).catch(() => null);
     if (!notification) return;
 
     if (this.realtime) {
