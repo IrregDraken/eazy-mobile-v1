@@ -272,3 +272,16 @@ abstract final class EazyTheme {
     );
   }
 }
+
+extension EazyThemeTokens on BuildContext {
+  Color get eazyAccent =>
+      Theme.of(this).brightness == Brightness.dark
+          ? _DarkColors.green
+          : EazyColors.greenDeep;
+  Color get eazyText => Theme.of(this).colorScheme.onSurface;
+  Color get eazyMuted => Theme.of(this).colorScheme.onSurfaceVariant;
+  Color get eazyBorder => Theme.of(this).colorScheme.outlineVariant;
+  Color get eazySurfaceRaised =>
+      Theme.of(this).colorScheme.surfaceContainerHighest;
+  Color get eazyOnAccent => Theme.of(this).colorScheme.onPrimary;
+}
