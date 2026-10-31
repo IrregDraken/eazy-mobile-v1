@@ -129,7 +129,7 @@ class _TranslationPageState extends State<TranslationPage> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Write your message, choose the languages, and get your translation.,
+              'Write your message, choose the languages, and get your translation.',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
             ),
             const SizedBox(height: 18),
