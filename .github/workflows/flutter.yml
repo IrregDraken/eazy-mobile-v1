@@ -61,6 +61,17 @@ jobs:
               raise SystemExit("Flutter CocoaPods setup is incomplete")
           print("iOS configuration preflight passed.")
           PY
+  flutter-ios-simulator-smoke:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --simulator --no-codesign --dart-define=GOOGLE_SERVER_CLIENT_ID=370546190167-dqltoqcnuvkkrh163qk80sdm8ejfm3ta.apps.googleusercontent.com
+
   flutter-analyze-test:
     runs-on: ubuntu-latest
     steps:
