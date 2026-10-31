@@ -77,9 +77,9 @@ class EazyMediaService {
     );
   }
 
-  Future<MediaUpload?> pickAndUpload({required String kind}) async {
+  Future<MediaUpload?> pickAndUpload({required String kind, ImageSource source = ImageSource.gallery}) async {
     final file = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
       imageQuality: 88,
       maxWidth: 2400,
     );
