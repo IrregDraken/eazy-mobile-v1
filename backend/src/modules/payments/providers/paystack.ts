@@ -48,8 +48,8 @@ export class PaystackPaymentProvider implements PaymentProvider {
   }
 
   verifyWebhookSignature(rawBody: string, signature: string | undefined) {
-    if (!signature || !this.webhookSecret) return false;
-    const expected = crypto.createHmac('sha512', this.webhookSecret).update(rawBody).digest('hex');
+    if (!signature || !this.secretKey) return false;
+    const expected = crypto.createHmac('sha512', this.secretKey).update(rawBody).digest('hex');
     const expectedBuffer = Buffer.from(expected);
     const actualBuffer = Buffer.from(signature);
     return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);
