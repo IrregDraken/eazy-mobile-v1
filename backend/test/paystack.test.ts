@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
 import { PaystackPaymentProvider } from '../src/modules/payments/providers/paystack.js';
+import { PaystackBankProvider } from '../src/modules/bank/providers/paystack.js';
 import type { AppConfig } from '../src/config/env.js';
 
 const config = {
@@ -12,11 +13,16 @@ const config = {
   PAYMENT_CALLBACK_URL: ''
 } as AppConfig;
 
-test('Paystack webhook signatures are verified against the raw body', () => {
+test('Paystack payment and bank webhooks use the account secret key and raw body', () => {
   const provider = new PaystackPaymentProvider(config);
+  const bankProvider = new PaystackBankProvider(config);
   const rawBody = JSON.stringify({ event: 'charge.success', data: { reference: 'eazy-1' } });
-  const signature = crypto.createHmac('sha512', 'whsec_example').update(rawBody).digest('hex');
+  const signature = crypto.createHmac('sha512', 'sk_test_example').update(rawBody).digest('hex');
+  const wrongKeySignature = crypto.createHmac('sha512', 'whsec_example').update(rawBody).digest('hex');
   assert.equal(provider.verifyWebhookSignature(rawBody, signature), true);
+  assert.equal(bankProvider.verifyWebhookSignature(rawBody, signature), true);
+  assert.equal(provider.verifyWebhookSignature(rawBody, wrongKeySignature), false);
+  assert.equal(bankProvider.verifyWebhookSignature(rawBody, wrongKeySignature), false);
   assert.equal(provider.verifyWebhookSignature(rawBody, `${signature.slice(0, -1)}0`), false);
   assert.equal(provider.verifyWebhookSignature(`${rawBody} `, signature), false);
 });
