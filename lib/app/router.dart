@@ -13,6 +13,7 @@ import '../features/security/blocks_page.dart';
 import '../features/home/home_shell.dart';
 import '../features/profile/profile_page.dart';
 import '../features/marketplace/cart_page.dart';
+import '../features/marketplace/seller_setup_page.dart';
 import '../features/onboarding/profile_setup_page.dart';
 import '../features/onboarding/discovery_page.dart';
 import '../features/onboarding/splash_page.dart';
@@ -65,6 +66,7 @@ GoRouter buildRouter(AuthController auth) => GoRouter(
     ),
     GoRoute(path: '/discovery', builder: (_, _) => const DiscoveryPage()),
     GoRoute(path: '/cart', builder: (_, _) => const CartPage()),
+    GoRoute(path: '/seller', builder: (_, _) => const SellerSetupPage()),
     GoRoute(
       path: '/home',
       builder:
