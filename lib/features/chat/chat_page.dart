@@ -1234,7 +1234,7 @@ class _SkeletonMessage extends StatelessWidget {
     width: width,
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: context.eazySurface,
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(18),
       border: Border.all(color: context.eazyBorder),
     ),
