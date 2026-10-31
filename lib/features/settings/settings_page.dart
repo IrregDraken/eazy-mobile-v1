@@ -312,6 +312,14 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       const Divider(height: 1, indent: 16, endIndent: 16),
                       ListTile(
+                        leading: const Icon(Icons.manage_accounts_outlined),
+                        title: const Text('Account details'),
+                        subtitle: const Text('Manage your email, phone number and password'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push('/account-settings'),
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
                         leading: const Icon(Icons.shield_outlined),
                         title: const Text('Security and sign-in'),
                         subtitle: const Text('Manage account security'),
