@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_exception.dart';
 
@@ -61,7 +60,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: error ? EazyColors.red : null,
+        backgroundColor: error ? Theme.of(context).colorScheme.error : null,
       ),
     );
   }
@@ -192,7 +191,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _sectionTitle('Email address'),
+          _sectionTitle(context, 'Email address'),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -206,7 +205,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                       Icon(
                         user?.emailVerified == true ? Icons.verified_rounded : Icons.info_outline_rounded,
                         size: 17,
-                        color: user?.emailVerified == true ? EazyColors.green : EazyColors.red,
+                        color: user?.emailVerified == true ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.error,
                       ),
                       const SizedBox(width: 6),
                       Text(user?.emailVerified == true ? 'Verified' : 'Not verified'),
@@ -260,14 +259,14 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                   const SizedBox(height: 8),
                   const Text(
                     'Your current email stays active until you verify the new address. Eazy updates your account after Firebase confirms it.',
-                    style: TextStyle(color: EazyColors.muted, height: 1.35, fontSize: 12),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.35, fontSize: 12),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 18),
-          _sectionTitle('Phone number'),
+          _sectionTitle(context, 'Phone number'),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -284,7 +283,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                       Icon(
                         phone == null || phone.isEmpty ? Icons.info_outline_rounded : Icons.verified_rounded,
                         size: 17,
-                        color: phone == null || phone.isEmpty ? EazyColors.muted : EazyColors.green,
+                        color: phone == null || phone.isEmpty ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 6),
                       Text(phone == null || phone.isEmpty ? 'Not added' : 'Verified by Firebase'),
@@ -334,14 +333,14 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                   const SizedBox(height: 8),
                   const Text(
                     'We verify the number with an SMS code before linking or replacing it. Your existing sign-in account is kept intact.',
-                    style: TextStyle(color: EazyColors.muted, height: 1.35, fontSize: 12),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.35, fontSize: 12),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 18),
-          _sectionTitle('Password'),
+          _sectionTitle(context, 'Password'),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -389,7 +388,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                     )
                   : const Text(
                       'This account does not use an email-and-password sign-in method. Password changes are managed by your linked sign-in provider.',
-                      style: TextStyle(color: EazyColors.muted, height: 1.4),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
                     ),
             ),
           ),
@@ -398,11 +397,11 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     );
   }
 
-  Widget _sectionTitle(String title) => Padding(
+  Widget _sectionTitle(BuildContext context, String title) => Padding(
     padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
     child: Text(
       title,
-      style: const TextStyle(color: EazyColors.muted, fontWeight: FontWeight.w800),
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w800),
     ),
   );
 }
