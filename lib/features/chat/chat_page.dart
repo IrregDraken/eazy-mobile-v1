@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../app/theme/eazy_theme.dart';
@@ -48,6 +49,8 @@ class ConversationPage extends StatefulWidget {
 
 class _ConversationPageState extends State<ConversationPage> {
   final draft = TextEditingController();
+  final draftStorage = const FlutterSecureStorage();
+  Timer? draftSaveTimer;
   final scroll = ScrollController();
   late final EazyMediaService media;
   final List<MediaUpload> pendingAttachments = [];
@@ -60,6 +63,43 @@ class _ConversationPageState extends State<ConversationPage> {
   StreamSubscription? subscription;
 
   String get id => widget.conversation['id']?.toString() ?? '';
+  String get _draftStorageKey => 'eazy.chat.draft.$id';
+
+  Future<void> _restoreDraft() async {
+    try {
+      final saved = await draftStorage.read(key: _draftStorageKey);
+      if (mounted && draft.text.isEmpty && saved != null && saved.isNotEmpty) {
+        draft.value = TextEditingValue(
+          text: saved,
+          selection: TextSelection.collapsed(offset: saved.length),
+        );
+      }
+    } catch (_) {
+      // Draft restoration is best-effort; it must not block opening a chat.
+    }
+  }
+
+  void _scheduleDraftSave() {
+    draftSaveTimer?.cancel();
+    draftSaveTimer = Timer(
+      const Duration(milliseconds: 350),
+      _persistDraft,
+    );
+  }
+
+  Future<void> _persistDraft() async {
+    final value = draft.text;
+    try {
+      if (value.isEmpty) {
+        await draftStorage.delete(key: _draftStorageKey);
+      } else {
+        await draftStorage.write(key: _draftStorageKey, value: value);
+      }
+    } catch (_) {
+      // A local draft is convenience data, never a prerequisite for sending.
+    }
+  }
+
   Map<String, dynamic> get _otherParticipant {
     final participants = widget.conversation['participants'];
     if (participants is List) {
@@ -108,6 +148,8 @@ class _ConversationPageState extends State<ConversationPage> {
   void initState() {
     super.initState();
     media = EazyMediaService(widget.api);
+    draft.addListener(_scheduleDraftSave);
+    unawaited(_restoreDraft());
     loadMessages();
     connectRealtime();
     loadMyProfile();
@@ -139,6 +181,9 @@ class _ConversationPageState extends State<ConversationPage> {
 
   @override
   void dispose() {
+    draftSaveTimer?.cancel();
+    draft.removeListener(_scheduleDraftSave);
+    unawaited(_persistDraft());
     subscription?.cancel();
     socket?.close();
     draft.dispose();
