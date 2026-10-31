@@ -222,5 +222,5 @@ jobs:
           path: backend/package-lock.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce clean dependency audit
+      - name: Fail on high-severity dependency advisories
         run: npm audit --audit-level=high
