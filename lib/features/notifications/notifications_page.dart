@@ -4,6 +4,7 @@ import 'dart:io';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/ui/eazy_assist_fab.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -112,6 +113,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   };
   @override
   Widget build(BuildContext context) => Scaffold(
+    floatingActionButton: const EazyAssistFab(),
     appBar: AppBar(
       title: Text(
         unread > 0 ? 'Notifications ($unread)' : 'Notifications',
