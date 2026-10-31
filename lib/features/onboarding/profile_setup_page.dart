@@ -93,7 +93,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'You must be at least 18 to use Eazy.',
