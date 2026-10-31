@@ -289,14 +289,12 @@ test('wallet balance capability reads only the authenticated user ledger balance
   );
 });
 
-test('Eazy Assist uses the authenticated wallet balance capability when asked', async () => {
-  const toolCall = JSON.stringify({ type: 'tool_call', name: 'get_wallet_balance', arguments: {} });
-  const response = JSON.stringify({ type: 'answer', text: 'Your Eazy wallet balance is ₦1,234.50.' });
-  const harness = createHarness({ scripted: [toolCall, response] });
-  const result = await harness.service.sendMessage('user-a', session.id, { content: 'What is my wallet balance?' });
+test('Eazy Assist reads the authenticated wallet balance directly without depending on model tool selection', async () => {
+  const harness = createHarness({ scripted: [] });
+  const result = await harness.service.sendMessage('user-a', session.id, { content: 'Can you check my balance?' });
   assert.equal(result.assistantMessage.content, 'Your Eazy wallet balance is ₦1,234.50.');
   assert.deepEqual(harness.walletUserIds, ['user-a']);
-  assert.match(harness.providerCalls[1]?.messages.at(-1)?.content ?? '', /1234\.50/);
+  assert.equal(harness.providerCalls.length, 0);
 });
 
 test('translation capability delegates only through existing TranslationService and is hidden when unavailable', async () => {
