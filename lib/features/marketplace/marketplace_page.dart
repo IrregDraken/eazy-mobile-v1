@@ -333,8 +333,10 @@ class _ProductSkeletonCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Expanded(
-            child: EazySkeletonBox(width: double.infinity, height: 180, radius: 14),
+          const EazySkeletonBox(
+            width: double.infinity,
+            height: 132,
+            radius: 14,
           ),
           const SizedBox(height: 10),
           const EazySkeletonBox(width: 112, height: 12),
