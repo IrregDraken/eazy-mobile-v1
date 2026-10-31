@@ -10,6 +10,7 @@ import type { AppConfig } from '../../config/env.js';
 export interface AuthenticatedIdentity extends AuthContext {
   firebaseUid: string;
   sessionId: string;
+  account: { user: AuthUserRecord['user']; profile: AuthUserRecord['profile'] };
 }
 
 export interface AuthUserRecord {
