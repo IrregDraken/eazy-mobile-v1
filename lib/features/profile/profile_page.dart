@@ -6,6 +6,7 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/ui/eazy_skeleton.dart';
+import '../../core/ui/eazy_assist_fab.dart';
 import '../social/stories_tray.dart';
 import '../social/video_media.dart';
 
@@ -723,7 +724,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final followers = stats['followers'] ?? profile['followersCount'] ?? 0;
     final following = stats['following'] ?? profile['followingCount'] ?? 0;
 
-    return SafeArea(
+    return Stack(
+      children: [
+        SafeArea(
       child: RefreshIndicator(
         onRefresh: load,
         child: CustomScrollView(
@@ -1162,6 +1165,14 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         ),
       ),
+    ),
+        if (widget.username != null)
+          const Positioned(
+            right: 16,
+            bottom: 24,
+            child: EazyAssistFab(),
+          ),
+      ],
     );
   }
 
