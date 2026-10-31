@@ -72,10 +72,13 @@ export class PaymentService {
   }
 
   private async verifyIntent(intent: PaymentIntentRecord) {
-    if (!intent.providerReference) throw new AppError('CONFLICT', 'Payment has not been initialized with the provider');
     if (!this.provider.verifyPayment || !this.repository.settleProviderPayment) throw this.providerUnavailable();
+    // The transaction reference is supplied to Paystack during initialization. If the
+    // provider accepted the request but the response was lost, the provider reference
+    // may never have been persisted. Verify by our original reference in that case.
+    const verificationReference = intent.providerReference ?? intent.reference;
     let verified: { providerReference: string; amount: string; currency: string } | null;
-    try { verified = await this.provider.verifyPayment(intent.providerReference); }
+    try { verified = await this.provider.verifyPayment(verificationReference); }
     catch { throw this.providerUnavailable(); }
     if (!verified) throw new AppError('CONFLICT', 'Payment is not confirmed by the provider');
     if (verified.amount !== intent.amount || verified.currency !== intent.currency) {

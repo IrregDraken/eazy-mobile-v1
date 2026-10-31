@@ -401,6 +401,43 @@ test('ambiguous provider timeout leaves intent pending and idempotency prevents 
   assert.equal(calls, 1);
 });
 
+test('pending payment without a saved provider reference reconciles by the original transaction reference', async () => {
+  const { repo, byId } = paymentRepoFixture();
+  let verifiedReference = '';
+  const repository: PaymentRepositoryContract = {
+    ...repo,
+    settleProviderPayment: async (_client, id, providerReference, amount, currency) => {
+      const intent = byId.get(id);
+      if (!intent || intent.amount !== amount || intent.currency !== currency) return false;
+      intent.status = 'succeeded';
+      intent.providerReference = providerReference;
+      return true;
+    }
+  };
+  const provider: PaymentProvider = {
+    getCapabilities: () => ({ available: true, providerName: 'test-provider' }),
+    createPayment: async () => { throw new Error('timeout after possible acceptance'); },
+    verifyPayment: async reference => {
+      verifiedReference = reference;
+      return { providerReference: reference, amount: '100.10', currency: 'NGN' };
+    }
+  };
+  const service = new PaymentService(fakePaymentPool(), provider, repository);
+  await assert.rejects(
+    () => service.initialize(userA, { purpose: 'wallet_deposit', amount: '100.10', currency: 'NGN' }, 'reconcile-timeout-key-123'),
+    (error: unknown) => error instanceof AppError && error.statusCode === 503
+  );
+  const pending = [...byId.values()][0]!;
+  assert.equal(pending.providerReference, null);
+
+  const result = await service.verify(userA, pending.id);
+
+  assert.equal(verifiedReference, pending.reference);
+  assert.equal(result.transaction.id, pending.id);
+  assert.equal(result.transaction.status, 'succeeded');
+  assert.equal(pending.providerReference, pending.reference);
+});
+
 test('QR/payment/wallet requests require authentication, reject forged money state, and do not expose fake ledger routes', async () => {
   const state = transactionalPool(seedWalletState('1.00'));
   const { service: walletService } = walletDependencies(state.pool, state);
