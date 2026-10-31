@@ -703,7 +703,7 @@ class _PostState extends State<_Post> {
                                   ),
                                 )
                                 : comments.isEmpty
-                                ? const Center(
+                                ? Center(
                                   child: Text(
                                     'Start the conversation.',
                                     style: TextStyle(color: context.eazyMuted),
@@ -1569,11 +1569,11 @@ class _SuggestedAccounts extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(right: 20, bottom: 10),
+          Padding(
+            padding: const EdgeInsets.only(right: 20, bottom: 10),
             child: Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Text(
                     'People to know on Eazy',
                     style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
