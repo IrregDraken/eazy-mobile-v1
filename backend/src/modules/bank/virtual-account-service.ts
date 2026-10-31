@@ -157,6 +157,9 @@ export class VirtualAccountService {
     if (account.accountNumber && accountNumber && account.accountNumber !== accountNumber) {
       throw new AppError('CONFLICT', 'Virtual account webhook account does not match the assigned account');
     }
+    if (currency !== account.currency.trim().toUpperCase()) {
+      throw new AppError('CONFLICT', 'Virtual account webhook currency does not match the assigned wallet currency');
+    }
 
     const amount = minorUnitsToAmount(BigInt(amountMinor));
     const idempotencyKey = createHash('sha256').update(`dva-charge:${reference}`).digest('hex');
