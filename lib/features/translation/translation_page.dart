@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../app/theme/eazy_theme.dart';
+import '../../core/ui/eazy_assist_fab.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 
@@ -107,6 +107,7 @@ class _TranslationPageState extends State<TranslationPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+        floatingActionButton: const EazyAssistFab(),
         appBar: AppBar(
           title: const Text('Translation', style: TextStyle(fontWeight: FontWeight.w900)),
           actions: [
@@ -129,7 +130,7 @@ class _TranslationPageState extends State<TranslationPage> {
             const SizedBox(height: 6),
             const Text(
               'Write your message, choose the languages, and get your translation.',
-              style: TextStyle(color: EazyColors.muted, height: 1.4),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
             ),
             const SizedBox(height: 18),
             TextField(
@@ -188,7 +189,7 @@ class _TranslationPageState extends State<TranslationPage> {
             if (error.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 14),
-                child: Text(error, style: const TextStyle(color: EazyColors.red, height: 1.35)),
+                child: Text(error, style: TextStyle(color: Theme.of(context).colorScheme.error, height: 1.35)),
               ),
             if (result.isNotEmpty)
               Card(
