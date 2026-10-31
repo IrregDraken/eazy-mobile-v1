@@ -34,6 +34,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   Map<String, dynamic>? receiveQr;
   String? username;
   List<Map<String, dynamic>> transactions = [];
+  Map<String, dynamic>? pendingDeposit;
 
   @override
   void initState() {
@@ -117,15 +118,17 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               .whereType<Map>()
               .map((entry) => Map<String, dynamic>.from(entry))
               .toList();
-      final pendingDeposit = transactions.firstWhere(
+      final pendingEntries = transactions.where(
         (entry) =>
             entry['type']?.toString().toLowerCase() == 'deposit' &&
             entry['status']?.toString().toLowerCase() == 'pending',
-        orElse: () => const <String, dynamic>{},
       );
-      final pendingDepositId = pendingDeposit['id']?.toString();
+      pendingDeposit = pendingEntries.isEmpty ? null : pendingEntries.first;
+      final pendingDepositId = pendingDeposit?['id']?.toString();
       if (pendingDepositId != null && pendingDepositId.isNotEmpty) {
         await storage.write(key: 'eazy.pendingPayment', value: pendingDepositId);
+      } else {
+        await storage.delete(key: 'eazy.pendingPayment');
       }
       try {
         final accountResult = await api.get(
@@ -149,6 +152,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> deposit() async {
+    if (pendingDeposit != null) {
+      _showError('You already have a deposit awaiting confirmation. Check its status before starting another one.');
+      return;
+    }
     final amount = await _amountDialog(title: 'Add money', action: 'Continue');
     if (amount == null) return;
     setState(() => busy = true);
@@ -224,7 +231,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         _showMessage('Payment verified and wallet updated.');
       }
     } on ApiException catch (e) {
-      if (!silent) _showError(e.message);
+      if (!silent) {
+        if (e.statusCode == 409 && e.message.toLowerCase().contains('not confirmed')) {
+          _showMessage('This deposit is still awaiting provider confirmation. No wallet credit has been posted. Do not start another deposit yet.');
+        } else if (e.statusCode == 503) {
+          _showMessage('We could not check this deposit right now. It remains pending. Do not start another deposit yet.');
+        } else {
+          _showError(e.message);
+        }
+      }
     } finally {
       reconcilingPayment = false;
       if (mounted) setState(() => busy = false);
@@ -1498,6 +1513,52 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               ],
             ),
           ),
+          if (pendingDeposit != null) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.hourglass_top_rounded, color: EazyColors.muted),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Deposit awaiting confirmation',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        Text(
+                          (pendingDeposit?['currency']?.toString() == 'NGN'
+                                  ? '₦'
+                                  : (pendingDeposit?['currency']?.toString() ?? _currency) + ' ') +
+                              (pendingDeposit?['amount']?.toString() ?? '0.00'),
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'This deposit has not been credited yet. Check its status before starting another funding attempt.',
+                      style: TextStyle(color: EazyColors.muted, height: 1.4),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: busy ? null : verifyPending,
+                        icon: const Icon(Icons.sync_rounded),
+                        label: const Text('Check payment status'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           if (error != null) ...[
             const SizedBox(height: 12),
             Text(error!, style: const TextStyle(color: EazyColors.red)),
