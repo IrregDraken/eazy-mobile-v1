@@ -8,6 +8,7 @@ import { createApp } from '../src/app.js';
 import { createLogger } from '../src/config/logger.js';
 import { createFirebaseAuthenticationMiddleware } from '../src/modules/auth/routes.js';
 import { createEmailVerificationRouter } from '../src/modules/auth/email-verification-routes.js';
+import { AuthService } from '../src/modules/auth/service.js';
 
 const config = loadConfig({ NODE_ENV: 'test', PORT: '3000', LOG_LEVEL: 'silent' });
 
@@ -141,4 +142,54 @@ test('unverified registration identity can bind a verified email challenge witho
       server.close(error => error ? reject(error) : resolve())
     );
   }
+});
+
+
+test('auth provisioning returns onboarding status for existing profiles', async () => {
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const createdAt = new Date().toISOString();
+  const profile = {
+    user_id: 'user-1',
+    username: 'existing_user',
+    display_name: 'Existing User',
+    onboarding_status: 'onboarding_complete'
+  };
+  const client = {
+    query: async (sql: string) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') {
+        return { rows: [], rowCount: 0 };
+      }
+      if (sql.includes('INSERT INTO users')) {
+        return { rows: [{ id: 'user-1', firebase_uid: 'firebase-user', email: 'existing@example.com', phone: null, status: 'active' }], rowCount: 1 };
+      }
+      if (sql.includes('FROM profiles WHERE user_id = $1')) {
+        return { rows: [profile], rowCount: 1 };
+      }
+      if (sql.includes('INSERT INTO sessions')) {
+        return { rows: [{ id: 'session-1' }], rowCount: 1 };
+      }
+      if (sql.includes('SELECT id, expires_at, created_at FROM sessions')) {
+        return { rows: [{ id: 'session-1', expires_at: expiresAt, created_at: createdAt }], rowCount: 1 };
+      }
+      if (sql.includes('UPDATE sessions SET last_activity_at')) {
+        return { rows: [{ revoked_at: null, expires_at: expiresAt }], rowCount: 1 };
+      }
+      if (sql.includes('INSERT INTO security_events')) {
+        return { rows: [], rowCount: 1 };
+      }
+      throw new Error('Unexpected auth test query: ' + sql);
+    },
+    release: () => undefined
+  };
+  const pool = { connect: async () => client } as never;
+  const service = new AuthService(pool, config);
+  const result = await service.provision({
+    firebaseUid: 'firebase-user',
+    claims: {
+      auth_time: Math.floor(Date.now() / 1000),
+      email: 'existing@example.com',
+      email_verified: true
+    }
+  });
+  assert.equal(result.context.account.profile?.onboarding_status, 'onboarding_complete');
 });
