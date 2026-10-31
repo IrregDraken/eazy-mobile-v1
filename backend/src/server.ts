@@ -184,7 +184,7 @@ if (pool) {
     pool,
     new AssistRepository(pool),
     aiProvider,
-    new AssistToolRegistry(marketplaceService, translationService)
+    new AssistToolRegistry(marketplaceService, translationService, walletService)
   ));
 }
 
