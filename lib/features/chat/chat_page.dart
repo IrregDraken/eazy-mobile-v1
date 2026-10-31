@@ -258,6 +258,7 @@ class _ConversationPageState extends State<ConversationPage> {
         await ws.close();
         return;
       }
+      final recoveringConnection = realtimeReconnectAttempts > 0;
       socket = ws;
       realtimeReconnectTimer?.cancel();
       realtimeReconnectTimer = null;
@@ -265,6 +266,7 @@ class _ConversationPageState extends State<ConversationPage> {
       ws.add(
         jsonEncode({'type': 'subscribe', 'channel': 'conversation', 'id': id}),
       );
+      if (recoveringConnection) unawaited(loadMessages());
       subscription = ws.listen(
         (raw) {
           try {
