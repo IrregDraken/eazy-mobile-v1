@@ -160,16 +160,19 @@ class AuthController extends ChangeNotifier {
     final normalizedEmail = email.trim().toLowerCase();
     final current = FirebaseAuth.instance.currentUser;
     if (current != null && current.email != null) {
-      if (current.email!.trim().toLowerCase() != normalizedEmail) {
+      await current.reload();
+      final refreshed = FirebaseAuth.instance.currentUser ?? current;
+      if (refreshed.email!.trim().toLowerCase() != normalizedEmail) {
         throw const ApiException(
           'Sign out of the current account before creating another Eazy account.',
         );
       }
-      if (current.emailVerified) {
+      if (refreshed.emailVerified) {
         throw const ApiException(
           'This email is already verified. Please sign in instead.',
         );
       }
+      await _saveCurrentFirebaseTokenForVerification();
       return requestEmailVerificationCode(normalizedEmail, auth: true);
     }
     return requestEmailVerificationCode(normalizedEmail);
@@ -241,6 +244,7 @@ class AuthController extends ChangeNotifier {
     EmailVerificationChallenge challenge,
     String code,
   ) async {
+    await _saveCurrentFirebaseTokenForVerification();
     await api.post(
       'auth/email-verification/verify-code',
       auth: true,
@@ -315,6 +319,19 @@ class AuthController extends ChangeNotifier {
   bool _requiresEmailVerification(User user) =>
       user.email != null &&
       user.providerData.any((provider) => provider.providerId == 'password');
+  Future<void> _saveCurrentFirebaseTokenForVerification() async {
+    _requireFirebase();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw const ApiException('Your registration session has expired.');
+    }
+    final token = await user.getIdToken(true);
+    if (token == null || token.isEmpty) {
+      throw const ApiException('Firebase did not return a session token.');
+    }
+    await api.saveToken(token);
+  }
+
 
   Future<void> requestEmailChange(
     String newEmail, {
