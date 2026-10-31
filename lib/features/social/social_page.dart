@@ -247,7 +247,7 @@ class _SocialPageState extends State<SocialPage> {
                           if (attachment != null)
                             const Icon(
                               Icons.check_circle,
-                              color: EazyColors.green,
+                              color: context.eazyAccent,
                             ),
                         ],
                       ),
@@ -392,7 +392,7 @@ class _SocialPageState extends State<SocialPage> {
           ),
           SliverToBoxAdapter(child: StoriesTray(api: api, media: media)),
           const SliverToBoxAdapter(
-            child: Divider(height: 1, color: EazyColors.border),
+            child: Divider(height: 1, color: context.eazyBorder),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 10)),
           if (loading && posts.isEmpty)
@@ -445,7 +445,7 @@ class _SocialPageState extends State<SocialPage> {
                       children: [
                         Icon(
                           Icons.check_circle_rounded,
-                          color: EazyColors.green,
+                          color: context.eazyAccent,
                           size: 30,
                         ),
                         SizedBox(height: 8),
@@ -460,7 +460,7 @@ class _SocialPageState extends State<SocialPage> {
                         Text(
                           'You have seen the latest from your Eazy circle.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: EazyColors.muted),
+                          style: TextStyle(color: context.eazyMuted),
                         ),
                       ],
                     ),
@@ -680,14 +680,14 @@ class _PostState extends State<_Post> {
                                         const Icon(
                                           Icons.chat_bubble_outline_rounded,
                                           size: 34,
-                                          color: EazyColors.muted,
+                                          color: context.eazyMuted,
                                         ),
                                         const SizedBox(height: 10),
                                         Text(
                                           commentError!,
                                           textAlign: TextAlign.center,
                                           style: const TextStyle(
-                                            color: EazyColors.muted,
+                                            color: context.eazyMuted,
                                           ),
                                         ),
                                         const SizedBox(height: 10),
@@ -706,7 +706,7 @@ class _PostState extends State<_Post> {
                                 ? const Center(
                                   child: Text(
                                     'Start the conversation.',
-                                    style: TextStyle(color: EazyColors.muted),
+                                    style: TextStyle(color: context.eazyMuted),
                                   ),
                                 )
                                 : ListView.separated(
@@ -764,7 +764,7 @@ class _PostState extends State<_Post> {
                                 child: Text(
                                   'Replying to @$replyToName',
                                   style: const TextStyle(
-                                    color: EazyColors.muted,
+                                    color: context.eazyMuted,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -865,7 +865,7 @@ class _PostState extends State<_Post> {
                                         )
                                         : const Icon(
                                           Icons.send_rounded,
-                                          color: EazyColors.green,
+                                          color: context.eazyAccent,
                                         ),
                               ),
                             ],
@@ -933,7 +933,7 @@ class _PostState extends State<_Post> {
                                 ? '@${author['username']}'
                                 : 'Eazy',
                             style: const TextStyle(
-                              color: EazyColors.muted,
+                              color: context.eazyMuted,
                               fontSize: 12,
                             ),
                           ),
@@ -945,7 +945,7 @@ class _PostState extends State<_Post> {
                     tooltip: 'Post options',
                     icon: const Icon(
                       Icons.more_horiz_rounded,
-                      color: EazyColors.muted,
+                      color: context.eazyMuted,
                     ),
                     onSelected: (value) async {
                       if (value == 'save') {
@@ -1114,7 +1114,7 @@ class _PostState extends State<_Post> {
                               (person) => Text(
                                 '@${person['username']}',
                                 style: const TextStyle(
-                                  color: EazyColors.green,
+                                  color: context.eazyAccent,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -1463,7 +1463,7 @@ class _CommentTileState extends State<_CommentTile> {
                             ? 'E'
                             : name.characters.first.toUpperCase(),
                         style: const TextStyle(
-                          color: EazyColors.green,
+                          color: context.eazyAccent,
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
                         ),
@@ -1497,7 +1497,7 @@ class _CommentTileState extends State<_CommentTile> {
                                 ? created.substring(0, 10)
                                 : created,
                             style: const TextStyle(
-                              color: EazyColors.muted,
+                              color: context.eazyMuted,
                               fontSize: 10,
                             ),
                           ),
@@ -1528,7 +1528,7 @@ class _CommentTileState extends State<_CommentTile> {
                     liked
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
-                    color: liked ? EazyColors.red : EazyColors.muted,
+                    color: liked ? EazyColors.red : context.eazyMuted,
                     size: 18,
                   ),
                 ),
@@ -1537,7 +1537,7 @@ class _CommentTileState extends State<_CommentTile> {
                     '$likes',
                     style: const TextStyle(
                       fontSize: 10,
-                      color: EazyColors.muted,
+                      color: context.eazyMuted,
                     ),
                   ),
               ],
@@ -1581,7 +1581,7 @@ class _SuggestedAccounts extends StatelessWidget {
                 ),
                 Icon(
                   Icons.auto_awesome_rounded,
-                  color: EazyColors.green,
+                  color: context.eazyAccent,
                   size: 18,
                 ),
               ],
@@ -1610,7 +1610,7 @@ class _SuggestedAccounts extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(EazyRadius.md),
-                    border: Border.all(color: EazyColors.border),
+                    border: Border.all(color: context.eazyBorder),
                   ),
                   child: Column(
                     children: [
@@ -1627,7 +1627,7 @@ class _SuggestedAccounts extends StatelessWidget {
                           icon: const Icon(
                             Icons.close_rounded,
                             size: 16,
-                            color: EazyColors.muted,
+                            color: context.eazyMuted,
                           ),
                           onPressed: () => onDismiss(person),
                         ),
@@ -1649,7 +1649,7 @@ class _SuggestedAccounts extends StatelessWidget {
                                       ? 'E'
                                       : name.characters.first.toUpperCase(),
                                   style: const TextStyle(
-                                    color: EazyColors.green,
+                                    color: context.eazyAccent,
                                     fontWeight: FontWeight.w900,
                                   ),
                                 )
@@ -1670,7 +1670,7 @@ class _SuggestedAccounts extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: EazyColors.muted,
+                          color: context.eazyMuted,
                           fontSize: 10,
                         ),
                       ),
@@ -1719,7 +1719,7 @@ class _FeedLoadingSkeleton extends StatelessWidget {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: EazyColors.border),
+              border: Border.all(color: context.eazyBorder),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1778,13 +1778,13 @@ class _State extends StatelessWidget {
           const Icon(
             Icons.dynamic_feed_outlined,
             size: 44,
-            color: EazyColors.green,
+            color: context.eazyAccent,
           ),
           const SizedBox(height: 14),
           Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: EazyColors.muted, height: 1.4),
+            style: TextStyle(color: context.eazyMuted, height: 1.4),
           ),
           if (action != null) ...[
             const SizedBox(height: 16),
