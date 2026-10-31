@@ -159,7 +159,7 @@ export class BankTransferService {
   async verify(userId: string, transactionId: string) {
     const record = await this.readForUser(userId, transactionId);
     if (!record) throw new AppError('NOT_FOUND', 'Bank transfer not found');
-    if (record.status !== 'pending') return { transaction: this.safeProjection(record) };
+    if (record.status !== 'pending' && record.status !== 'succeeded') return { transaction: this.safeProjection(record) };
     let verified: Awaited<ReturnType<BankProvider['verifyTransfer']>>;
     try {
       verified = await this.provider.verifyTransfer(record.providerReference ?? record.reference);
@@ -197,11 +197,22 @@ export class BankTransferService {
   private async applyProviderStatus(transactionId: string, status: 'succeeded' | 'failed' | 'reversed', providerReference?: string) {
     await withTransaction(this.pool, async client => {
       const current = await this.repository.getTransactionForSettlement(client, transactionId);
-      if (!current || current.status !== 'pending') return;
+      if (!current) return;
+
+      // A provider may reverse a transfer after it was initially reported as
+      // successful. That is a new financial event, not a duplicate terminal
+      // status, and must return the reserved funds exactly once.
+      const shouldReverse =
+        current.status === 'pending' ||
+        (current.status === 'succeeded' && status === 'reversed');
+      const canSettle =
+        current.status === 'pending' ||
+        (current.status === 'succeeded' && status === 'reversed');
+      if (!canSettle) return;
 
       await this.repository.settle(client, transactionId, status, providerReference);
 
-      if (status !== 'succeeded') {
+      if (shouldReverse && status !== 'succeeded') {
         await this.ledger.recordWithdrawalReversal(client, {
           transactionId,
           walletId: current.walletId,
