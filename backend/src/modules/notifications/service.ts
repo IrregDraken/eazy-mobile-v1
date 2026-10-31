@@ -25,16 +25,16 @@ export class NotificationService {
     const notification = await this.repository.get(userId, id).catch(() => null);
     if (!notification) return;
 
-    if (this.realtime) {
+    // Financial/order alerts are intentionally wallet-only. They are
+    // fetched by Wallet and must not leak into the general inbox, realtime
+    // notification stream, or device notification tray.
+    const walletOnly = notification.type === 'order' || notification.type === 'payment';
+    if (!walletOnly && this.realtime) {
       try {
         await this.realtime.publishToUser(userId, eventForNotification(notification));
       } catch { /* persisted notifications remain available through REST when realtime is unavailable */ }
     }
 
-    // Financial/order alerts are intentionally wallet-only. Keep them in
-    // Wallet's financial inbox rather than duplicating them in the device
-    // notification tray.
-    const walletOnly = notification.type === 'order' || notification.type === 'payment';
     if (!walletOnly && this.push && notification.title && notification.body) {
       try {
         await this.push.notify({ userId, title: notification.title, body: notification.body });
