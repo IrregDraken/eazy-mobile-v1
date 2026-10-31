@@ -44,7 +44,7 @@ class _HomeShellState extends State<HomeShell> {
     body: Stack(
       children: [
         IndexedStack(index: index, children: pages),
-        if (index != 3)
+        if (index == 0 || index == 1 || index == 4)
           const Positioned(
             right: 16,
             bottom: 90,
