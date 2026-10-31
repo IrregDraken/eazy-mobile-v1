@@ -11,4 +11,4 @@ export const bankTransferSchema = z.object({
   reason: z.string().trim().max(140).optional()
 }).strict();
 
-export const bankTransferParamsSchema = z.object({ id: z.string().uuid() }).strict();
+export const bankTransferParamsSchema = z.object({ id: z.string().guid() }).strict();

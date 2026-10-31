@@ -21,7 +21,7 @@ export const createPostSchema = z.object({
   path: ['content']
 });
 
-export const postIdSchema = z.object({ id: z.string().uuid() });
+export const postIdSchema = z.object({ id: z.string().guid() });
 
 export class PostService {
   constructor(private readonly pool: Pool, private readonly repository = new PostRepository(pool), private readonly storage?: SupabaseStorageProvider) {}

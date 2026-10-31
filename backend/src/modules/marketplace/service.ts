@@ -12,13 +12,13 @@ const mediaSchema = z.object({ storageKey: z.string().trim().min(1).max(1024), p
 const statusSchema = z.enum(['draft', 'active', 'archived', 'sold_out']);
 const categoryIdsSchema = z.preprocess(
   value => typeof value === 'string' ? value.split(',').map(id => id.trim()).filter(Boolean) : value,
-  z.array(z.string().uuid()).min(1).max(50).transform(ids => [...new Set(ids)])
+  z.array(z.string().guid()).min(1).max(50).transform(ids => [...new Set(ids)])
 );
 
 export const productCreateSchema = z.object({
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().max(5000).optional(),
-  categoryId: z.string().uuid().optional(),
+  categoryId: z.string().guid().optional(),
   priceAmount: priceSchema,
   currency: currencySchema,
   status: statusSchema.default('draft'),
@@ -29,22 +29,22 @@ export const productCreateSchema = z.object({
 export const productUpdateSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   description: z.string().trim().max(5000).nullable().optional(),
-  categoryId: z.string().uuid().nullable().optional(),
+  categoryId: z.string().guid().nullable().optional(),
   priceAmount: priceSchema.optional(),
   currency: currencySchema.optional(),
   status: statusSchema.optional()
 }).strict().refine(value => Object.keys(value).length > 0, 'At least one product field is required');
 
 export const inventorySchema = z.object({ availableQuantity: z.number().int().min(0).max(1_000_000) }).strict();
-export const productIdSchema = z.object({ id: z.string().uuid() });
+export const productIdSchema = z.object({ id: z.string().guid() });
 export const sellerUsernameSchema = z.object({
   username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9_.]+$/)
 }).strict();
 export const productSearchSchema = z.object({
   q: z.string().trim().min(2).max(80).optional(),
-  categoryId: z.string().uuid().optional(),
+  categoryId: z.string().guid().optional(),
   categoryIds: categoryIdsSchema.optional(),
-  sellerId: z.string().uuid().optional(),
+  sellerId: z.string().guid().optional(),
   minPrice: priceSchema.optional(),
   maxPrice: priceSchema.optional(),
   currency: currencySchema.optional(),
@@ -54,8 +54,8 @@ export const productSearchSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20)
 }).strict().superRefine((value, ctx) => {
-  if (value.minPrice && value.maxPrice && Number(value.minPrice) > Number(value.maxPrice)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['maxPrice'], message: 'maxPrice must be greater than or equal to minPrice' });
-  if (value.categoryId && value.categoryIds) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['categoryIds'], message: 'Use either categoryId or categoryIds, not both' });
+  if (value.minPrice && value.maxPrice && Number(value.minPrice) > Number(value.maxPrice)) ctx.addIssue({ code: 'custom', path: ['maxPrice'], message: 'maxPrice must be greater than or equal to minPrice' });
+  if (value.categoryId && value.categoryIds) ctx.addIssue({ code: 'custom', path: ['categoryIds'], message: 'Use either categoryId or categoryIds, not both' });
 });
 
 export class MarketplaceService {

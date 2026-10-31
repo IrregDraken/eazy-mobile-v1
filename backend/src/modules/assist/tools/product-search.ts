@@ -8,8 +8,8 @@ export const searchProductsInputSchema = z.object({
   maxPrice: priceSchema.optional(),
   currency: currencySchema.optional()
 }).strict().superRefine((input, context) => {
-  if (input.maxPrice && !input.currency) context.addIssue({ code: z.ZodIssueCode.custom, path: ['currency'], message: 'A currency is required with a maximum price' });
-  if (input.currency && !input.maxPrice) context.addIssue({ code: z.ZodIssueCode.custom, path: ['maxPrice'], message: 'A maximum price is required with a currency filter' });
+  if (input.maxPrice && !input.currency) context.addIssue({ code: 'custom', path: ['currency'], message: 'A currency is required with a maximum price' });
+  if (input.currency && !input.maxPrice) context.addIssue({ code: 'custom', path: ['maxPrice'], message: 'A maximum price is required with a currency filter' });
 });
 
 export interface AssistProductResult {

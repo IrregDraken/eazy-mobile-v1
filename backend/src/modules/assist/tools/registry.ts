@@ -15,7 +15,7 @@ const searchProductsDefinition = { name: 'search_products', description: 'Search
 const getWalletBalanceDefinition = { name: 'get_wallet_balance', description: 'Read the current ledger balance of the authenticated user’s Eazy wallet. This is read-only and cannot move money.', inputSchema: { type: 'object', additionalProperties: false, properties: {} } };
 const translateTextDefinition = { name: 'translate_text', description: 'Translate the supplied text with the configured Eazy Translation service.', inputSchema: { type: 'object', additionalProperties: false, required: ['text', 'targetLanguage'], properties: { text: { type: 'string', minLength: 1, maxLength: 5000 }, targetLanguage: { type: 'string', minLength: 2, maxLength: 35 }, sourceLanguage: { type: 'string', minLength: 2, maxLength: 35 } } } };
 const productResultSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   name: z.string().max(200),
   description: z.string().max(500).nullable(),
   priceAmount: z.string().regex(/^\d{1,18}(\.\d{1,2})?$/),

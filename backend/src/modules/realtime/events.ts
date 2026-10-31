@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { ChatMessage, ChatParticipant, ChatReadState } from '../chat/types.js';
 import type { NotificationProjection } from '../notifications/repository.js';
 
-const uuid = z.string().uuid();
+const uuid = z.string().guid();
 const participant = z.object({ username: z.string(), displayName: z.string(), avatarUrl: z.string().nullable() }).strict();
 const chatMessage = z.object({
   id: uuid,

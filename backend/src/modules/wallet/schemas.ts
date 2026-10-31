@@ -14,7 +14,7 @@ export const transferSchema = z.object({
   currency: currencySchema
 }).strict();
 
-export const walletTransactionParamsSchema = z.object({ id: z.string().uuid() }).strict();
+export const walletTransactionParamsSchema = z.object({ id: z.string().guid() }).strict();
 export const walletPaginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20)

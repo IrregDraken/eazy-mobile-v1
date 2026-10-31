@@ -12,8 +12,8 @@ export const translateSchema = z.object({
   sourceLanguage: languageCodeSchema.optional()
 }).strict().superRefine((input, context) => {
   if (input.sourceLanguage && input.sourceLanguage.toLowerCase() === input.targetLanguage.toLowerCase()) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['targetLanguage'], message: 'Source and target languages must differ' });
+    context.addIssue({ code: 'custom', path: ['targetLanguage'], message: 'Source and target languages must differ' });
   }
 });
 
-export const translationRequestIdSchema = z.object({ requestId: z.string().uuid() }).strict();
+export const translationRequestIdSchema = z.object({ requestId: z.string().guid() }).strict();

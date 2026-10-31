@@ -6,13 +6,15 @@ import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/ui/eazy_skeleton.dart';
 import '../../core/media/media_service.dart';
 import 'stories_tray.dart';
 import 'video_media.dart';
 
 class SocialPage extends StatefulWidget {
-  const SocialPage({super.key, required this.auth});
+  const SocialPage({super.key, required this.auth, this.openComposerOnStart = false});
   final AuthController auth;
+  final bool openComposerOnStart;
   @override
   State<SocialPage> createState() => _SocialPageState();
 }
@@ -38,6 +40,11 @@ class _SocialPageState extends State<SocialPage> {
     media = EazyMediaService(api);
     scrollController.addListener(_onScroll);
     load();
+    if (widget.openComposerOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) compose();
+      });
+    }
   }
 
   @override
@@ -1706,62 +1713,58 @@ class _FeedLoadingSkeleton extends StatelessWidget {
   const _FeedLoadingSkeleton();
 
   @override
-  Widget build(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surfaceContainerHighest;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
-      child: Column(
-        children: List.generate(
-          3,
-          (index) => Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: context.eazyBorder),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(backgroundColor: surface, radius: 19),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(width: 112, height: 10, decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(8))),
-                          const SizedBox(height: 7),
-                          Container(width: 76, height: 8, decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(8))),
-                        ],
-                      ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+    child: Column(
+      children: List.generate(
+        3,
+        (_) => Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: context.eazyBorder),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const EazySkeletonCircle(size: 38),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        EazySkeletonBox(width: 112, height: 10),
+                        SizedBox(height: 7),
+                        EazySkeletonBox(width: 76, height: 8),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Container(height: 12, decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(8))),
-                const SizedBox(height: 8),
-                FractionallySizedBox(
-                  widthFactor: .68,
-                  child: Container(height: 12, decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(8))),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: surface,
-                    borderRadius: BorderRadius.circular(14),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const EazySkeletonBox(width: double.infinity, height: 12),
+              const SizedBox(height: 8),
+              const FractionallySizedBox(
+                widthFactor: .68,
+                alignment: Alignment.centerLeft,
+                child: EazySkeletonBox(width: double.infinity, height: 12),
+              ),
+              const SizedBox(height: 14),
+              const EazySkeletonBox(
+                width: double.infinity,
+                height: 150,
+                radius: 14,
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _State extends StatelessWidget {

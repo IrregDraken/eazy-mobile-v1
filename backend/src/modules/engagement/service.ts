@@ -8,10 +8,10 @@ import { EngagementRepository } from './repository.js';
 import type { NotificationService } from '../notifications/service.js';
 import { notifyComment, notifyLike } from '../notifications/producers/social.js';
 
-export const commentSchema = z.object({ content: z.string().trim().min(1).max(2000), parentId: z.string().uuid().optional() }).strict();
+export const commentSchema = z.object({ content: z.string().trim().min(1).max(2000), parentId: z.string().guid().optional() }).strict();
 export const reportPostSchema = z.object({ reason: z.string().trim().min(3).max(1000) }).strict();
-export const postIdParamSchema = z.object({ postId: z.string().uuid() });
-export const commentIdParamSchema = z.object({ commentId: z.string().uuid() });
+export const postIdParamSchema = z.object({ postId: z.string().guid() });
+export const commentIdParamSchema = z.object({ commentId: z.string().guid() });
 
 export class EngagementService {
   constructor(private readonly pool: Pool, private readonly repository = new EngagementRepository(pool), private readonly notifications?: NotificationService) {}

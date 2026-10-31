@@ -2,9 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../app/theme/eazy_theme.dart';
+import '../../core/ui/eazy_skeleton.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/media/media_service.dart';
@@ -48,6 +52,8 @@ class ConversationPage extends StatefulWidget {
 
 class _ConversationPageState extends State<ConversationPage> {
   final draft = TextEditingController();
+  final draftStorage = const FlutterSecureStorage();
+  Timer? draftSaveTimer;
   final scroll = ScrollController();
   late final EazyMediaService media;
   final List<MediaUpload> pendingAttachments = [];
@@ -58,8 +64,218 @@ class _ConversationPageState extends State<ConversationPage> {
   String? currentUsername;
   WebSocket? socket;
   StreamSubscription? subscription;
+  Timer? realtimeReconnectTimer;
+  bool connectingRealtime = false;
+  int realtimeReconnectAttempts = 0;
+  List<String> _chatWallpaperChoices = [];
+  String? _selectedChatWallpaper;
+  bool? _wallpaperDarkMode;
+
+  String get _wallpaperPreferenceKey =>
+      'eazy.chat.wallpaper.' + (_wallpaperDarkMode == true ? 'dark' : 'light');
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    if (_wallpaperDarkMode != dark) {
+      _wallpaperDarkMode = dark;
+      unawaited(_loadChatWallpapers(dark));
+    }
+  }
+
+  Future<void> _loadChatWallpapers(bool dark) async {
+    try {
+      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+      final all = manifest.listAssets().where((asset) {
+        final path = asset.toLowerCase();
+        final isImage = path.endsWith('.png') ||
+            path.endsWith('.jpg') ||
+            path.endsWith('.jpeg') ||
+            path.endsWith('.webp');
+        return path.startsWith('assets/images/chat/') && isImage;
+      }).toList()..sort();
+      final modeName = dark ? 'dark' : 'light';
+      final preferred = all
+          .where((asset) => asset.toLowerCase().contains(modeName))
+          .toList();
+      final neutral = all.where((asset) {
+        final path = asset.toLowerCase();
+        return !path.contains('light') && !path.contains('dark');
+      }).toList();
+      final choices = [...preferred, ...neutral];
+      final key = 'eazy.chat.wallpaper.' + modeName;
+      final saved = await draftStorage.read(key: key);
+      final selected = choices.contains(saved)
+          ? saved
+          : (preferred.isNotEmpty
+              ? preferred.first
+              : (neutral.isNotEmpty ? neutral.first : null));
+      if (!mounted || _wallpaperDarkMode != dark) return;
+      setState(() {
+        _chatWallpaperChoices = choices;
+        _selectedChatWallpaper = selected;
+      });
+    } catch (_) {
+      if (!mounted || _wallpaperDarkMode != dark) return;
+      setState(() {
+        _chatWallpaperChoices = [];
+        _selectedChatWallpaper = null;
+      });
+    }
+  }
+
+  Future<void> _chooseChatWallpaper() async {
+    if (_chatWallpaperChoices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Chat wallpaper images have not been added to assets/images/chat yet.',
+          ),
+        ),
+      );
+      return;
+    }
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chat wallpaper',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 320,
+                child: GridView.builder(
+                  itemCount: _chatWallpaperChoices.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 1.35,
+                  ),
+                  itemBuilder: (_, index) {
+                    final asset = _chatWallpaperChoices[index];
+                    final selectedAsset = asset == _selectedChatWallpaper;
+                    return InkWell(
+                      onTap: () => Navigator.pop(sheetContext, asset),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: selectedAsset
+                                ? Theme.of(context).colorScheme.primary
+                                : context.eazyBorder,
+                            width: selectedAsset ? 2.5 : 1,
+                          ),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.asset(asset, fit: BoxFit.cover),
+                            if (selectedAsset)
+                              const Align(
+                                alignment: Alignment.topRight,
+                                child: Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: CircleAvatar(
+                                    radius: 13,
+                                    child: Icon(Icons.check, size: 16),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() => _selectedChatWallpaper = selected);
+    try {
+      await draftStorage.write(
+        key: _wallpaperPreferenceKey,
+        value: selected,
+      );
+    } catch (_) {
+      // Keep the selected wallpaper for this conversation session.
+    }
+  }
+
+  Widget _chatWallpaperBackground(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final fallback = CustomPaint(
+      painter: _ChatWallpaperPainter(
+        color: Theme.of(context).colorScheme.primary.withValues(
+          alpha: dark ? .055 : .045,
+        ),
+      ),
+    );
+    final asset = _selectedChatWallpaper;
+    if (asset == null) return fallback;
+    return Image.asset(
+      asset,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => fallback,
+    );
+  }
+
+
 
   String get id => widget.conversation['id']?.toString() ?? '';
+  String get _draftStorageKey => 'eazy.chat.draft.$id';
+
+  Future<void> _restoreDraft() async {
+    try {
+      final saved = await draftStorage.read(key: _draftStorageKey);
+      if (mounted && draft.text.isEmpty && saved != null && saved.isNotEmpty) {
+        draft.value = TextEditingValue(
+          text: saved,
+          selection: TextSelection.collapsed(offset: saved.length),
+        );
+      }
+    } catch (_) {
+      // Draft restoration is best-effort; it must not block opening a chat.
+    }
+  }
+
+  void _scheduleDraftSave() {
+    draftSaveTimer?.cancel();
+    draftSaveTimer = Timer(
+      const Duration(milliseconds: 350),
+      _persistDraft,
+    );
+  }
+
+  Future<void> _persistDraft() async {
+    final value = draft.text;
+    try {
+      if (value.isEmpty) {
+        await draftStorage.delete(key: _draftStorageKey);
+      } else {
+        await draftStorage.write(key: _draftStorageKey, value: value);
+      }
+    } catch (_) {
+      // A local draft is convenience data, never a prerequisite for sending.
+    }
+  }
+
   Map<String, dynamic> get _otherParticipant {
     final participants = widget.conversation['participants'];
     if (participants is List) {
@@ -108,6 +324,8 @@ class _ConversationPageState extends State<ConversationPage> {
   void initState() {
     super.initState();
     media = EazyMediaService(widget.api);
+    draft.addListener(_scheduleDraftSave);
+    unawaited(_restoreDraft());
     loadMessages();
     connectRealtime();
     loadMyProfile();
@@ -139,6 +357,10 @@ class _ConversationPageState extends State<ConversationPage> {
 
   @override
   void dispose() {
+    draftSaveTimer?.cancel();
+    draft.removeListener(_scheduleDraftSave);
+    unawaited(_persistDraft());
+    realtimeReconnectTimer?.cancel();
     subscription?.cancel();
     socket?.close();
     draft.dispose();
@@ -184,9 +406,14 @@ class _ConversationPageState extends State<ConversationPage> {
   }
 
   Future<void> connectRealtime() async {
+    if (!mounted || connectingRealtime || socket != null) return;
+    connectingRealtime = true;
     try {
       final token = await widget.api.readToken();
-      if (token == null || token.isEmpty) return;
+      if (token == null || token.isEmpty) {
+        _scheduleRealtimeReconnect();
+        return;
+      }
       final base = Uri.parse(widget.api.baseUrl);
       final scheme = base.scheme == 'https' ? 'wss' : 'ws';
       final wsUri = Uri(
@@ -198,42 +425,84 @@ class _ConversationPageState extends State<ConversationPage> {
       final ws = await WebSocket.connect(
         wsUri.toString(),
         headers: {'Authorization': 'Bearer $token'},
-      );
+      ).timeout(const Duration(seconds: 10));
+      if (!mounted) {
+        await ws.close();
+        return;
+      }
+      final recoveringConnection = realtimeReconnectAttempts > 0;
       socket = ws;
+      realtimeReconnectTimer?.cancel();
+      realtimeReconnectTimer = null;
+      realtimeReconnectAttempts = 0;
       ws.add(
         jsonEncode({'type': 'subscribe', 'channel': 'conversation', 'id': id}),
       );
-      subscription = ws.listen((raw) {
-        try {
-          final frame = jsonDecode(raw.toString());
-          if (frame is! Map || frame['type'] != 'event') return;
-          if (frame['event'] == 'message.created' &&
-              frame['data'] is Map &&
-              frame['data']['message'] is Map) {
-            final m = Map<String, dynamic>.from(
-              frame['data']['message'] as Map,
-            );
-            if (m['conversationId']?.toString() == id &&
-                !messages.any((x) => x['id'] == m['id'])) {
-              if (mounted) setState(() => messages.add(m));
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (scroll.hasClients) {
-                  scroll.animateTo(
-                    scroll.position.maxScrollExtent,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOut,
-                  );
-                }
-              });
-              unawaited(markRead());
+      if (recoveringConnection) unawaited(loadMessages());
+      subscription = ws.listen(
+        (raw) {
+          try {
+            final frame = jsonDecode(raw.toString());
+            if (frame is! Map || frame['type'] != 'event') return;
+            if (frame['event'] == 'message.created' &&
+                frame['data'] is Map &&
+                frame['data']['message'] is Map) {
+              final m = Map<String, dynamic>.from(
+                frame['data']['message'] as Map,
+              );
+              if (m['conversationId']?.toString() == id &&
+                  !messages.any((x) => x['id'] == m['id'])) {
+                if (mounted) setState(() => messages.add(m));
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (scroll.hasClients) {
+                    scroll.animateTo(
+                      scroll.position.maxScrollExtent,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                });
+                unawaited(markRead());
+              }
+            } else if (frame['event'] == 'message.reaction.created' ||
+                frame['event'] == 'message.reaction.deleted') {
+              unawaited(loadMessages());
             }
-          } else if (frame['event'] == 'message.reaction.created' ||
-              frame['event'] == 'message.reaction.deleted') {
-            unawaited(loadMessages());
-          }
-        } catch (_) {}
-      }, onError: (_) {});
-    } catch (_) {}
+          } catch (_) {}
+        },
+        onDone: () => _handleRealtimeDisconnect(ws),
+        onError: (_) => _handleRealtimeDisconnect(ws),
+        cancelOnError: true,
+      );
+    } catch (_) {
+      _scheduleRealtimeReconnect();
+    } finally {
+      connectingRealtime = false;
+    }
+  }
+
+  void _handleRealtimeDisconnect(WebSocket disconnectedSocket) {
+    if (!identical(socket, disconnectedSocket)) return;
+    socket = null;
+    subscription = null;
+    _scheduleRealtimeReconnect();
+  }
+
+  void _scheduleRealtimeReconnect() {
+    if (!mounted || realtimeReconnectTimer != null) return;
+    final delaySeconds = switch (realtimeReconnectAttempts) {
+      0 => 1,
+      1 => 2,
+      2 => 4,
+      3 => 8,
+      4 => 16,
+      _ => 30,
+    };
+    if (realtimeReconnectAttempts < 5) realtimeReconnectAttempts++;
+    realtimeReconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      realtimeReconnectTimer = null;
+      unawaited(connectRealtime());
+    });
   }
 
   Future<void> send() async {
@@ -389,6 +658,31 @@ class _ConversationPageState extends State<ConversationPage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
+  Future<void> _pickCamera() async {
+    if (sending) return;
+    try {
+      final upload = await media.pickAndUpload(
+        kind: 'message',
+        source: ImageSource.camera,
+      );
+      if (upload != null && mounted) {
+        setState(() => pendingAttachments.add(upload));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not capture a photo. Please try again.')),
+        );
       }
     }
   }
@@ -819,6 +1113,11 @@ class _ConversationPageState extends State<ConversationPage> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Chat wallpaper',
+            onPressed: _chooseChatWallpaper,
+            icon: const Icon(Icons.wallpaper_outlined),
+          ),
           PopupMenuButton<String>(
             tooltip: 'Conversation options',
             onSelected: _handleRecipientAction,
@@ -848,18 +1147,10 @@ class _ConversationPageState extends State<ConversationPage> {
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Theme.of(context).scaffoldBackgroundColor,
-              Theme.of(context).colorScheme.surface,
-            ],
-          ),
-        ),
-        child: Column(
+      body: Stack(
+        children: [
+          Positioned.fill(child: _chatWallpaperBackground(context)),
+          Column(
           children: [
             if (replying != null)
               _ContextBar(
@@ -880,7 +1171,7 @@ class _ConversationPageState extends State<ConversationPage> {
             Expanded(
               child:
                   loading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const _ConversationSkeleton()
                       : error != null
                       ? _ChatState(error!, loadMessages)
                       : messages.isEmpty
@@ -962,85 +1253,209 @@ class _ConversationPageState extends State<ConversationPage> {
             SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      tooltip: 'Attach photo, video or document',
-                      onPressed: sending ? null : _pickAttachment,
-                      style: IconButton.styleFrom(
-                        foregroundColor: context.eazyAccent,
-                      ),
-                      icon: const Icon(
-                        Icons.add_circle_outline_rounded,
-                        size: 29,
-                      ),
+                padding: const EdgeInsets.fromLTRB(10, 7, 10, 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface.withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? .96
+                          : .98,
                     ),
-                    Expanded(
-                      child: TextField(
-                        controller: draft,
-                        maxLines: 4,
-                        minLines: 1,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: .055),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        tooltip: 'Attach photo, video or document',
+                        onPressed: sending ? null : _pickAttachment,
+                        visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          foregroundColor: context.eazyAccent,
+                        ),
+                        icon: const Icon(Icons.add_rounded, size: 25),
+                      ),
+                      IconButton(
+                        tooltip: 'Take a photo',
+                        onPressed: sending ? null : _pickCamera,
+                        visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          foregroundColor: context.eazyAccent,
+                        ),
+                        icon: const Icon(Icons.camera_alt_outlined, size: 21),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: draft,
+                          maxLines: 5,
+                          minLines: 1,
+                          textCapitalization: TextCapitalization.sentences,
+                          onSubmitted: (_) => send(),
+                          decoration: InputDecoration(
+                            filled: false,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 12,
+                            ),
+                            hintText: editing != null
+                                ? 'Edit message…'
+                                : replying != null
+                                    ? 'Write a reply…'
+                                    : 'Message on Eazy…',
                           ),
-                          hintText:
-                              editing != null
-                                  ? 'Edit message…'
-                                  : replying != null
-                                  ? 'Write a reply…'
-                                  : 'Message on Eazy…',
                         ),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: 'Open Eazy Assist',
-                      onPressed: () => context.push('/assist'),
-                      style: IconButton.styleFrom(
-                        foregroundColor: context.eazyAccent,
+                      IconButton(
+                        tooltip: 'Translate draft to English',
+                        onPressed: _translateDraft,
+                        visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          foregroundColor: context.eazyAccent,
+                        ),
+                        icon: const Icon(Icons.translate_rounded, size: 21),
                       ),
-                      icon: Image.asset(
-                        'assets/images/eazy_logo_mark.png',
-                        width: 23,
-                        height: 23,
-                        errorBuilder:
-                            (_, _, _) => Icon(Icons.auto_awesome_rounded),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Translate draft to English',
-                      onPressed: _translateDraft,
-                      style: IconButton.styleFrom(
-                        foregroundColor: context.eazyAccent,
-                      ),
-                      icon: const Icon(Icons.translate_rounded),
-                    ),
-                    SizedBox(
-                      width: 48,
-                      height: 52,
-                      child: FilledButton(
-                        onPressed: sending ? null : send,
-                        style: FilledButton.styleFrom(padding: EdgeInsets.zero),
-                        child: Icon(
-                          editing != null
-                              ? Icons.check_rounded
-                              : Icons.send_rounded,
+                      SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: FilledButton(
+                          onPressed: sending ? null : send,
+                          style: FilledButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            shape: const CircleBorder(),
+                          ),
+                          child: Icon(
+                            editing != null
+                                ? Icons.check_rounded
+                                : Icons.send_rounded,
+                            size: 20,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
-        ),
+          ),
+        ],
       ),
     );
   }
+}
+
+
+class _ConversationSkeleton extends StatelessWidget {
+  const _ConversationSkeleton();
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+    children: const [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: _SkeletonMessage(width: 224, lines: 2),
+      ),
+      SizedBox(height: 16),
+      Align(
+        alignment: Alignment.centerRight,
+        child: _SkeletonMessage(width: 184, lines: 1),
+      ),
+      SizedBox(height: 16),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: _SkeletonMessage(width: 252, lines: 3),
+      ),
+      SizedBox(height: 16),
+      Align(
+        alignment: Alignment.centerRight,
+        child: _SkeletonMessage(width: 210, lines: 2),
+      ),
+    ],
+  );
+}
+
+class _SkeletonMessage extends StatelessWidget {
+  const _SkeletonMessage({required this.width, required this.lines});
+  final double width;
+  final int lines;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: context.eazyBorder),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < lines; i++) ...[
+          EazySkeletonBox(
+            width: i == lines - 1 ? width * .58 : width - 28,
+            height: 10,
+            radius: 6,
+          ),
+          if (i != lines - 1) const SizedBox(height: 8),
+        ],
+      ],
+    ),
+  );
+}
+
+class _ChatWallpaperPainter extends CustomPainter {
+  const _ChatWallpaperPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.15;
+
+    const spacing = 76.0;
+    for (var row = -1; row < (size.height / spacing).ceil() + 1; row++) {
+      for (var column = -1; column < (size.width / spacing).ceil() + 1; column++) {
+        final x = column * spacing + (row.isOdd ? spacing / 2 : 0);
+        final y = row * spacing;
+        final rect = Rect.fromCenter(
+          center: Offset(x + 22, y + 22),
+          width: 30,
+          height: 30,
+        );
+        canvas.drawArc(rect, .35, 1.65, false, paint);
+        canvas.drawCircle(Offset(x + 52, y + 49), 2.2, paint);
+        canvas.drawLine(
+          Offset(x + 7, y + 57),
+          Offset(x + 17, y + 47),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ChatWallpaperPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class _MessageBubble extends StatelessWidget {

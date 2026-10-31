@@ -8,8 +8,10 @@ import { bankTransferParamsSchema, bankTransferSchema } from './transfer-schemas
 import { createBankTransferController } from './transfer-controller.js';
 import type { BankTransferService } from './transfer-service.js';
 import type { VirtualAccountService } from './virtual-account-service.js';
+import type { PaymentPinService } from '../wallet/payment-pin-service.js';
+import { requirePaymentPin } from '../wallet/payment-pin-middleware.js';
 
-export function createBankTransferRouter(service: BankTransferService, virtualAccounts?: VirtualAccountService): Router {
+export function createBankTransferRouter(service: BankTransferService, virtualAccounts?: VirtualAccountService, paymentPin?: PaymentPinService): Router {
   const router = Router();
   const controller = createBankTransferController(service, virtualAccounts);
   const mutationLimit = createRateLimiter({ name: 'bank-transfer-mutation', windowMs: 60_000, max: 5 });
@@ -25,7 +27,13 @@ export function createBankTransferRouter(service: BankTransferService, virtualAc
 
   router.use(requireAuth);
   router.get('/capabilities', controller.capabilities);
-  router.post('/', mutationLimit, requireIdempotencyKey, validate('body', bankTransferSchema), controller.initiate);
+  if (paymentPin) {
+    router.post('/', mutationLimit, requireIdempotencyKey, validate('body', bankTransferSchema), requirePaymentPin(paymentPin), controller.initiate);
+  } else {
+    router.post('/', mutationLimit, requireIdempotencyKey, validate('body', bankTransferSchema), (_request, _response, next) => {
+      next(new AppError('SERVICE_UNAVAILABLE', 'Payment PIN authorization is unavailable'));
+    });
+  }
   router.get('/:id', validate('params', bankTransferParamsSchema), controller.get);
   return router;
 }

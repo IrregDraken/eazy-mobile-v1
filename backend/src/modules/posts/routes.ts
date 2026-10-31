@@ -14,7 +14,7 @@ export function createPostRouter(service: PostService): Router {
   router.post('/:id/pin', requireAuth, validate('params', postIdSchema), async (request, response) => sendSuccess(response, await service.pinPost(param(request.params.id), currentUserId(request))));
   router.delete('/:id/pin', requireAuth, validate('params', postIdSchema), async (request, response) => sendSuccess(response, await service.unpinPost(param(request.params.id), currentUserId(request))));
   router.post('/:id/tags', requireAuth, validate('params', postIdSchema), validate('body', postTagsSchema), async (request, response) => sendSuccess(response, await service.tagPeople(param(request.params.id), currentUserId(request), request.body.usernames)));
-  router.delete('/:id/tags/:username', requireAuth, validate('params', z.object({ id: z.string().uuid(), username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,32}$/) })), async (request, response) => sendSuccess(response, await service.untagPerson(param(request.params.id), currentUserId(request), param(request.params.username))));
+  router.delete('/:id/tags/:username', requireAuth, validate('params', z.object({ id: z.string().guid(), username: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,32}$/) })), async (request, response) => sendSuccess(response, await service.untagPerson(param(request.params.id), currentUserId(request), param(request.params.username))));
 
   router.post('/', requireAuth, validate('body', createPostSchema), async (request, response) => {
     const post = await service.create(currentUserId(request), request.body);

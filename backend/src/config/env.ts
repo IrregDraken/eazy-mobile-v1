@@ -53,7 +53,6 @@ const envSchema = z.object({
   ,PAYSTACK_ENABLED: envBoolean.optional()
   ,PAYSTACK_MODE: z.enum(['test', 'live']).optional()
   ,PAYSTACK_SECRET_KEY: z.union([z.string().trim().min(1).max(4096), z.literal('')]).optional()
-  ,PAYSTACK_WEBHOOK_SECRET: z.union([z.string().trim().min(1).max(4096), z.literal('')]).optional()
   ,PAYMENT_CALLBACK_URL: z.union([z.string().trim().url(), z.literal('')]).optional()
 }).superRefine((value, context) => {
   const aiFields = [
@@ -83,7 +82,7 @@ const envSchema = z.object({
   }
   const resendPresent = Boolean(value.RESEND_API_KEY || value.RESEND_FROM_EMAIL || value.RESEND_REPLY_TO_EMAIL);
   if (resendPresent && (!value.RESEND_API_KEY || !value.RESEND_FROM_EMAIL)) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['RESEND_API_KEY'], message: 'Email verification requires both RESEND_API_KEY and RESEND_FROM_EMAIL.' });
+    context.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'Email verification requires both RESEND_API_KEY and RESEND_FROM_EMAIL.' });
   }
   if (
     value.NODE_ENV === 'production' &&
@@ -92,7 +91,7 @@ const envSchema = z.object({
     !value.OTP_HMAC_SECRET
   ) {
     context.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       path: ['OTP_HMAC_SECRET'],
       message: 'Production email verification requires a dedicated OTP_HMAC_SECRET of at least 32 characters.'
     });
@@ -105,19 +104,16 @@ const envSchema = z.object({
     if (endpoint) validateHttpsEndpoint(endpoint, key, context);
   }
   if (value.PAYSTACK_ENABLED && !value.PAYSTACK_SECRET_KEY) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['PAYSTACK_SECRET_KEY'], message: 'Paystack is enabled but PAYSTACK_SECRET_KEY is missing.' });
-  }
-  if (value.PAYSTACK_WEBHOOK_SECRET && !value.PAYSTACK_SECRET_KEY) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['PAYSTACK_WEBHOOK_SECRET'], message: 'PAYSTACK_WEBHOOK_SECRET requires PAYSTACK_SECRET_KEY.' });
+    context.addIssue({ code: 'custom', path: ['PAYSTACK_SECRET_KEY'], message: 'Paystack is enabled but PAYSTACK_SECRET_KEY is missing.' });
   }
   if (value.PAYMENT_CALLBACK_URL) validateHttpsEndpoint(value.PAYMENT_CALLBACK_URL, 'PAYMENT_CALLBACK_URL', context);
   if (value.NODE_ENV === 'production') {
-    if (!value.DATABASE_URL) context.addIssue({ code: z.ZodIssueCode.custom, path: ['DATABASE_URL'], message: 'Production requires DATABASE_URL.' });
-    if (!value.SUPABASE_URL || !value.SUPABASE_SERVICE_ROLE_KEY) context.addIssue({ code: z.ZodIssueCode.custom, path: ['SUPABASE_URL'], message: 'Production requires Supabase URL and backend-only service role key for durable media.' });
-    if (!value.FIREBASE_PROJECT_ID || !value.FIREBASE_CLIENT_EMAIL || !value.FIREBASE_PRIVATE_KEY) context.addIssue({ code: z.ZodIssueCode.custom, path: ['FIREBASE_PROJECT_ID'], message: 'Production requires all Firebase Admin credentials.' });
-    if (!value.CORS_ORIGIN || value.CORS_ORIGIN === '*') context.addIssue({ code: z.ZodIssueCode.custom, path: ['CORS_ORIGIN'], message: 'Production requires an explicit CORS_ORIGIN; wildcard CORS is not allowed.' });
-    if (!value.ENFORCE_HTTPS) context.addIssue({ code: z.ZodIssueCode.custom, path: ['ENFORCE_HTTPS'], message: 'Production requires ENFORCE_HTTPS=true.' });
-    if (!value.TRUST_PROXY) context.addIssue({ code: z.ZodIssueCode.custom, path: ['TRUST_PROXY'], message: 'Production behind a TLS-terminating proxy requires TRUST_PROXY=true.' });
+    if (!value.DATABASE_URL) context.addIssue({ code: 'custom', path: ['DATABASE_URL'], message: 'Production requires DATABASE_URL.' });
+    if (!value.SUPABASE_URL || !value.SUPABASE_SERVICE_ROLE_KEY) context.addIssue({ code: 'custom', path: ['SUPABASE_URL'], message: 'Production requires Supabase URL and backend-only service role key for durable media.' });
+    if (!value.FIREBASE_PROJECT_ID || !value.FIREBASE_CLIENT_EMAIL || !value.FIREBASE_PRIVATE_KEY) context.addIssue({ code: 'custom', path: ['FIREBASE_PROJECT_ID'], message: 'Production requires all Firebase Admin credentials.' });
+    if (!value.CORS_ORIGIN || value.CORS_ORIGIN === '*') context.addIssue({ code: 'custom', path: ['CORS_ORIGIN'], message: 'Production requires an explicit CORS_ORIGIN; wildcard CORS is not allowed.' });
+    if (!value.ENFORCE_HTTPS) context.addIssue({ code: 'custom', path: ['ENFORCE_HTTPS'], message: 'Production requires ENFORCE_HTTPS=true.' });
+    if (!value.TRUST_PROXY) context.addIssue({ code: 'custom', path: ['TRUST_PROXY'], message: 'Production behind a TLS-terminating proxy requires TRUST_PROXY=true.' });
   }
 });
 
@@ -132,7 +128,7 @@ function addCompleteProviderIssue(context: ConfigIssueContext, fields: readonly 
   const present = fields.filter(([, value]) => value !== undefined && value !== '').length;
   if (present > 0 && present < fields.length) {
     const firstPresent = fields.find(([, value]) => value !== undefined && value !== '');
-    context.addIssue({ code: z.ZodIssueCode.custom, path: [firstPresent?.[0] ?? firstField[0]], message });
+    context.addIssue({ code: 'custom', path: [firstPresent?.[0] ?? firstField[0]], message });
   }
 }
 
@@ -142,14 +138,14 @@ function addOptionalProviderIssue(context: ConfigIssueContext, fields: readonly 
   const present = fields.filter(([, value]) => value !== undefined && value !== '').length;
   const credentialPresent = credentialField[1] !== undefined && credentialField[1] !== '';
   if (present > 0 && !credentialPresent) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: [credentialField[0]], message });
+    context.addIssue({ code: 'custom', path: [credentialField[0]], message });
   }
 }
 
 function validateHttpsEndpoint(endpoint: string, key: string, context: ConfigIssueContext) {
   const url = new URL(endpoint);
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: 'Provider endpoint must be an HTTPS URL without credentials, query, or fragment' });
+    context.addIssue({ code: 'custom', path: [key], message: 'Provider endpoint must be an HTTPS URL without credentials, query, or fragment' });
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/ui/eazy_skeleton.dart';
 import 'discover_categories.dart';
 import 'product_detail_page.dart';
 
@@ -135,6 +136,20 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         border: Border.all(color: context.eazyBorder),
                       ),
                       child: IconButton(
+                        tooltip: 'Become a Seller',
+                        onPressed: () => context.push('/seller'),
+                        icon: const Icon(Icons.storefront_outlined),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: context.eazyBorder),
+                      ),
+                      child: IconButton(
+                        tooltip: 'Cart',
                         onPressed: () => context.push('/cart'),
                         icon: const Icon(Icons.shopping_bag_outlined),
                       ),
@@ -261,9 +276,20 @@ class _MarketplacePageState extends State<MarketplacePage> {
               ),
             ),
             if (loading && products.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, _) => const _ProductSkeletonCard(),
+                    childCount: 6,
+                  ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: .68,
+                  ),
+                ),
               ),
             if (loading && products.isNotEmpty)
               const SliverToBoxAdapter(
@@ -308,6 +334,34 @@ class _MarketplacePageState extends State<MarketplacePage> {
       ),
     );
   }
+}
+
+class _ProductSkeletonCard extends StatelessWidget {
+  const _ProductSkeletonCard();
+
+  @override
+  Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    child: Padding(
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const EazySkeletonBox(
+            width: double.infinity,
+            height: 132,
+            radius: 14,
+          ),
+          const SizedBox(height: 10),
+          const EazySkeletonBox(width: 112, height: 12),
+          const SizedBox(height: 7),
+          const EazySkeletonBox(width: 76, height: 10),
+          const Spacer(),
+          const EazySkeletonBox(width: 92, height: 13),
+        ],
+      ),
+    ),
+  );
 }
 
 class _CategoryTile extends StatelessWidget {

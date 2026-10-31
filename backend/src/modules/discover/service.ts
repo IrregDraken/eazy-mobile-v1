@@ -6,8 +6,8 @@ import { MarketplaceService, productSearchSchema } from '../marketplace/service.
 export const discoverQuerySchema = z.object({
   type: z.enum(['people', 'products', 'categories']).default('products'),
   q: z.string().trim().min(2).max(80).optional(),
-  categoryId: z.string().uuid().optional(),
-  sellerId: z.string().uuid().optional(),
+  categoryId: z.string().guid().optional(),
+  sellerId: z.string().guid().optional(),
   minPrice: z.string().trim().regex(/^\d{1,18}(\.\d{1,2})?$/).optional(),
   maxPrice: z.string().trim().regex(/^\d{1,18}(\.\d{1,2})?$/).optional(),
   availability: z.enum(['in_stock', 'out_of_stock']).optional(),

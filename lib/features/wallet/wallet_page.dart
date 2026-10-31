@@ -26,6 +26,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   bool loading = true;
   bool busy = false;
   bool balanceVisible = true;
+  bool paymentPinConfigured = false;
   bool reconcilingPayment = false;
   String? error;
   Map<String, dynamic>? wallet;
@@ -113,6 +114,12 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         'wallet/transactions?page=1&limit=20',
         auth: true,
       );
+      try {
+        final pinStatus = await api.get('wallet/payment-pin/status', auth: true);
+        paymentPinConfigured = pinStatus['configured'] == true;
+      } on ApiException {
+        paymentPinConfigured = false;
+      }
       transactions =
           (transactionResult['items'] as List? ?? const [])
               .whereType<Map>()
@@ -447,10 +454,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         'Authorize sending $_currency $amount to @$handle',
       );
       if (!authenticated) return;
+      final paymentPin = await _requestPaymentPin();
+      if (paymentPin == null || !mounted) return;
       await api.post(
         'wallet/transfers',
         auth: true,
-        headers: {'Idempotency-Key': idempotency('transfer')},
+        headers: {
+          'Idempotency-Key': idempotency('transfer'),
+          'X-Payment-PIN': paymentPin,
+        },
         body: {
           'recipientUsername': handle,
           'amount': amount,
@@ -470,6 +482,150 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  Future<void> _managePaymentPin() async {
+    final currentPin = TextEditingController();
+    final newPin = TextEditingController();
+    final confirmation = TextEditingController();
+    final changing = paymentPinConfigured;
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(changing ? 'Change payment PIN' : 'Create payment PIN'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (changing) ...[
+              TextField(
+                controller: currentPin,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(labelText: 'Current 6-digit PIN'),
+              ),
+              const SizedBox(height: 8),
+            ],
+            TextField(
+              controller: newPin,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(labelText: changing ? 'New 6-digit PIN' : '6-digit PIN'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: confirmation,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(labelText: 'Confirm PIN'),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Use a PIN you do not use for your bank card or other accounts.',
+              style: TextStyle(color: context.eazyMuted, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          if (changing)
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, 'reset'),
+              child: const Text('Forgot PIN?'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, 'save'),
+            child: Text(changing ? 'Save new PIN' : 'Create PIN'),
+          ),
+        ],
+      ),
+    );
+    if (action != null && mounted) {
+      try {
+        if (action == 'reset') {
+          await api.post(
+            'wallet/payment-pin/reset',
+            auth: true,
+            body: {'pin': newPin.text, 'confirmation': confirmation.text},
+          );
+        } else if (changing) {
+          await api.post(
+            'wallet/payment-pin/change',
+            auth: true,
+            body: {
+              'currentPin': currentPin.text,
+              'newPin': newPin.text,
+              'confirmation': confirmation.text,
+            },
+          );
+        } else {
+          await api.post(
+            'wallet/payment-pin/setup',
+            auth: true,
+            body: {'pin': newPin.text, 'confirmation': confirmation.text},
+          );
+        }
+        if (mounted) {
+          setState(() => paymentPinConfigured = true);
+          _showMessage(action == 'reset' ? 'Payment PIN reset.' : changing ? 'Payment PIN updated.' : 'Payment PIN created.');
+        }
+      } on ApiException catch (e) {
+        _showError(e.message);
+      }
+    }
+    currentPin.dispose();
+    newPin.dispose();
+    confirmation.dispose();
+  }
+
+  Future<String?> _requestPaymentPin() async {
+    if (!paymentPinConfigured) {
+      _showError('Create a payment PIN in Wallet settings before sending money.');
+      return null;
+    }
+    final controller = TextEditingController();
+    final pin = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Enter payment PIN'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(
+            labelText: '6-digit payment PIN',
+            counterText: '',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (controller.text.length == 6) {
+                Navigator.pop(dialogContext, controller.text);
+              }
+            },
+            child: const Text('Authorize'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return pin;
   }
 
   Future<bool> _authenticateTransfer(String reason) async {
@@ -693,10 +849,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         'Authorize sending $_currency $amount to $accountName',
       );
       if (!authenticated) return;
+      final paymentPin = await _requestPaymentPin();
+      if (paymentPin == null || !mounted) return;
       await api.post(
         'bank-transfers',
         auth: true,
-        headers: {'Idempotency-Key': idempotency('bank-transfer')},
+        headers: {
+          'Idempotency-Key': idempotency('bank-transfer'),
+          'X-Payment-PIN': paymentPin,
+        },
         body: {
           'accountNumber': number,
           'bankCode': code,
@@ -758,6 +919,31 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> requestVirtualAccount() async {
+    if (virtualAccount != null || busy) return;
+    final consent = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Create your dedicated bank account?'),
+        content: const Text(
+          'Eazy will ask its bank provider to assign a dedicated NGN account '
+          'for receiving transfers. Your account name, email address and phone '
+          'number from your Eazy profile will be shared with the provider for '
+          'this purpose. Account assignment depends on provider approval. '
+          'You can cancel without creating an account.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('I agree, continue'),
+          ),
+        ],
+      ),
+    );
+    if (consent != true || !mounted) return;
     setState(() => busy = true);
     try {
       final result = await api.post(
@@ -797,13 +983,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         title: 'Confirm QR payment',
         message:
             'Pay $_currency $amount to ${recipient['displayName'] ?? recipient['username'] ?? 'this Eazy user'}?',
-        action:
-            () => api.post(
-              'wallet/qr/pay',
-              auth: true,
-              headers: {'Idempotency-Key': idempotency('qr-payment')},
-              body: {'token': token, 'amount': amount, 'currency': _currency},
-            ),
+        action: (paymentPin) => api.post(
+          'wallet/qr/pay',
+          auth: true,
+          headers: {
+            'Idempotency-Key': idempotency('qr-payment'),
+            'X-Payment-PIN': paymentPin,
+          },
+          body: {'token': token, 'amount': amount, 'currency': _currency},
+        ),
       );
     } on ApiException catch (e) {
       _showError(e.message);
@@ -911,7 +1099,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   Future<void> _confirmAndRun({
     required String title,
     required String message,
-    required Future<Map<String, dynamic>> Function() action,
+    required Future<Map<String, dynamic>> Function(String paymentPin) action,
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -934,11 +1122,17 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     if (confirmed != true) return;
     setState(() => busy = true);
     try {
-      await action();
+      final authenticated = await _authenticateTransfer('Authorize this QR payment');
+      if (!authenticated) return;
+      final paymentPin = await _requestPaymentPin();
+      if (paymentPin == null || !mounted) return;
+      await action(paymentPin);
       await load();
       _showMessage('Transfer completed and wallet activity refreshed.');
     } on ApiException catch (e) {
       _showError(e.message);
+    } catch (_) {
+      _showError('Payment authorization could not be completed. No payment was submitted.');
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -1063,6 +1257,19 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                           );
                         },
                       ),
+                      ListTile(
+                        leading: const Icon(Icons.password_rounded),
+                        title: Text(paymentPinConfigured ? 'Change payment PIN' : 'Create payment PIN'),
+                        subtitle: Text(
+                          paymentPinConfigured
+                              ? 'Update the 6-digit PIN used to authorize payments.'
+                              : 'Create a 6-digit PIN required before sending money.',
+                        ),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _managePaymentPin();
+                        },
+                      ),
                       const ListTile(
                         leading: Icon(Icons.fingerprint_rounded),
                         title: Text('Transfer authentication'),
@@ -1169,82 +1376,16 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> _showAllTransactions() async {
-    showModalBottomSheet<void>(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder:
-          (sheetContext) => SafeArea(
-            child: FutureBuilder<Map<String, dynamic>>(
-              future: api.get(
-                'wallet/transactions?page=1&limit=100',
-                auth: true,
-              ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const Padding(
-                    padding: EdgeInsets.all(36),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      'Could not load transaction history: ${snapshot.error}',
-                    ),
-                  );
-                }
-                final entries =
-                    (snapshot.data?['items'] as List? ?? const [])
-                        .whereType<Map>()
-                        .map((item) => Map<String, dynamic>.from(item))
-                        .toList();
-                if (entries.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(28),
-                    child: Text('No transactions yet.'),
-                  );
-                }
-                return SizedBox(
-                  height: MediaQuery.sizeOf(context).height * .7,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      const Text(
-                        'Transaction history',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      for (final entry in entries)
-                        ListTile(
-                          leading: const Icon(
-                            Icons.receipt_long_rounded,
-                            color: EazyColors.green,
-                          ),
-                          title: Text(
-                            entry['type']?.toString() ?? 'Transaction',
-                          ),
-                          subtitle: Text(
-                            '${entry['status'] ?? 'unknown'} · ${entry['createdAt'] ?? ''}',
-                          ),
-                          trailing: Text(
-                            balanceVisible
-                                ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}'
-                                : '••••••',
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          onTap: () => _showTransactionDetails(entry),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
+      builder: (_) => _TransactionHistorySheet(
+        api: api,
+        currency: _currency,
+        balanceVisible: balanceVisible,
+        onOpenTransaction: _showTransactionDetails,
+      ),
     );
   }
 
@@ -1686,6 +1827,184 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 ),
               ),
             ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _TransactionHistorySheet extends StatefulWidget {
+  const _TransactionHistorySheet({
+    required this.api,
+    required this.currency,
+    required this.balanceVisible,
+    required this.onOpenTransaction,
+  });
+
+  final ApiClient api;
+  final String currency;
+  final bool balanceVisible;
+  final Future<void> Function(Map<String, dynamic> entry) onOpenTransaction;
+
+  @override
+  State<_TransactionHistorySheet> createState() => _TransactionHistorySheetState();
+}
+
+class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
+  static const _pageSize = 20;
+  final _items = <Map<String, dynamic>>[];
+  int _page = 0;
+  bool _loading = false;
+  bool _hasMore = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPage();
+  }
+
+  Future<void> _loadPage({bool refresh = false}) async {
+    if (_loading || (!refresh && !_hasMore)) return;
+    final nextPage = refresh ? 1 : _page + 1;
+    setState(() {
+      _loading = true;
+      _error = null;
+      if (refresh) _hasMore = true;
+    });
+    try {
+      final result = await widget.api.get(
+        'wallet/transactions?page=$nextPage&limit=$_pageSize',
+        auth: true,
+      );
+      final entries = (result['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+      final meta = result['meta'] is Map
+          ? Map<String, dynamic>.from(result['meta'] as Map)
+          : <String, dynamic>{};
+      final totalPages = int.tryParse(meta['pages']?.toString() ?? '');
+      if (!mounted) return;
+      setState(() {
+        if (refresh) _items.clear();
+        final existingIds = _items.map((item) => item['id']?.toString()).toSet();
+        _items.addAll(entries.where(
+          (item) => !existingIds.contains(item['id']?.toString()),
+        ));
+        _page = nextPage;
+        _hasMore = totalPages != null
+            ? nextPage < totalPages
+            : entries.length == _pageSize;
+      });
+    } on ApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Could not load transaction history. Try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: SizedBox(
+      height: MediaQuery.sizeOf(context).height * .78,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+            child: Text(
+              'Transaction history',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => _loadPage(refresh: true),
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+                itemCount: _items.isEmpty ? 1 : _items.length + 1,
+                itemBuilder: (context, index) {
+                  if (_items.isEmpty && index == 0) {
+                    if (_loading) {
+                      return const Padding(
+                        padding: EdgeInsets.all(36),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (_error != null) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          children: [
+                            Text(_error!, textAlign: TextAlign.center),
+                            TextButton(
+                              onPressed: () => _loadPage(refresh: true),
+                              child: const Text('Try again'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const Padding(
+                      padding: EdgeInsets.all(28),
+                      child: Text('No transactions yet.'),
+                    );
+                  }
+                  if (index == _items.length) {
+                    if (_error != null) {
+                      return Center(
+                        child: TextButton(
+                          onPressed: _loadPage,
+                          child: const Text('Could not load more. Try again'),
+                        ),
+                      );
+                    }
+                    if (_hasMore) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: _loading
+                              ? const CircularProgressIndicator(strokeWidth: 2)
+                              : OutlinedButton(
+                                  onPressed: _loadPage,
+                                  child: const Text('Load more'),
+                                ),
+                        ),
+                      );
+                    }
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 18),
+                      child: Center(child: Text('You are all caught up.')),
+                    );
+                  }
+                  final entry = _items[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const Icon(Icons.receipt_long_rounded),
+                      title: Text(entry['type']?.toString() ?? 'Transaction'),
+                      subtitle: Text(
+                        '${entry['status'] ?? 'unknown'} · ${entry['createdAt'] ?? ''}',
+                      ),
+                      trailing: Text(
+                        widget.balanceVisible
+                            ? '${entry['currency'] ?? widget.currency} ${entry['amount'] ?? '0.00'}'
+                            : '••••••',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      onTap: () => widget.onOpenTransaction(entry),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
         ],
       ),
     ),

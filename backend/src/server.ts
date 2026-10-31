@@ -40,6 +40,7 @@ import { UnavailableLocationProvider } from './modules/location/providers/unavai
 import { HereLocationProvider } from './modules/location/providers/here.js';
 import { WalletRepository } from './modules/wallet/repository.js';
 import { WalletService } from './modules/wallet/service.js';
+import { PaymentPinService } from './modules/wallet/payment-pin-service.js';
 import { createWalletRouter } from './modules/wallet/routes.js';
 import { LedgerRepository } from './modules/ledger/repository.js';
 import { LedgerService } from './modules/ledger/service.js';
@@ -124,7 +125,7 @@ if (pool) {
   const socialRepository = new SocialRepository(pool);
   realtimeService = new RealtimeService(pool, chatRepository, socialRepository);
   const pushProvider = firebaseProvider ? new FirebaseNotificationProvider(pool, config) : undefined;
-  const notificationService = new NotificationService(pool, undefined, realtimeService, pushProvider);
+  const notificationService = new NotificationService(pool, undefined, realtimeService, pushProvider, logger);
   const profileService = new ProfileService(pool, undefined, storageProvider);
   authOptions.profileRouter = createProfileRouter(profileService);
   const socialService = new SocialService(pool, socialRepository, notificationService);
@@ -156,13 +157,14 @@ if (pool) {
   authOptions.locationRouter = createLocationRouter(new LocationService(locationProvider, new LocationRepository()));
   const walletRepository = new WalletRepository(pool);
   const walletService = new WalletService(pool, walletRepository, new LedgerService(new LedgerRepository()));
-  authOptions.walletRouter = createWalletRouter(walletService);
-  authOptions.qrRouter = createQrRouter(new QrService(pool, new QrRepository(pool)), walletService);
+  const paymentPinService = new PaymentPinService(pool);
+  authOptions.walletRouter = createWalletRouter(walletService, paymentPinService);
+  authOptions.qrRouter = createQrRouter(new QrService(pool, new QrRepository(pool)), walletService, paymentPinService);
   const bankProvider = config.PAYSTACK_ENABLED && config.PAYSTACK_SECRET_KEY ? new PaystackBankProvider(config) : new UnavailableBankProvider();
   const bankLedger = new LedgerService(new LedgerRepository());
   const virtualAccountService = new VirtualAccountService(pool, bankProvider, bankLedger);
   authOptions.bankRouter = createBankRouter(new BankService(bankProvider));
-  authOptions.bankTransferRouter = createBankTransferRouter(new BankTransferService(pool, bankProvider, bankLedger), virtualAccountService);
+  authOptions.bankTransferRouter = createBankTransferRouter(new BankTransferService(pool, bankProvider, bankLedger), virtualAccountService, paymentPinService);
   authOptions.virtualAccountRouter = createVirtualAccountRouter(virtualAccountService);
   const paymentProvider = config.PAYSTACK_ENABLED && config.PAYSTACK_SECRET_KEY
     ? new PaystackPaymentProvider(config)

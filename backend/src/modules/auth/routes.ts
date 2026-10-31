@@ -9,7 +9,7 @@ import { createRateLimiter } from '../../middleware/rate-limit.js';
 import { z } from 'zod';
 import { validate } from '../../middleware/validate.js';
 
-const sessionParamsSchema = z.object({ id: z.string().uuid() }).strict();
+const sessionParamsSchema = z.object({ id: z.string().guid() }).strict();
 const sessionMutationLimit = createRateLimiter({ name: 'auth-session-mutation', windowMs: 60_000, max: 10 });
 const sessionReadLimit = createRateLimiter({ name: 'auth-session-read', windowMs: 60_000, max: 60 });
 const accountDeletionLimit = createRateLimiter({ name: 'auth-account-deletion', windowMs: 10 * 60_000, max: 6 });
@@ -17,12 +17,11 @@ const accountDeletionSchema = z.object({ confirmation: z.literal('DELETE') }).st
 
 export function createFirebaseAuthenticationMiddleware(provider: FirebaseAuthProvider, authService: AuthService): RequestHandler {
   return async (request, _response, next) => {
-    // Registration must bind a verified OTP to its newly-created Firebase
-    // identity before that identity is allowed through normal auth provisioning.
-    // The verification router validates the bearer token and email itself.
+    // Email-verification routes validate the bearer token and email match
+    // themselves. Keep them reachable by an unverified password identity.
     if (
       request.method === 'POST' &&
-      request.path === '/v1/auth/email-verification/verify-code'
+      request.path.startsWith('/v1/auth/email-verification/')
     ) {
       return next();
     }

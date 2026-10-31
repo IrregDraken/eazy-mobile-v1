@@ -82,6 +82,32 @@ test('transaction-created social notifications are pushed after commit without r
   assert.deepEqual(sent, [{ userId: 'recipient', title: 'Post liked', body: 'Someone liked your post' }]);
 });
 
+test('order and payment notifications stay wallet-only outside realtime and device push', async () => {
+  for (const type of ['order', 'payment'] as const) {
+    const sent: string[] = [];
+    const repository = {
+      get: async () => ({
+        id: 'financial-notification',
+        type,
+        actor: null,
+        title: 'Wallet update',
+        body: 'A financial event occurred',
+        entityType: 'transaction',
+        entityId: 'transaction-id',
+        isRead: false,
+        createdAt: '2026-10-31T00:00:00.000Z'
+      })
+    } as unknown as NotificationRepository;
+    const push = { notify: async (input: { userId: string }) => { sent.push(input.userId); } };
+    let realtimeDeliveries = 0;
+    const realtime = { publishToUser: async () => { realtimeDeliveries++; return 1; } };
+    const service = new NotificationService(fakePool(), repository, realtime as never, push);
+    await service.publishCreated('recipient', 'financial-notification');
+    assert.deepEqual(sent, []);
+    assert.equal(realtimeDeliveries, 0);
+  }
+});
+
 test('ordinary notification creation dispatches push exactly once', async () => {
   const sent: string[] = [];
   const notification = {

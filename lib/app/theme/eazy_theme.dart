@@ -1,18 +1,31 @@
 import 'package:flutter/material.dart';
 
+/// Brand and semantic colors used by screens that haven't migrated to
+/// context-aware ColorScheme tokens yet. These values are optimized for the
+/// default light interface so fixed-color labels remain legible on white.
 abstract final class EazyColors {
+  static const ink = Color(0xFF153B27);
+  static const muted = Color(0xFF587365);
+  static const canvas = Color(0xFFFFFFFF);
+  static const surface = Color(0xFFFFFFFF);
+  static const surfaceRaised = Color(0xFFF0F8F2);
+  static const border = Color(0xFFD7E8DC);
+  static const green = Color(0xFF16864C);
+  static const greenDeep = Color(0xFF147A43);
+  static const mint = Color(0xFFD9F5E3);
+  static const red = Color(0xFFB42318);
+  static const amber = Color(0xFF8A5200);
+  static const blue = Color(0xFF155EEF);
+}
+
+abstract final class _DarkColors {
   static const ink = Color(0xFFF4F8F5);
-  static const muted = Color(0xFF9AA79F);
   static const canvas = Color(0xFF06100B);
   static const surface = Color(0xFF0C1711);
   static const surfaceRaised = Color(0xFF122119);
   static const border = Color(0xFF20352A);
   static const green = Color(0xFF48F59A);
-  static const greenDeep = Color(0xFF18B96C);
-  static const mint = Color(0xFFB9FFD9);
   static const red = Color(0xFFFF746E);
-  static const amber = Color(0xFFFFC96B);
-  static const blue = Color(0xFF75B9FF);
 }
 
 abstract final class EazyRadius {
@@ -22,32 +35,30 @@ abstract final class EazyRadius {
 abstract final class EazyTheme {
   static ThemeData dark() {
     final scheme = ColorScheme.fromSeed(
-      seedColor: EazyColors.green,
+      seedColor: _DarkColors.green,
       brightness: Brightness.dark,
     );
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: scheme.copyWith(
-        primary: EazyColors.green,
-        onPrimary: EazyColors.canvas,
-        surface: EazyColors.surface,
-        onSurface: EazyColors.ink,
-        onSurfaceVariant: EazyColors.muted,
-        outlineVariant: EazyColors.border,
-        surfaceContainerHighest: EazyColors.surfaceRaised,
+        primary: _DarkColors.green,
+        onPrimary: _DarkColors.canvas,
+        surface: _DarkColors.surface,
+        onSurface: _DarkColors.ink,
+        surfaceContainerHighest: _DarkColors.surfaceRaised,
       ),
     );
     return base.copyWith(
-      scaffoldBackgroundColor: EazyColors.canvas,
+      scaffoldBackgroundColor: _DarkColors.canvas,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        foregroundColor: EazyColors.ink,
+        foregroundColor: _DarkColors.ink,
       ),
       textTheme: base.textTheme
-          .apply(bodyColor: EazyColors.ink, displayColor: EazyColors.ink)
+          .apply(bodyColor: _DarkColors.ink, displayColor: _DarkColors.ink)
           .copyWith(
             headlineLarge: const TextStyle(
               fontWeight: FontWeight.w900,
@@ -65,22 +76,22 @@ abstract final class EazyTheme {
           ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: EazyColors.surface,
+        fillColor: _DarkColors.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
-          borderSide: const BorderSide(color: EazyColors.border),
+          borderSide: const BorderSide(color: _DarkColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
-          borderSide: const BorderSide(color: EazyColors.border),
+          borderSide: const BorderSide(color: _DarkColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
-          borderSide: const BorderSide(color: EazyColors.green, width: 1.4),
+          borderSide: const BorderSide(color: _DarkColors.green, width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
-          borderSide: const BorderSide(color: EazyColors.red),
+          borderSide: const BorderSide(color: _DarkColors.red),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,
@@ -88,12 +99,12 @@ abstract final class EazyTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        color: EazyColors.surface,
+        color: _DarkColors.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(EazyRadius.lg),
-          side: const BorderSide(color: EazyColors.border),
+          side: const BorderSide(color: _DarkColors.border),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -113,7 +124,7 @@ abstract final class EazyTheme {
         style: ButtonStyle(
           minimumSize: const WidgetStatePropertyAll(Size.fromHeight(54)),
           side: const WidgetStatePropertyAll(
-            BorderSide(color: EazyColors.border),
+            BorderSide(color: _DarkColors.border),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
@@ -127,18 +138,18 @@ abstract final class EazyTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 76,
-        backgroundColor: EazyColors.surface.withValues(alpha: .97),
-        indicatorColor: EazyColors.green.withValues(alpha: .14),
+        backgroundColor: _DarkColors.surface.withValues(alpha: .97),
+        indicatorColor: _DarkColors.green.withValues(alpha: .14),
         labelTextStyle: const WidgetStatePropertyAll(
           TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: EazyColors.surfaceRaised,
+        backgroundColor: _DarkColors.surfaceRaised,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      dividerTheme: const DividerThemeData(color: EazyColors.border),
+      dividerTheme: const DividerThemeData(color: _DarkColors.border),
     );
   }
 
@@ -154,10 +165,8 @@ abstract final class EazyTheme {
         primary: EazyColors.greenDeep,
         onPrimary: Colors.white,
         surface: Colors.white,
-        onSurface: const Color(0xFF17231B),
-        onSurfaceVariant: const Color(0xFF5E6D63),
-        outlineVariant: const Color(0xFFDCE9E0),
-        surfaceContainerHighest: const Color(0xFFF1F7F3),
+        onSurface: const Color(0xFF176B42),
+        surfaceContainerHighest: const Color(0xFFEAF6EE),
       ),
     );
     return base.copyWith(
@@ -166,12 +175,12 @@ abstract final class EazyTheme {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        foregroundColor: Color(0xFF17231B),
+        foregroundColor: Color(0xFF176B42),
       ),
       textTheme: base.textTheme
           .apply(
-            bodyColor: const Color(0xFF17231B),
-            displayColor: const Color(0xFF17231B),
+            bodyColor: const Color(0xFF176B42),
+            displayColor: const Color(0xFF176B42),
           )
           .copyWith(
             headlineLarge: const TextStyle(
@@ -190,14 +199,14 @@ abstract final class EazyTheme {
           ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFFAFCFA),
+        fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
-          borderSide: const BorderSide(color: Color(0xFFDCE9E0)),
+          borderSide: const BorderSide(color: Color(0xFFCFE5D7)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
-          borderSide: const BorderSide(color: Color(0xFFDCE9E0)),
+          borderSide: const BorderSide(color: Color(0xFFD3E4D9)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
@@ -214,7 +223,7 @@ abstract final class EazyTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(EazyRadius.lg),
-          side: const BorderSide(color: Color(0xFFE1ECE4)),
+          side: const BorderSide(color: Color(0xFFDDEBE2)),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -259,16 +268,15 @@ abstract final class EazyTheme {
         backgroundColor: const Color(0xFF173D29),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      dividerTheme: const DividerThemeData(color: Color(0xFFE1ECE4)),
+      dividerTheme: const DividerThemeData(color: Color(0xFFDDEBE2)),
     );
   }
 }
 
-
 extension EazyThemeTokens on BuildContext {
   Color get eazyAccent =>
       Theme.of(this).brightness == Brightness.dark
-          ? EazyColors.green
+          ? _DarkColors.green
           : EazyColors.greenDeep;
   Color get eazyText => Theme.of(this).colorScheme.onSurface;
   Color get eazyMuted => Theme.of(this).colorScheme.onSurfaceVariant;

@@ -14,13 +14,13 @@ const dateOfBirthSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date of birth
   if (year === undefined || month === undefined || day === undefined) return;
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: 'Date of birth is not a valid calendar date' });
+    context.addIssue({ code: 'custom', message: 'Date of birth is not a valid calendar date' });
     return;
   }
   const today = new Date();
   let age = today.getUTCFullYear() - year;
   if (today.getUTCMonth() + 1 < month || (today.getUTCMonth() + 1 === month && today.getUTCDate() < day)) age--;
-  if (age < 18) context.addIssue({ code: z.ZodIssueCode.custom, message: 'You must be at least 18 years old to use Eazy' });
+  if (age < 18) context.addIssue({ code: 'custom', message: 'You must be at least 18 years old to use Eazy' });
 });
 
 export const profilePatchSchema = z.object({

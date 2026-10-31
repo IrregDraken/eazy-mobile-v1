@@ -10,12 +10,10 @@ export interface VerifiedPayment {
 
 export class PaystackPaymentProvider implements PaymentProvider {
   private readonly secretKey: string;
-  private readonly webhookSecret: string;
   private readonly enabled: boolean;
 
   constructor(private readonly config: AppConfig) {
     this.secretKey = config.PAYSTACK_SECRET_KEY ?? '';
-    this.webhookSecret = config.PAYSTACK_WEBHOOK_SECRET || this.secretKey;
     this.enabled = config.PAYSTACK_ENABLED === true && Boolean(this.secretKey);
   }
 
@@ -50,8 +48,8 @@ export class PaystackPaymentProvider implements PaymentProvider {
   }
 
   verifyWebhookSignature(rawBody: string, signature: string | undefined) {
-    if (!signature || !this.webhookSecret) return false;
-    const expected = crypto.createHmac('sha512', this.webhookSecret).update(rawBody).digest('hex');
+    if (!signature || !this.secretKey) return false;
+    const expected = crypto.createHmac('sha512', this.secretKey).update(rawBody).digest('hex');
     const expectedBuffer = Buffer.from(expected);
     const actualBuffer = Buffer.from(signature);
     return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);

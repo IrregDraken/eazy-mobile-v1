@@ -21,6 +21,7 @@ import type { TransferRecord, WalletRepositoryContract } from '../src/modules/wa
 import { createWalletRouter } from '../src/modules/wallet/routes.js';
 import { createPaymentRouter } from '../src/modules/payments/routes.js';
 import { createQrRouter } from '../src/modules/qr/routes.js';
+import { createBankTransferRouter } from '../src/modules/bank/transfer-routes.js';
 
 const userA = '00000000-0000-4000-8000-000000000001';
 const userB = '00000000-0000-4000-8000-000000000002';
@@ -170,7 +171,7 @@ function paymentRepoFixture(options: { order?: { id: string; status: string; cur
   return { repo, intents, byId };
 }
 
-function appWithAuth(options: { walletRouter: ReturnType<typeof createWalletRouter>; qrRouter: ReturnType<typeof createQrRouter>; paymentRouter: ReturnType<typeof createPaymentRouter> }) {
+function appWithAuth(options: { walletRouter: ReturnType<typeof createWalletRouter>; qrRouter: ReturnType<typeof createQrRouter>; paymentRouter: ReturnType<typeof createPaymentRouter>; bankTransferRouter?: ReturnType<typeof createBankTransferRouter> }) {
   const auth: RequestHandler = (request, _response, next) => {
     if (request.header('authorization') === 'Bearer test-token') request.auth = { userId: userA, provider: 'test', claims: {} };
     next();
@@ -445,7 +446,8 @@ test('QR/payment/wallet requests require authentication, reject forged money sta
   const qrService = new QrService(fakePaymentPool(), qrRepo);
   const paymentRepo = paymentRepoFixture().repo;
   const paymentService = new PaymentService(fakePaymentPool(), new UnavailablePaymentProvider(), paymentRepo);
-  const app = appWithAuth({ walletRouter: createWalletRouter(walletService), qrRouter: createQrRouter(qrService, walletService), paymentRouter: createPaymentRouter(paymentService) });
+  const bankTransferRouter = createBankTransferRouter({ verifyWebhookSignature: () => false } as never);
+  const app = appWithAuth({ walletRouter: createWalletRouter(walletService), qrRouter: createQrRouter(qrService, walletService), paymentRouter: createPaymentRouter(paymentService), bankTransferRouter });
   await withServer(app, async baseUrl => {
     assert.equal((await fetch(`${baseUrl}/v1/wallet`)).status, 401);
     assert.equal((await fetch(`${baseUrl}/v1/payments/capabilities`)).status, 401);
@@ -453,9 +455,12 @@ test('QR/payment/wallet requests require authentication, reject forged money sta
     const headers = { authorization: 'Bearer test-token', 'content-type': 'application/json' };
     assert.equal((await fetch(`${baseUrl}/v1/wallet/transfers`, { method: 'POST', headers, body: JSON.stringify({ recipientUsername: 'recipient', amount: '1.00', currency: 'NGN' }) })).status, 422);
     assert.equal((await fetch(`${baseUrl}/v1/wallet/transfers`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'valid-transfer-123' }, body: JSON.stringify({ recipientUsername: 'recipient', amount: '1.00', currency: 'NGN', userId: userB, balance: '100.00' }) })).status, 422);
+    assert.equal((await fetch(`${baseUrl}/v1/wallet/transfers`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'pin-required-transfer-123' }, body: JSON.stringify({ recipientUsername: 'recipient', amount: '1.00', currency: 'NGN' }) })).status, 503);
     assert.equal((await fetch(`${baseUrl}/v1/payments/initialize`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'valid-payment-123' }, body: JSON.stringify({ purpose: 'wallet_deposit', amount: '1.00', currency: 'NGN', status: 'succeeded' }) })).status, 422);
     assert.equal((await fetch(`${baseUrl}/v1/payments/initialize`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'valid-payment-456' }, body: JSON.stringify({ purpose: 'wallet_deposit', amount: '1.00', currency: 'NGN' }) })).status, 503);
     assert.equal((await fetch(`${baseUrl}/v1/wallet/qr/pay`, { method: 'POST', headers, body: JSON.stringify({ token: 'x'.repeat(43), amount: '1.00', currency: 'NGN', status: 'succeeded' }) })).status, 422);
+    assert.equal((await fetch(`${baseUrl}/v1/wallet/qr/pay`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'pin-required-qr-123' }, body: JSON.stringify({ token: 'x'.repeat(43), amount: '1.00', currency: 'NGN' }) })).status, 503);
+    assert.equal((await fetch(`${baseUrl}/v1/bank-transfers`, { method: 'POST', headers: { ...headers, 'idempotency-key': 'pin-required-bank-transfer-123' }, body: JSON.stringify({ accountNumber: '0123456789', bankCode: '058', accountName: 'Test Recipient', amount: '1.00', currency: 'NGN' }) })).status, 503);
     assert.equal((await fetch(`${baseUrl}/v1/ledger`, { headers })).status, 404);
   });
 });

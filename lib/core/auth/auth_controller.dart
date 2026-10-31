@@ -17,9 +17,11 @@ class EmailVerificationChallenge {
   const EmailVerificationChallenge({
     required this.challengeId,
     required this.expiresInSeconds,
+    this.accountAlreadyCreated = false,
   });
   final String challengeId;
   final int expiresInSeconds;
+  final bool accountAlreadyCreated;
 }
 
 class AuthController extends ChangeNotifier {
@@ -52,8 +54,20 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
     try {
       if (!firebaseReady) return;
-      final user = FirebaseAuth.instance.currentUser;
+      var user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
+
+      if (_requiresEmailVerification(user)) {
+        await user.reload();
+        user = FirebaseAuth.instance.currentUser ?? user;
+        if (!user.emailVerified) {
+          await api.clearToken();
+          await api.clearProfileSnapshot();
+          _firebaseUser = null;
+          _profile = null;
+          return;
+        }
+      }
 
       final cachedProfile = await api.readProfileSnapshot();
       if (cachedProfile != null) {
@@ -89,7 +103,7 @@ class AuthController extends ChangeNotifier {
       await _syncFirebaseUser(user, forceRefresh: false);
       notifyListeners();
     } on ApiException catch (error) {
-      if (error.statusCode == 401) {
+      if (error.statusCode == 401 || error.statusCode == 403) {
         await api.clearToken();
         await api.clearProfileSnapshot();
         _firebaseUser = null;
@@ -138,17 +152,40 @@ class AuthController extends ChangeNotifier {
       challengeId: result['challengeId']?.toString() ?? '',
       expiresInSeconds:
           int.tryParse(result['expiresInSeconds']?.toString() ?? '') ?? 600,
+      accountAlreadyCreated: auth,
     );
   }
 
-  Future<EmailVerificationChallenge> beginEmailRegistration(String email) {
-    return requestEmailVerificationCode(email);
+  Future<EmailVerificationChallenge> beginEmailRegistration(String email) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final current = FirebaseAuth.instance.currentUser;
+    if (current != null && current.email != null) {
+      await current.reload();
+      final refreshed = FirebaseAuth.instance.currentUser ?? current;
+      if (refreshed.email?.trim().toLowerCase() != normalizedEmail) {
+        throw const ApiException(
+          'Sign out of the current account before creating another Eazy account.',
+        );
+      }
+      if (refreshed.emailVerified) {
+        throw const ApiException(
+          'This email is already verified. Please sign in instead.',
+        );
+      }
+      await _saveCurrentFirebaseTokenForVerification();
+      return requestEmailVerificationCode(normalizedEmail, auth: true);
+    }
+    return requestEmailVerificationCode(normalizedEmail);
   }
 
   Future<void> verifyEmailRegistration(
     EmailVerificationChallenge challenge,
     String code,
   ) async {
+    if (challenge.accountAlreadyCreated) {
+      await verifyEmailCode(challenge, code);
+      return;
+    }
     await api.post(
       'auth/email-verification/verify-code',
       body: {'challengeId': challenge.challengeId, 'code': code.trim()},
@@ -207,6 +244,7 @@ class AuthController extends ChangeNotifier {
     EmailVerificationChallenge challenge,
     String code,
   ) async {
+    await _saveCurrentFirebaseTokenForVerification();
     await api.post(
       'auth/email-verification/verify-code',
       auth: true,
@@ -277,6 +315,23 @@ class AuthController extends ChangeNotifier {
   bool get hasPasswordProvider =>
       _firebaseUser?.providerData.any((provider) => provider.providerId == 'password') ??
       false;
+
+  bool _requiresEmailVerification(User user) =>
+      user.email != null &&
+      user.providerData.any((provider) => provider.providerId == 'password');
+  Future<void> _saveCurrentFirebaseTokenForVerification() async {
+    _requireFirebase();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw const ApiException('Your registration session has expired.');
+    }
+    final token = await user.getIdToken(true);
+    if (token == null || token.isEmpty) {
+      throw const ApiException('Firebase did not return a session token.');
+    }
+    await api.saveToken(token);
+  }
+
 
   Future<void> requestEmailChange(
     String newEmail, {
@@ -618,7 +673,8 @@ class AuthController extends ChangeNotifier {
       _firebaseUser = user;
       await api.saveProfileSnapshot(_profile!);
     } catch (error) {
-      if (error is ApiException && error.statusCode == 401) {
+      if (error is ApiException &&
+          (error.statusCode == 401 || error.statusCode == 403)) {
         await api.clearToken();
         await api.clearProfileSnapshot();
       }

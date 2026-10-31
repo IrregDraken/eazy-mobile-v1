@@ -319,7 +319,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
                         detail:
                             _filter == 'Groups'
                                 ? 'The current production API supports 1:1 conversations only.'
-                                : 'Your real Eazy conversations will appear here.',
+                                : 'Your conversations will appear here.',
                         action: _newChat,
                         actionText: 'New chat',
                       )
