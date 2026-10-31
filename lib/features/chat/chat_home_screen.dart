@@ -24,7 +24,10 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
   final _search = TextEditingController();
   final _scroll = ScrollController();
   List<Map<String, dynamic>> _items = [];
-  bool _loading = true, _connecting = true, _fabVisible = true;
+  bool _loading = true, _fabVisible = true;
+  bool _connectingRealtime = false;
+  int _reconnectAttempts = 0;
+  Timer? _reconnectTimer;
   String _filter = 'All';
   String? _error, _myUsername, _myUserId;
   WebSocket? _socket;
@@ -43,6 +46,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     _search.dispose();
     _scroll.removeListener(_scrollChanged);
     _scroll.dispose();
+    _reconnectTimer?.cancel();
     _subscription?.cancel();
     _socket?.close();
     super.dispose();
@@ -112,6 +116,8 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
   }
 
   Future<void> _connectRealtime() async {
+    if (!mounted || _connectingRealtime || _socket != null) return;
+    _connectingRealtime = true;
     try {
       final token = await widget.api.readToken();
       if (token == null ||
@@ -131,7 +137,14 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
         uri.toString(),
         headers: {'Authorization': 'Bearer $token'},
       ).timeout(const Duration(seconds: 10));
+      if (!mounted) {
+        await socket.close();
+        return;
+      }
       _socket = socket;
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _reconnectAttempts = 0;
       // Server scopes this subscription to the authenticated user's own channel.
       socket.add(
         jsonEncode({'type': 'subscribe', 'channel': 'user', 'id': _myUserId}),
@@ -145,17 +158,46 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
             }
           } catch (_) {}
         },
-        onDone: () {
-          if (mounted) setState(() => _connecting = true);
-        },
-        onError: (_) {
-          if (mounted) setState(() => _connecting = true);
-        },
+        onDone: () => _handleRealtimeDisconnect(socket),
+        onError: (_) => _handleRealtimeDisconnect(socket),
+        cancelOnError: true,
       );
-      if (mounted) setState(() => _connecting = false);
     } catch (_) {
-      if (mounted) setState(() => _connecting = true);
+      final failedSocket = _socket;
+      _socket = null;
+      _subscription?.cancel();
+      _subscription = null;
+      try {
+        await failedSocket?.close();
+      } catch (_) {}
+      _scheduleRealtimeReconnect();
+    } finally {
+      _connectingRealtime = false;
     }
+  }
+
+  void _handleRealtimeDisconnect(WebSocket socket) {
+    if (!identical(_socket, socket)) return;
+    _socket = null;
+    _subscription = null;
+    _scheduleRealtimeReconnect();
+  }
+
+  void _scheduleRealtimeReconnect() {
+    if (!mounted || _myUserId == null || _reconnectTimer != null) return;
+    final delaySeconds = switch (_reconnectAttempts) {
+      0 => 1,
+      1 => 2,
+      2 => 4,
+      3 => 8,
+      4 => 16,
+      _ => 30,
+    };
+    if (_reconnectAttempts < 5) _reconnectAttempts++;
+    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      _reconnectTimer = null;
+      unawaited(_connectRealtime());
+    });
   }
 
   Map<String, dynamic> _person(Map<String, dynamic> c) {
@@ -236,121 +278,26 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Eazy',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.labelMedium?.copyWith(
-                            color: EazyColors.green,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.4,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Chats',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.headlineMedium?.copyWith(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'Chats',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                   IconButton(
                     onPressed: _newChat,
                     tooltip: 'New chat',
                     style: IconButton.styleFrom(
-                      backgroundColor: EazyColors.green.withValues(alpha: .10),
-                      foregroundColor: EazyColors.green,
+                      backgroundColor: context.eazyAccent.withValues(alpha: .10),
+                      foregroundColor: context.eazyAccent,
                     ),
-                    icon: const Icon(Icons.edit_square),
+                    icon: Icon(Icons.edit_square),
                   ),
                 ],
               ),
             ),
-            if (_connecting)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: EazyColors.amber,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Reconnecting to Eazy',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelSmall?.copyWith(color: EazyColors.muted),
-                    ),
-                  ],
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: TextField(
-                controller: _search,
-                onChanged: (_) => setState(() {}),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Search conversations or people',
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    color: EazyColors.green,
-                  ),
-                  hintStyle: const TextStyle(color: EazyColors.muted),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(EazyRadius.md),
-                    borderSide: const BorderSide(color: EazyColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(EazyRadius.md),
-                    borderSide: const BorderSide(color: EazyColors.border),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 42,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _Chip(
-                    'All',
-                    _filter == 'All',
-                    () => setState(() => _filter = 'All'),
-                  ),
-                  const SizedBox(width: 8),
-                  _Chip(
-                    unreadTotal > 0
-                        ? 'Unread  ${unreadTotal > 99 ? '99+' : unreadTotal}'
-                        : 'Unread',
-                    _filter == 'Unread',
-                    () => setState(
-                      () => _filter = _filter == 'Unread' ? 'All' : 'Unread',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 5),
             Expanded(
               child:
                   _loading
@@ -409,12 +356,12 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
           opacity: _fabVisible ? 1 : 0,
           child: FloatingActionButton(
             onPressed: _newChat,
-            backgroundColor: EazyColors.green,
-            foregroundColor: EazyColors.canvas,
+            backgroundColor: context.eazyAccent,
+            foregroundColor: context.eazyOnAccent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(EazyRadius.md),
             ),
-            child: const Icon(Icons.edit_rounded),
+            child: Icon(Icons.edit_rounded),
           ),
         ),
       ),
@@ -550,12 +497,12 @@ class _NewChatScreenState extends State<_NewChatScreen> {
             onChanged: _search,
             decoration: InputDecoration(
               hintText: 'Search name or username',
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: Icon(Icons.search),
               filled: true,
               fillColor: Theme.of(context).colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(EazyRadius.md),
-                borderSide: const BorderSide(color: EazyColors.border),
+                borderSide: BorderSide(color: context.eazyBorder),
               ),
             ),
           ),
@@ -576,7 +523,7 @@ class _NewChatScreenState extends State<_NewChatScreen> {
                             ? 'Search by name or Eazy username to find people.'
                             : 'No matching Eazy users found.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: EazyColors.muted),
+                        style: TextStyle(color: context.eazyMuted),
                       ),
                     ),
                   )
@@ -606,7 +553,7 @@ class _NewChatScreenState extends State<_NewChatScreen> {
                         ),
                         subtitle: Text(
                           '@${c['username'] ?? ''}',
-                          style: const TextStyle(color: EazyColors.muted),
+                          style: TextStyle(color: context.eazyMuted),
                         ),
                         onTap: () => _select(c),
                       );
@@ -627,7 +574,7 @@ class _Chip extends StatelessWidget {
   Widget build(BuildContext context) => Material(
     color:
         selected
-            ? EazyColors.green.withValues(alpha: .13)
+            ? context.eazyAccent.withValues(alpha: .13)
             : Theme.of(context).colorScheme.surface,
     borderRadius: BorderRadius.circular(EazyRadius.sm),
     child: InkWell(
@@ -640,14 +587,14 @@ class _Chip extends StatelessWidget {
           border: Border.all(
             color:
                 selected
-                    ? EazyColors.green.withValues(alpha: .5)
-                    : EazyColors.border,
+                    ? context.eazyAccent.withValues(alpha: .5)
+                    : context.eazyBorder,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? EazyColors.green : EazyColors.muted,
+            color: selected ? context.eazyAccent : context.eazyMuted,
             fontSize: 12,
             fontWeight: FontWeight.w800,
           ),
@@ -708,7 +655,7 @@ class _ChatRow extends StatelessWidget {
                         timestamp,
                         style: TextStyle(
                           color:
-                              unread > 0 ? EazyColors.green : EazyColors.muted,
+                              unread > 0 ? context.eazyAccent : context.eazyMuted,
                           fontSize: 11,
                         ),
                       ),
@@ -723,7 +670,7 @@ class _ChatRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: EazyColors.muted,
+                            color: context.eazyMuted,
                             fontSize: 12.5,
                             fontWeight:
                                 unread > 0 ? FontWeight.w600 : FontWeight.w400,
@@ -738,13 +685,13 @@ class _ChatRow extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 5),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: EazyColors.green,
+                            color: context.eazyAccent,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             unread > 99 ? '99+' : '$unread',
-                            style: const TextStyle(
-                              color: EazyColors.canvas,
+                            style: TextStyle(
+                              color: context.eazyOnAccent,
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
                             ),
@@ -786,7 +733,7 @@ class _Avatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: EazyColors.border),
+        border: Border.all(color: context.eazyBorder),
         image:
             image == null
                 ? null
@@ -797,8 +744,8 @@ class _Avatar extends StatelessWidget {
           image == null
               ? Text(
                 _initials(name),
-                style: const TextStyle(
-                  color: EazyColors.green,
+                style: TextStyle(
+                  color: context.eazyAccent,
                   fontWeight: FontWeight.w900,
                   fontSize: 17,
                   letterSpacing: -.5,
@@ -895,13 +842,13 @@ class _Empty extends StatelessWidget {
             width: 76,
             height: 76,
             decoration: BoxDecoration(
-              color: EazyColors.green.withValues(alpha: .09),
+              color: context.eazyAccent.withValues(alpha: .09),
               borderRadius: BorderRadius.circular(25),
               border: Border.all(
-                color: EazyColors.green.withValues(alpha: .25),
+                color: context.eazyAccent.withValues(alpha: .25),
               ),
             ),
-            child: Icon(icon, size: 34, color: EazyColors.green),
+            child: Icon(icon, size: 34, color: context.eazyAccent),
           ),
           const SizedBox(height: 16),
           Text(
@@ -916,7 +863,7 @@ class _Empty extends StatelessWidget {
           Text(
             detail,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: EazyColors.muted, height: 1.5),
+            style: TextStyle(color: context.eazyMuted, height: 1.5),
           ),
           const SizedBox(height: 18),
           FilledButton(onPressed: action, child: Text(actionText)),
