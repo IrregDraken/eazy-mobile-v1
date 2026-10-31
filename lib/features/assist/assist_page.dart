@@ -205,7 +205,7 @@ class _AssistPageState extends State<AssistPage> {
                               controller: composer,
                               minLines: 1,
                               maxLines: 5,
-                              enabled: providerAvailable && !sending,
+                              enabled: sessionId != null && !sending,
                               textInputAction: TextInputAction.newline,
                               decoration: const InputDecoration(
                                 hintText: 'Ask Eazy something useful...',
@@ -218,7 +218,7 @@ class _AssistPageState extends State<AssistPage> {
                             height: 54,
                             child: FilledButton(
                               onPressed:
-                                  providerAvailable && !sending ? _send : null,
+                                  sessionId != null && !sending ? _send : null,
                               child:
                                   sending
                                       ? const SizedBox(
