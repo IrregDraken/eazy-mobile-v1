@@ -305,6 +305,7 @@ class _SocialPageState extends State<SocialPage> {
       onRefresh: load,
       child: CustomScrollView(
         controller: scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
@@ -312,63 +313,12 @@ class _SocialPageState extends State<SocialPage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    EazyColors.green,
-                                    EazyColors.greenDeep,
-                                  ],
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: const Text(
-                                'E',
-                                style: TextStyle(
-                                  color: EazyColors.canvas,
-                                  fontSize: 23,
-                                  fontWeight: FontWeight.w900,
-                                  height: 1,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Eazy',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -1.2,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            const Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: EazyColors.muted,
-                              size: 19,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        const Text(
-                          'Your world, made easier',
-                          style: TextStyle(
-                            color: EazyColors.muted,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'Home',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -.8,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -378,9 +328,9 @@ class _SocialPageState extends State<SocialPage> {
                   ),
                   IconButton(
                     onPressed: posting ? null : compose,
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.add_circle_rounded,
-                      color: EazyColors.green,
+                      color: context.eazyAccent,
                     ),
                   ),
                 ],
