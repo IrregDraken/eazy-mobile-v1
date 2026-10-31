@@ -81,9 +81,18 @@ function createHarness(options: { owner?: string; provider?: AIProvider; scripte
       return { id: 'translation-id', sourceLanguage: input.sourceLanguage ?? 'auto', targetLanguage: input.targetLanguage, text: input.text, translatedText: 'Bonjour', status: 'succeeded' as const, createdAt: now };
     }
   } as never;
-  const tools = new AssistToolRegistry(marketplace, translation);
+  const walletUserIds: string[] = [];
+  const wallet = {
+    getWallets: async (userId: string) => {
+      walletUserIds.push(userId);
+      return userId === 'user-a'
+        ? { wallet: { id: 'wallet-a', balance: '1234.50', currency: 'NGN', status: 'active' } }
+        : { wallet: null };
+    }
+  } as never;
+  const tools = new AssistToolRegistry(marketplace, translation, wallet);
   const service = new AssistService(fakePool(), repository, provider, tools);
-  return { service, repository, rows, operations, provider, providerCalls, tools, get marketplaceCalls() { return marketplaceCalls; }, get translatedUser() { return translatedUser; } };
+  return { service, repository, rows, operations, provider, providerCalls, tools, get marketplaceCalls() { return marketplaceCalls; }, get translatedUser() { return translatedUser; }, walletUserIds };
 }
 
 function config(overrides: Record<string, string> = {}) {
@@ -261,12 +270,41 @@ test('model cannot call unsupported tools, add tool permissions, or request a se
   assert.equal(malformedTool.marketplaceCalls, 0);
 });
 
+test('wallet balance capability reads only the authenticated user ledger balance', async () => {
+  const harness = createHarness();
+  const result = await harness.tools.execute('get_wallet_balance', {}, 'user-a');
+  assert.deepEqual(result, {
+    tool: 'get_wallet_balance',
+    wallet: { balance: '1234.50', currency: 'NGN', status: 'active' }
+  });
+  assert.deepEqual(harness.walletUserIds, ['user-a']);
+
+  const noWallet = await harness.tools.execute('get_wallet_balance', {}, 'user-b');
+  assert.deepEqual(noWallet, { tool: 'get_wallet_balance', wallet: null });
+  assert.deepEqual(harness.walletUserIds, ['user-a', 'user-b']);
+
+  await assert.rejects(
+    () => harness.tools.execute('get_wallet_balance', { userId: 'user-b' }, 'user-a'),
+    (error: unknown) => error instanceof AppError && error.code === 'VALIDATION_ERROR'
+  );
+});
+
+test('Eazy Assist uses the authenticated wallet balance capability when asked', async () => {
+  const toolCall = JSON.stringify({ type: 'tool_call', name: 'get_wallet_balance', arguments: {} });
+  const response = JSON.stringify({ type: 'answer', text: 'Your Eazy wallet balance is ₦1,234.50.' });
+  const harness = createHarness({ scripted: [toolCall, response] });
+  const result = await harness.service.sendMessage('user-a', session.id, { content: 'What is my wallet balance?' });
+  assert.equal(result.assistantMessage.content, 'Your Eazy wallet balance is ₦1,234.50.');
+  assert.deepEqual(harness.walletUserIds, ['user-a']);
+  assert.match(harness.providerCalls[1]?.messages.at(-1)?.content ?? '', /1234\.50/);
+});
+
 test('translation capability delegates only through existing TranslationService and is hidden when unavailable', async () => {
   const unavailable = createHarness();
-  assert.deepEqual(unavailable.tools.list().map(item => item.name), ['search_products']);
+  assert.deepEqual(unavailable.tools.list().map(item => item.name), ['search_products', 'get_wallet_balance']);
   await assert.rejects(() => unavailable.tools.execute('translate_text', { text: 'hello', targetLanguage: 'fr' }, 'user-a'), (error: unknown) => error instanceof AppError && error.code === 'SERVICE_UNAVAILABLE');
   const configured = createHarness({ translationAvailable: true });
-  assert.deepEqual(configured.tools.list().map(item => item.name), ['search_products', 'translate_text']);
+  assert.deepEqual(configured.tools.list().map(item => item.name), ['search_products', 'get_wallet_balance', 'translate_text']);
   const result = await configured.tools.execute('translate_text', { text: 'hello', targetLanguage: 'fr' }, 'user-a');
   assert.deepEqual(result, { tool: 'translate_text', translation: { sourceLanguage: 'auto', targetLanguage: 'fr', translatedText: 'Bonjour' } });
   assert.equal(configured.translatedUser, 'user-a');
