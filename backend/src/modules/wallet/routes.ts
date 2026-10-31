@@ -46,6 +46,13 @@ export function createWalletRouter(service: WalletService, paymentPin?: PaymentP
         sendSuccess(response, await paymentPin.change(currentUserId(request), body.currentPin, body.newPin, body.confirmation));
       } catch (error) { next(error); }
     });
+    router.post('/payment-pin/reset', pinMutationLimit, validate('body', setupPinSchema), async (request, response, next) => {
+      try {
+        requireRecentAuthentication(request);
+        const body = request.body as { pin: string; confirmation: string };
+        sendSuccess(response, await paymentPin.reset(currentUserId(request), body.pin, body.confirmation));
+      } catch (error) { next(error); }
+    });
     router.post('/transfers', rateLimit, requirePaymentPin(paymentPin), validate('body', transferSchema), controller.transfer);
   } else {
     router.post('/transfers', rateLimit, validate('body', transferSchema), controller.transfer);
