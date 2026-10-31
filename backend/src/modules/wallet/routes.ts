@@ -4,6 +4,7 @@ import { sendSuccess } from '../../utils/http.js';
 import { currentUserId, requireAuth } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/errors.js';
 import { createRateLimiter } from '../../middleware/rate-limit.js';
+import { requireIdempotencyKey } from '../../middleware/idempotency.js';
 import { validate } from '../../middleware/validate.js';
 import { createWalletSchema, transferSchema, walletPaginationSchema, walletTransactionParamsSchema } from './schemas.js';
 import { createWalletController } from './controller.js';
@@ -53,9 +54,9 @@ export function createWalletRouter(service: WalletService, paymentPin?: PaymentP
         sendSuccess(response, await paymentPin.reset(currentUserId(request), body.pin, body.confirmation));
       } catch (error) { next(error); }
     });
-    router.post('/transfers', rateLimit, requirePaymentPin(paymentPin), validate('body', transferSchema), controller.transfer);
+    router.post('/transfers', rateLimit, requireIdempotencyKey, validate('body', transferSchema), requirePaymentPin(paymentPin), controller.transfer);
   } else {
-    router.post('/transfers', rateLimit, validate('body', transferSchema), (_request, _response, next) => {
+    router.post('/transfers', rateLimit, requireIdempotencyKey, validate('body', transferSchema), (_request, _response, next) => {
       next(new AppError('SERVICE_UNAVAILABLE', 'Payment PIN authorization is unavailable'));
     });
   }
