@@ -124,7 +124,7 @@ if (pool) {
   const socialRepository = new SocialRepository(pool);
   realtimeService = new RealtimeService(pool, chatRepository, socialRepository);
   const pushProvider = firebaseProvider ? new FirebaseNotificationProvider(pool, config) : undefined;
-  const notificationService = new NotificationService(pool, undefined, realtimeService, pushProvider);
+  const notificationService = new NotificationService(pool, undefined, realtimeService, pushProvider, logger);
   const profileService = new ProfileService(pool, undefined, storageProvider);
   authOptions.profileRouter = createProfileRouter(profileService);
   const socialService = new SocialService(pool, socialRepository, notificationService);
