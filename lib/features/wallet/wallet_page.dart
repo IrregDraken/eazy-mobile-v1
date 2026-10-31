@@ -26,6 +26,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   bool loading = true;
   bool busy = false;
   bool balanceVisible = true;
+  bool paymentPinConfigured = false;
   bool reconcilingPayment = false;
   String? error;
   Map<String, dynamic>? wallet;
@@ -113,6 +114,12 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         'wallet/transactions?page=1&limit=20',
         auth: true,
       );
+      try {
+        final pinStatus = await api.get('wallet/payment-pin/status', auth: true);
+        paymentPinConfigured = pinStatus['configured'] == true;
+      } on ApiException {
+        paymentPinConfigured = false;
+      }
       transactions =
           (transactionResult['items'] as List? ?? const [])
               .whereType<Map>()
@@ -447,10 +454,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         'Authorize sending $_currency $amount to @$handle',
       );
       if (!authenticated) return;
+      final paymentPin = await _requestPaymentPin();
+      if (paymentPin == null || !mounted) return;
       await api.post(
         'wallet/transfers',
         auth: true,
-        headers: {'Idempotency-Key': idempotency('transfer')},
+        headers: {
+          'Idempotency-Key': idempotency('transfer'),
+          'X-Payment-PIN': paymentPin,
+        },
         body: {
           'recipientUsername': handle,
           'amount': amount,
@@ -470,6 +482,135 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  Future<void> _managePaymentPin() async {
+    final currentPin = TextEditingController();
+    final newPin = TextEditingController();
+    final confirmation = TextEditingController();
+    final changing = paymentPinConfigured;
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(changing ? 'Change payment PIN' : 'Create payment PIN'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (changing) ...[
+              TextField(
+                controller: currentPin,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(labelText: 'Current 6-digit PIN'),
+              ),
+              const SizedBox(height: 8),
+            ],
+            TextField(
+              controller: newPin,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(labelText: changing ? 'New 6-digit PIN' : '6-digit PIN'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: confirmation,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(labelText: 'Confirm PIN'),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Use a PIN you do not use for your bank card or other accounts.',
+              style: TextStyle(color: context.eazyMuted, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(changing ? 'Save new PIN' : 'Create PIN'),
+          ),
+        ],
+      ),
+    );
+    if (submitted == true && mounted) {
+      try {
+        if (changing) {
+          await api.post(
+            'wallet/payment-pin/change',
+            auth: true,
+            body: {
+              'currentPin': currentPin.text,
+              'newPin': newPin.text,
+              'confirmation': confirmation.text,
+            },
+          );
+        } else {
+          await api.post(
+            'wallet/payment-pin/setup',
+            auth: true,
+            body: {'pin': newPin.text, 'confirmation': confirmation.text},
+          );
+        }
+        if (mounted) {
+          setState(() => paymentPinConfigured = true);
+          _showMessage(changing ? 'Payment PIN updated.' : 'Payment PIN created.');
+        }
+      } on ApiException catch (e) {
+        _showError(e.message);
+      }
+    }
+    currentPin.dispose();
+    newPin.dispose();
+    confirmation.dispose();
+  }
+
+  Future<String?> _requestPaymentPin() async {
+    final controller = TextEditingController();
+    final pin = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Enter payment PIN'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(
+            labelText: '6-digit payment PIN',
+            counterText: '',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (controller.text.length == 6) {
+                Navigator.pop(dialogContext, controller.text);
+              }
+            },
+            child: const Text('Authorize'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return pin;
   }
 
   Future<bool> _authenticateTransfer(String reason) async {
@@ -693,10 +834,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         'Authorize sending $_currency $amount to $accountName',
       );
       if (!authenticated) return;
+      final paymentPin = await _requestPaymentPin();
+      if (paymentPin == null || !mounted) return;
       await api.post(
         'bank-transfers',
         auth: true,
-        headers: {'Idempotency-Key': idempotency('bank-transfer')},
+        headers: {
+          'Idempotency-Key': idempotency('bank-transfer'),
+          'X-Payment-PIN': paymentPin,
+        },
         body: {
           'accountNumber': number,
           'bankCode': code,
@@ -797,13 +943,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         title: 'Confirm QR payment',
         message:
             'Pay $_currency $amount to ${recipient['displayName'] ?? recipient['username'] ?? 'this Eazy user'}?',
-        action:
-            () => api.post(
-              'wallet/qr/pay',
-              auth: true,
-              headers: {'Idempotency-Key': idempotency('qr-payment')},
-              body: {'token': token, 'amount': amount, 'currency': _currency},
-            ),
+        action: (paymentPin) => api.post(
+          'wallet/qr/pay',
+          auth: true,
+          headers: {
+            'Idempotency-Key': idempotency('qr-payment'),
+            'X-Payment-PIN': paymentPin,
+          },
+          body: {'token': token, 'amount': amount, 'currency': _currency},
+        ),
       );
     } on ApiException catch (e) {
       _showError(e.message);
@@ -911,7 +1059,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   Future<void> _confirmAndRun({
     required String title,
     required String message,
-    required Future<Map<String, dynamic>> Function() action,
+    required Future<Map<String, dynamic>> Function(String paymentPin) action,
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -934,7 +1082,11 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     if (confirmed != true) return;
     setState(() => busy = true);
     try {
-      await action();
+      final authenticated = await _authenticateTransfer('Authorize this QR payment');
+      if (!authenticated) return;
+      final paymentPin = await _requestPaymentPin();
+      if (paymentPin == null || !mounted) return;
+      await action(paymentPin);
       await load();
       _showMessage('Transfer completed and wallet activity refreshed.');
     } on ApiException catch (e) {
@@ -1061,6 +1213,19 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                             key: 'eazy.wallet.balanceVisible',
                             value: value.toString(),
                           );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.password_rounded),
+                        title: Text(paymentPinConfigured ? 'Change payment PIN' : 'Create payment PIN'),
+                        subtitle: Text(
+                          paymentPinConfigured
+                              ? 'Update the 6-digit PIN used to authorize payments.'
+                              : 'Create a 6-digit PIN required before sending money.',
+                        ),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _managePaymentPin();
                         },
                       ),
                       const ListTile(
