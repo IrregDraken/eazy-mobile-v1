@@ -101,3 +101,12 @@ test('changing a payment PIN requires the current PIN', async () => {
   await service.verify('user-1', '726194');
   await assert.rejects(() => service.verify('user-1', '483920'), /Incorrect payment PIN/);
 });
+
+test('payment PIN reset replaces an existing PIN and clears lockout state', async () => {
+  const pool = new FakePool();
+  const service = new PaymentPinService(pool as never);
+  await service.setup('user-1', '483920', '483920');
+  await service.reset('user-1', '726194', '726194');
+  await service.verify('user-1', '726194');
+  await assert.rejects(() => service.verify('user-1', '483920'), /Incorrect payment PIN/);
+});
