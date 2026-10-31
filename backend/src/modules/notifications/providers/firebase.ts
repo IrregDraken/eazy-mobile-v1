@@ -29,6 +29,17 @@ export class FirebaseNotificationProvider implements NotificationProvider {
         ? [devices.rows[index]!.id] : [];
     });
     if (stale.length) await this.pool.query('UPDATE push_devices SET is_active = false, revoked_at = now(), updated_at = now() WHERE id = ANY($1::uuid[])', [stale]);
-    if (result.failureCount > 0 && result.successCount === 0) throw new Error('Firebase push delivery failed');
+    if (result.failureCount > 0 && result.successCount === 0) {
+      const failureCodes = [...new Set(
+        result.responses
+          .map(response => response.error?.code)
+          .filter((code): code is string => Boolean(code))
+      )];
+      // Preserve provider failure reasons for the notification service's
+      // structured error reporting. Never include device tokens in errors.
+      throw new Error(
+        `Firebase push delivery failed for all ${result.failureCount} device(s): ${failureCodes.join(', ') || 'unknown provider error'}`
+      );
+    }
   }
 }
