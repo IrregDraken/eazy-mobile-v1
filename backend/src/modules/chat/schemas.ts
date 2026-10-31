@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from '../../utils/pagination.js';
 
-const uuidSchema = z.string().uuid();
+const uuidSchema = z.string().guid();
 const usernameSchema = z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,32}$/, 'Invalid username');
 const textBodySchema = z.string().trim().min(1, 'Message body cannot be empty').max(10_000, 'Message body is too long');
 
