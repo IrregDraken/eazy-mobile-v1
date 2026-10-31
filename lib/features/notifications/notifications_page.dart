@@ -19,6 +19,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   int unread = 0;
   String error = '';
   bool loading = true, pushBusy = false;
+  String filter = 'all';
   StreamSubscription<String>? _tokenRefreshSubscription;
   @override
   void initState() {
@@ -89,6 +90,38 @@ class _NotificationsPageState extends State<NotificationsPage> {
       if (mounted) setState(() => loading = false);
     }
   }
+
+  List<Map<String, dynamic>> get _filteredItems => items.where((item) {
+    final type = item['type']?.toString().toLowerCase();
+    return switch (filter) {
+      'social' => const {'follow', 'like', 'comment'}.contains(type),
+      'messages' => type == 'message',
+      'system' => type == 'system',
+      _ => true,
+    };
+  }).toList();
+
+  Widget _filterBar() => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: [
+        for (final option in const [
+          ('all', 'All'),
+          ('social', 'Social'),
+          ('messages', 'Messages'),
+          ('system', 'System'),
+        ])
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(option.$2),
+              selected: filter == option.$1,
+              onSelected: (_) => setState(() => filter = option.$1),
+            ),
+          ),
+      ],
+    ),
+  );
 
   Future<void> enablePush() async {
     setState(() => pushBusy = true);
@@ -188,23 +221,35 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   ),
                 ],
               )
-              : items.isEmpty
-              ? ListView(
-                children: [
-                  const SizedBox(height: 180),
-                  Center(
-                    child: Text(
-                      'You’re all caught up.',
-                      style: TextStyle(color: context.eazyMuted),
-                    ),
-                  ),
-                ],
-              )
               : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(12),
-                itemCount: items.length,
+                itemCount: _filteredItems.isEmpty ? 2 : _filteredItems.length + 1,
                 itemBuilder: (_, i) {
-                  final n = items[i];
+                  if (i == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _filterBar(),
+                    );
+                  }
+                  if (_filteredItems.isEmpty) {
+                    final emptyText = switch (filter) {
+                      'social' => 'No social activity yet.',
+                      'messages' => 'No message notifications yet.',
+                      'system' => 'No system updates yet.',
+                      _ => 'You’re all caught up.',
+                    };
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 90),
+                      child: Center(
+                        child: Text(
+                          emptyText,
+                          style: TextStyle(color: context.eazyMuted),
+                        ),
+                      ),
+                    );
+                  }
+                  final n = _filteredItems[i - 1];
                   return Card(
                     child: ListTile(
                       onTap: () => read(n['id'].toString()),
@@ -217,18 +262,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       subtitle: Text(
                         n['body']?.toString() ?? 'Activity on Eazy',
                       ),
-                      trailing:
-                          n['isRead'] == true
-                              ? null
-                              : Icon(
-                                Icons.circle,
-                                size: 9,
-                                color: context.eazyAccent,
-                              ),
+                      trailing: n['isRead'] == true
+                          ? null
+                          : Icon(
+                              Icons.circle,
+                              size: 9,
+                              color: context.eazyAccent,
+                            ),
                     ),
                   );
                 },
-              ),
+              )
     ),
   );
 }
