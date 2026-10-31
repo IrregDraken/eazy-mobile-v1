@@ -126,7 +126,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       FilledButton(
                         style: FilledButton.styleFrom(
-                          backgroundColor: EazyColors.red,
+                          backgroundColor: Theme.of(dialogContext).colorScheme.error,
                         ),
                         onPressed:
                             confirmation.text.trim() == 'DELETE'
