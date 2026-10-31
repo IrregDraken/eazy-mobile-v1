@@ -10,6 +10,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../network/api_client.dart';
+import '../notifications/push_registration_service.dart';
 import '../network/api_exception.dart';
 
 class EmailVerificationChallenge {
@@ -53,14 +54,50 @@ class AuthController extends ChangeNotifier {
       if (!firebaseReady) return;
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-      await _syncFirebaseUser(user, forceRefresh: true);
+
+      final cachedProfile = await api.readProfileSnapshot();
+      if (cachedProfile != null) {
+        final token = await user.getIdToken(false);
+        if (token == null || token.isEmpty) {
+          throw const ApiException('Firebase did not return a session token.');
+        }
+        await api.saveToken(token);
+        _firebaseUser = user;
+        _profile = cachedProfile;
+        _restoring = false;
+        notifyListeners();
+        unawaited(_refreshRestoredProfile(user));
+        return;
+      }
+
+      await _syncFirebaseUser(user, forceRefresh: false);
     } catch (_) {
-      await api.clearToken();
-      _firebaseUser = null;
-      _profile = null;
+      if (_profile == null) {
+        await api.clearToken();
+        _firebaseUser = null;
+      }
     } finally {
-      _restoring = false;
+      if (_restoring) {
+        _restoring = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> _refreshRestoredProfile(User user) async {
+    try {
+      await _syncFirebaseUser(user, forceRefresh: false);
       notifyListeners();
+    } on ApiException catch (error) {
+      if (error.statusCode == 401) {
+        await api.clearToken();
+        await api.clearProfileSnapshot();
+        _firebaseUser = null;
+        _profile = null;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Keep the cached session usable when the backend is temporarily unreachable.
     }
   }
 
@@ -237,6 +274,170 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  bool get hasPasswordProvider =>
+      _firebaseUser?.providerData.any((provider) => provider.providerId == 'password') ??
+      false;
+
+  Future<void> requestEmailChange(
+    String newEmail, {
+    String? currentPassword,
+  }) async {
+    _requireFirebase();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw const ApiException('Sign in again to manage your account.');
+    final email = newEmail.trim().toLowerCase();
+    if (email.isEmpty || !email.contains('@')) {
+      throw const ApiException('Enter a valid email address.');
+    }
+    if (email == user.email?.trim().toLowerCase()) {
+      throw const ApiException('That is already your current email address.');
+    }
+    try {
+      if (hasPasswordProvider) {
+        if (currentPassword == null || currentPassword.isEmpty || user.email == null) {
+          throw const ApiException('Enter your current password to confirm this change.');
+        }
+        await user.reauthenticateWithCredential(
+          EmailAuthProvider.credential(
+            email: user.email!,
+            password: currentPassword,
+          ),
+        );
+      }
+      await user.verifyBeforeUpdateEmail(email);
+    } on FirebaseAuthException catch (error) {
+      throw ApiException(_firebaseMessage(error));
+    }
+  }
+
+  Future<void> sendCurrentEmailVerification() async {
+    _requireFirebase();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw const ApiException('Sign in again to manage your account.');
+    try {
+      await user.sendEmailVerification();
+    } on FirebaseAuthException catch (error) {
+      throw ApiException(_firebaseMessage(error));
+    }
+  }
+
+  Future<void> refreshAccountIdentity() async {
+    _requireFirebase();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw const ApiException('Your sign-in session has expired.');
+    try {
+      await user.reload();
+      final refreshed = FirebaseAuth.instance.currentUser;
+      if (refreshed == null) throw const ApiException('Your sign-in session has expired.');
+      await _syncFirebaseUser(refreshed, forceRefresh: true);
+    } on FirebaseAuthException catch (error) {
+      throw ApiException(_firebaseMessage(error));
+    }
+  }
+
+  Future<String> requestPhoneLinkCode(String phone) async {
+    _requireFirebase();
+    final normalizedPhone = phone.trim();
+    final digits = normalizedPhone.startsWith('+') ? normalizedPhone.substring(1) : '';
+    if (digits.length < 8 ||
+        digits.length > 15 ||
+        digits.startsWith('0') ||
+        digits.codeUnits.any((digit) => digit < 48 || digit > 57)) {
+      throw const ApiException('Enter a valid phone number with country code, e.g. +2348012345678.');
+    }
+    if (FirebaseAuth.instance.currentUser == null) {
+      throw const ApiException('Sign in again to manage your account.');
+    }
+    final completer = Completer<String>();
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: normalizedPhone,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (credential) async {
+        try {
+          await _applyPhoneLinkCredential(credential);
+          if (!completer.isCompleted) completer.complete('');
+        } catch (error) {
+          if (!completer.isCompleted) completer.completeError(error);
+        }
+      },
+      verificationFailed: (error) {
+        if (!completer.isCompleted) {
+          completer.completeError(ApiException(_firebaseMessage(error)));
+        }
+      },
+      codeSent: (verificationId, _) {
+        if (!completer.isCompleted) completer.complete(verificationId);
+      },
+      codeAutoRetrievalTimeout: (verificationId) {
+        if (!completer.isCompleted) completer.complete(verificationId);
+      },
+    );
+    return completer.future;
+  }
+
+  Future<void> verifyPhoneLinkCode(String verificationId, String code) async {
+    _requireFirebase();
+    if (verificationId.isEmpty || code.trim().isEmpty) {
+      throw const ApiException('Enter the SMS verification code.');
+    }
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: code.trim(),
+      );
+      await _applyPhoneLinkCredential(credential);
+    } on FirebaseAuthException catch (error) {
+      throw ApiException(_firebaseMessage(error));
+    }
+  }
+
+  Future<void> _applyPhoneLinkCredential(PhoneAuthCredential credential) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw const ApiException('Sign in again to manage your account.');
+    try {
+      if (user.phoneNumber == null || user.phoneNumber!.isEmpty) {
+        final linked = await user.linkWithCredential(credential);
+        final updated = linked.user;
+        if (updated == null) throw const ApiException('Phone number could not be linked.');
+        await _syncFirebaseUser(updated, forceRefresh: true);
+      } else {
+        await user.updatePhoneNumber(credential);
+        await user.reload();
+        final updated = FirebaseAuth.instance.currentUser;
+        if (updated == null) throw const ApiException('Phone number could not be updated.');
+        await _syncFirebaseUser(updated, forceRefresh: true);
+      }
+    } on FirebaseAuthException catch (error) {
+      throw ApiException(_firebaseMessage(error));
+    }
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _requireFirebase();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null || !hasPasswordProvider) {
+      throw const ApiException('Password sign-in is not linked to this account.');
+    }
+    if (newPassword.length < 8) {
+      throw const ApiException('Use a password with at least 8 characters.');
+    }
+    try {
+      await user.reauthenticateWithCredential(
+        EmailAuthProvider.credential(
+          email: user.email!,
+          password: currentPassword,
+        ),
+      );
+      await user.updatePassword(newPassword);
+      await _syncFirebaseUser(user, forceRefresh: true);
+    } on FirebaseAuthException catch (error) {
+      throw ApiException(_firebaseMessage(error));
+    }
+  }
+
   Future<void> signInEmail(String email, String password) async {
     await _run(() async {
       _requireFirebase();
@@ -392,11 +593,13 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    await PushRegistrationService.instance.unregister(api);
     if (firebaseReady) await FirebaseAuth.instance.signOut();
     try {
       await GoogleSignIn.instance.signOut();
     } catch (_) {}
     await api.clearToken();
+    await api.clearProfileSnapshot();
     _firebaseUser = null;
     _profile = null;
     notifyListeners();
@@ -408,12 +611,17 @@ class AuthController extends ChangeNotifier {
       throw const ApiException('Firebase did not return a session token.');
     }
     await api.saveToken(token);
+    unawaited(PushRegistrationService.instance.start(api));
     try {
       final result = await api.get('auth/me', auth: true);
       _profile = _normalizeProfile(result['profile'] as Map? ?? {});
       _firebaseUser = user;
-    } catch (_) {
-      await api.clearToken();
+      await api.saveProfileSnapshot(_profile!);
+    } catch (error) {
+      if (error is ApiException && error.statusCode == 401) {
+        await api.clearToken();
+        await api.clearProfileSnapshot();
+      }
       rethrow;
     }
   }
@@ -481,6 +689,14 @@ class AuthController extends ChangeNotifier {
       'No connection. Check your internet and try again.',
     'too-many-requests' =>
       'Too many attempts. Please wait a moment and try again.',
+    'credential-already-in-use' || 'phone-number-already-exists' =>
+      'This phone number is already linked to another account.',
+    'invalid-phone-number' =>
+      'Enter a valid phone number in international format, including the country code.',
+    'code-expired' || 'session-expired' =>
+      'That verification code has expired. Request a new one.',
+    'requires-recent-login' =>
+      'For your security, sign in again before changing this account detail.',
     'invalid-verification-code' => 'That verification code is not correct.',
     'invalid-verification-id' =>
       'That verification session expired. Request a new code.',

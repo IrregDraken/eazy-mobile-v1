@@ -52,6 +52,42 @@ class ApiClient {
       _storage.write(key: 'eazy.accessToken', value: token);
   Future<String?> readToken() => _storage.read(key: 'eazy.accessToken');
   Future<void> clearToken() => _storage.delete(key: 'eazy.accessToken');
+  Future<void> saveProfileSnapshot(Map<String, dynamic> profile) async {
+    const allowed = [
+      'userId',
+      'username',
+      'displayName',
+      'firstName',
+      'middleName',
+      'lastName',
+      'dateOfBirth',
+      'bio',
+      'onboardingStatus',
+    ];
+    final snapshot = <String, dynamic>{
+      for (final key in allowed)
+        if (profile[key] != null) key: profile[key],
+    };
+    await _storage.write(
+      key: 'eazy.profileCache',
+      value: jsonEncode(snapshot),
+    );
+  }
+
+  Future<Map<String, dynamic>?> readProfileSnapshot() async {
+    final raw = await _storage.read(key: 'eazy.profileCache');
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    await clearProfileSnapshot();
+    return null;
+  }
+
+  Future<void> clearProfileSnapshot() =>
+      _storage.delete(key: 'eazy.profileCache');
+
 
   Future<void> uploadBytes(
     String signedUrl,
