@@ -257,7 +257,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Your current email stays active until you verify the new address. Eazy updates your account after Firebase confirms it.',
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.35, fontSize: 12),
                   ),
@@ -331,7 +331,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                     ),
                   ],
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'We verify the number with an SMS code before linking or replacing it. Your existing sign-in account is kept intact.',
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.35, fontSize: 12),
                   ),
@@ -386,7 +386,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                         ),
                       ],
                     )
-                  : const Text(
+                  : Text(
                       'This account does not use an email-and-password sign-in method. Password changes are managed by your linked sign-in provider.',
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
                     ),
