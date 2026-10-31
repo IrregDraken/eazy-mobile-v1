@@ -106,9 +106,6 @@ const envSchema = z.object({
   if (value.PAYSTACK_ENABLED && !value.PAYSTACK_SECRET_KEY) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['PAYSTACK_SECRET_KEY'], message: 'Paystack is enabled but PAYSTACK_SECRET_KEY is missing.' });
   }
-  if (value.PAYSTACK_WEBHOOK_SECRET && !value.PAYSTACK_SECRET_KEY) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['PAYSTACK_WEBHOOK_SECRET'], message: 'PAYSTACK_WEBHOOK_SECRET requires PAYSTACK_SECRET_KEY.' });
-  }
   if (value.PAYMENT_CALLBACK_URL) validateHttpsEndpoint(value.PAYMENT_CALLBACK_URL, 'PAYMENT_CALLBACK_URL', context);
   if (value.NODE_ENV === 'production') {
     if (!value.DATABASE_URL) context.addIssue({ code: z.ZodIssueCode.custom, path: ['DATABASE_URL'], message: 'Production requires DATABASE_URL.' });
