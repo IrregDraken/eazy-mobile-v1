@@ -12,6 +12,7 @@ import 'package:local_auth/local_auth.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import 'wallet_amount_input.dart';
 
 class WalletPage extends StatefulWidget {
   const WalletPage({super.key});
@@ -342,6 +343,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     final amount = await _amountDialog(
       title: 'Send to $displayName',
       action: 'Review transfer',
+      showSuggestedAmounts: true,
     );
     if (amount == null || !mounted) return;
 
@@ -769,45 +771,97 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   Future<String?> _amountDialog({
     required String title,
     required String action,
+    bool showSuggestedAmounts = false,
   }) async {
     final controller = TextEditingController();
+    const suggestions = <({String label, String value})>[
+      (label: '500', value: '500'),
+      (label: '1,000', value: '1000'),
+      (label: '2,000', value: '2000'),
+      (label: '5,000', value: '5000'),
+      (label: '10,000', value: '10000'),
+    ];
     final result = await showDialog<String>(
       context: context,
       builder:
-          (dialogContext) => AlertDialog(
-            title: Text(title),
-            content: TextField(
-              controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Amount',
-                prefixText: '$_currency ',
-                hintText: '1000.00',
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed:
-                    () => Navigator.pop(dialogContext, controller.text.trim()),
-                child: Text(action),
-              ),
-            ],
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (dialogContext, setDialogState) => AlertDialog(
+                  title: Text(title),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: controller,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[0-9,.]'),
+                          ),
+                        ],
+                        decoration: InputDecoration(
+                          labelText: 'Amount',
+                          prefixText: '$_currency ',
+                          hintText: '5000',
+                        ),
+                      ),
+                      if (showSuggestedAmounts) ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          'Suggested amounts',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            for (final suggestion in suggestions)
+                              ActionChip(
+                                label: Text(suggestion.label),
+                                onPressed: () {
+                                  setDialogState(() {
+                                    controller.text = suggestion.value;
+                                    controller.selection =
+                                        TextSelection.collapsed(
+                                          offset: controller.text.length,
+                                        );
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed:
+                          () => Navigator.pop(
+                            dialogContext,
+                            controller.text.trim(),
+                          ),
+                      child: Text(action),
+                    ),
+                  ],
+                ),
           ),
     );
     controller.dispose();
-    if (result == null || !_validMoney(result)) {
-      if (result != null) {
-        _showError('Enter an amount with two decimal places.');
-      }
+    if (result == null) return null;
+    final normalized = normalizeWalletAmountInput(result);
+    if (normalized == null) {
+      _showError('Enter a valid amount greater than zero.');
       return null;
     }
-    return result;
+    return normalized;
   }
 
   Future<void> _confirmAndRun({
@@ -866,8 +920,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   String get _username =>
       username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
-  bool _validMoney(String value) =>
-      RegExp(r'^(?:0|[1-9][0-9]{0,17})\.[0-9]{2}$').hasMatch(value);
   bool _validUsername(String value) =>
       RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value);
   Map<String, dynamic> _map(dynamic value) =>
