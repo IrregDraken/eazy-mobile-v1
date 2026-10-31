@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/ui/eazy_assist_fab.dart';
 import '../chat/chat_page.dart';
 import '../marketplace/marketplace_page.dart';
 import '../profile/profile_page.dart';
@@ -43,76 +43,12 @@ class _HomeShellState extends State<HomeShell> {
     body: Stack(
       children: [
         IndexedStack(index: index, children: pages),
-        Positioned(
-          right: 16,
-          bottom: 88,
-          child: SafeArea(
-            child: Tooltip(
-              message: 'Open Eazy Assist',
-              child: Material(
-                color: EazyColors.green,
-                elevation: 12,
-                borderRadius: BorderRadius.circular(28),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(28),
-                  onTap: () => context.push('/assist'),
-                  child: Container(
-                    height: 54,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 17,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(
-                        color: EazyColors.mint.withValues(alpha: .8),
-                        width: 1.4,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: EazyColors.green.withValues(alpha: .30),
-                          blurRadius: 18,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/images/eazy_logo_mark.png',
-                          width: 25,
-                          height: 25,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => const Icon(
-                            Icons.auto_awesome_rounded,
-                            color: EazyColors.canvas,
-                            size: 23,
-                          ),
-                        ),
-                        const SizedBox(width: 9),
-                        const Text(
-                          'Eazy Assist',
-                          style: TextStyle(
-                            color: EazyColors.canvas,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        const Icon(
-                          Icons.arrow_outward_rounded,
-                          color: EazyColors.canvas,
-                          size: 15,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+        if (index == 0 || index == 1 || index == 4)
+          const Positioned(
+            right: 16,
+            bottom: 90,
+            child: EazyAssistFab(),
           ),
-        ),
       ],
     ),
     bottomNavigationBar: Padding(
@@ -186,7 +122,7 @@ class EazyPageHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle!,
-                  style: const TextStyle(color: EazyColors.muted),
+                  style: TextStyle(color: context.eazyMuted),
                 ),
               ],
             ],

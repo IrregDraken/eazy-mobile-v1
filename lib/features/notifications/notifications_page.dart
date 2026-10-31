@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:io';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/ui/eazy_assist_fab.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -17,28 +19,64 @@ class _NotificationsPageState extends State<NotificationsPage> {
   int unread = 0;
   String error = '';
   bool loading = true, pushBusy = false;
+  StreamSubscription<String>? _tokenRefreshSubscription;
   @override
   void initState() {
     super.initState();
     load();
+    _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+      _registerDeviceToken(token);
+    });
+    _registerExistingTokenIfAuthorized();
+  }
+
+  @override
+  void dispose() {
+    _tokenRefreshSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _registerExistingTokenIfAuthorized() async {
+    try {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized &&
+          settings.authorizationStatus != AuthorizationStatus.provisional) {
+        return;
+      }
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) await _registerDeviceToken(token);
+    } catch (_) {
+      // Push registration can retry on the next token refresh or explicit enable.
+    }
+  }
+
+  Future<void> _registerDeviceToken(String token) async {
+    try {
+      await api.post(
+        'notifications/devices',
+        body: {'token': token, 'platform': Platform.isIOS ? 'ios' : 'android'},
+        auth: true,
+      );
+    } catch (_) {
+      // A later token refresh or explicit opt-in can retry registration.
+    }
   }
 
   Future<void> load() async {
     if (mounted) setState(() => error = '');
     try {
-      final responses = await Future.wait([
-        api.get('notifications?page=1&limit=30', auth: true),
-        api.get('notifications/unread-count', auth: true),
-      ]);
-      final r = responses[0];
-      final c = responses[1];
+      final result = await api.get('notifications?page=1&limit=50', auth: true);
       if (mounted) {
         setState(() {
-          items = (r['items'] as List? ?? [])
+          items = (result['items'] as List? ?? [])
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
+              .where((item) {
+                final type = item['type']?.toString().toLowerCase();
+                return type != 'payment' && type != 'order';
+              })
               .toList();
-          unread = (c['unreadCount'] as num?)?.toInt() ?? 0;
+          unread = items.where((item) => item['isRead'] != true).length;
         });
       }
     } on ApiException catch (e) {
@@ -112,6 +150,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   };
   @override
   Widget build(BuildContext context) => Scaffold(
+    floatingActionButton: const EazyAssistFab(),
     appBar: AppBar(
       title: Text(
         unread > 0 ? 'Notifications ($unread)' : 'Notifications',
