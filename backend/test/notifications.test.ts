@@ -46,3 +46,70 @@ test('push delivery remains explicitly unavailable without provider credentials'
   const service = new NotificationService(fakePool(), repository);
   assert.equal((await service.registerDevice('user-a', { token: 'device-token-123456', platform: 'web' })).pushDelivery, 'unavailable');
 });
+
+
+test('transaction-created social notifications are pushed after commit without realtime', async () => {
+  const sent: Array<{ userId: string; title: string; body: string }> = [];
+  const notification = {
+    id: 'notification-id',
+    type: 'like',
+    actor: null,
+    title: 'Post liked',
+    body: 'Someone liked your post',
+    entityType: 'post',
+    entityId: 'post-id',
+    isRead: false,
+    createdAt: '2026-10-31T00:00:00.000Z'
+  };
+  const repository = {
+    create: async () => 'notification-id',
+    get: async (userId: string, id: string) =>
+      userId === 'recipient' && id === 'notification-id' ? notification : null
+  } as unknown as NotificationRepository;
+  const push = { notify: async (input: { userId: string; title: string; body: string }) => { sent.push(input); } };
+  const service = new NotificationService(fakePool(), repository, undefined, push);
+  const id = await service.createInTransaction({} as never, {
+    recipientUserId: 'recipient',
+    actorUserId: 'actor',
+    type: 'like',
+    entityType: 'post',
+    entityId: 'post-id',
+    title: 'Post liked',
+    body: 'Someone liked your post'
+  });
+  assert.equal(id, 'notification-id');
+  await service.publishCreated('recipient', id!);
+  assert.deepEqual(sent, [{ userId: 'recipient', title: 'Post liked', body: 'Someone liked your post' }]);
+});
+
+test('ordinary notification creation dispatches push exactly once', async () => {
+  const sent: string[] = [];
+  const notification = {
+    id: 'notification-id',
+    type: 'message',
+    actor: null,
+    title: 'New message',
+    body: 'Hello',
+    entityType: 'conversation',
+    entityId: 'conversation-id',
+    isRead: false,
+    createdAt: '2026-10-31T00:00:00.000Z'
+  };
+  const repository = {
+    create: async () => 'notification-id',
+    get: async () => notification
+  } as unknown as NotificationRepository;
+  const push = { notify: async (input: { userId: string }) => { sent.push(input.userId); } };
+  const service = new NotificationService(fakePool(), repository, undefined, push);
+  const id = await service.create({
+    recipientUserId: 'recipient',
+    actorUserId: 'actor',
+    type: 'message',
+    entityType: 'conversation',
+    entityId: 'conversation-id',
+    title: 'New message',
+    body: 'Hello'
+  });
+  assert.equal(id, 'notification-id');
+  assert.deepEqual(sent, ['recipient']);
+});
