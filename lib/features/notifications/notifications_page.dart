@@ -51,11 +51,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> _registerDeviceToken(String token) async {
-    await api.post(
-      'notifications/devices',
-      body: {'token': token, 'platform': Platform.isIOS ? 'ios' : 'android'},
-      auth: true,
-    );
+    try {
+      await api.post(
+        'notifications/devices',
+        body: {'token': token, 'platform': Platform.isIOS ? 'ios' : 'android'},
+        auth: true,
+      );
+    } catch (_) {
+      // A later token refresh or explicit opt-in can retry registration.
+    }
   }
 
   Future<void> load() async {
