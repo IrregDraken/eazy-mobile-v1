@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../app/theme/eazy_theme.dart';
+import '../../core/ui/eazy_skeleton.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/media/media_service.dart';
@@ -1004,7 +1005,7 @@ class _ConversationPageState extends State<ConversationPage> {
             Expanded(
               child:
                   loading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const _ConversationSkeleton()
                       : error != null
                       ? _ChatState(error!, loadMessages)
                       : messages.isEmpty
@@ -1190,6 +1191,67 @@ class _ConversationPageState extends State<ConversationPage> {
       ),
     );
   }
+}
+
+
+class _ConversationSkeleton extends StatelessWidget {
+  const _ConversationSkeleton();
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+    children: const [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: _SkeletonMessage(width: 224, lines: 2),
+      ),
+      SizedBox(height: 16),
+      Align(
+        alignment: Alignment.centerRight,
+        child: _SkeletonMessage(width: 184, lines: 1),
+      ),
+      SizedBox(height: 16),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: _SkeletonMessage(width: 252, lines: 3),
+      ),
+      SizedBox(height: 16),
+      Align(
+        alignment: Alignment.centerRight,
+        child: _SkeletonMessage(width: 210, lines: 2),
+      ),
+    ],
+  );
+}
+
+class _SkeletonMessage extends StatelessWidget {
+  const _SkeletonMessage({required this.width, required this.lines});
+  final double width;
+  final int lines;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: context.eazySurface,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: context.eazyBorder),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < lines; i++) ...[
+          EazySkeletonBox(
+            width: i == lines - 1 ? width * .58 : width - 28,
+            height: 10,
+            radius: 6,
+          ),
+          if (i != lines - 1) const SizedBox(height: 8),
+        ],
+      ],
+    ),
+  );
 }
 
 class _ChatWallpaperPainter extends CustomPainter {
