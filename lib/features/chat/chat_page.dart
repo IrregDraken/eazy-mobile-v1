@@ -848,18 +848,20 @@ class _ConversationPageState extends State<ConversationPage> {
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Theme.of(context).scaffoldBackgroundColor,
-              Theme.of(context).colorScheme.surface,
-            ],
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _ChatWallpaperPainter(
+                color: Theme.of(context).colorScheme.primary.withValues(
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? .055
+                      : .045,
+                ),
+              ),
+            ),
           ),
-        ),
-        child: Column(
+          Column(
           children: [
             if (replying != null)
               _ContextBar(
@@ -962,85 +964,138 @@ class _ConversationPageState extends State<ConversationPage> {
             SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      tooltip: 'Attach photo, video or document',
-                      onPressed: sending ? null : _pickAttachment,
-                      style: IconButton.styleFrom(
-                        foregroundColor: context.eazyAccent,
-                      ),
-                      icon: const Icon(
-                        Icons.add_circle_outline_rounded,
-                        size: 29,
-                      ),
+                padding: const EdgeInsets.fromLTRB(10, 7, 10, 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface.withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? .96
+                          : .98,
                     ),
-                    Expanded(
-                      child: TextField(
-                        controller: draft,
-                        maxLines: 4,
-                        minLines: 1,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: .055),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        tooltip: 'Attach photo, video or document',
+                        onPressed: sending ? null : _pickAttachment,
+                        visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          foregroundColor: context.eazyAccent,
+                        ),
+                        icon: const Icon(Icons.add_rounded, size: 25),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: draft,
+                          maxLines: 5,
+                          minLines: 1,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: InputDecoration(
+                            filled: false,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 12,
+                            ),
+                            hintText: editing != null
+                                ? 'Edit message…'
+                                : replying != null
+                                    ? 'Write a reply…'
+                                    : 'Message on Eazy…',
                           ),
-                          hintText:
-                              editing != null
-                                  ? 'Edit message…'
-                                  : replying != null
-                                  ? 'Write a reply…'
-                                  : 'Message on Eazy…',
                         ),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: 'Open Eazy Assist',
-                      onPressed: () => context.push('/assist'),
-                      style: IconButton.styleFrom(
-                        foregroundColor: context.eazyAccent,
+                      IconButton(
+                        tooltip: 'Translate draft to English',
+                        onPressed: _translateDraft,
+                        visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          foregroundColor: context.eazyAccent,
+                        ),
+                        icon: const Icon(Icons.translate_rounded, size: 21),
                       ),
-                      icon: Image.asset(
-                        'assets/images/eazy_logo_mark.png',
-                        width: 23,
-                        height: 23,
-                        errorBuilder:
-                            (_, _, _) => Icon(Icons.auto_awesome_rounded),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Translate draft to English',
-                      onPressed: _translateDraft,
-                      style: IconButton.styleFrom(
-                        foregroundColor: context.eazyAccent,
-                      ),
-                      icon: const Icon(Icons.translate_rounded),
-                    ),
-                    SizedBox(
-                      width: 48,
-                      height: 52,
-                      child: FilledButton(
-                        onPressed: sending ? null : send,
-                        style: FilledButton.styleFrom(padding: EdgeInsets.zero),
-                        child: Icon(
-                          editing != null
-                              ? Icons.check_rounded
-                              : Icons.send_rounded,
+                      SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: FilledButton(
+                          onPressed: sending ? null : send,
+                          style: FilledButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            shape: const CircleBorder(),
+                          ),
+                          child: Icon(
+                            editing != null
+                                ? Icons.check_rounded
+                                : Icons.send_rounded,
+                            size: 20,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
-        ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _ChatWallpaperPainter extends CustomPainter {
+  const _ChatWallpaperPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.15;
+
+    const spacing = 76.0;
+    for (var row = -1; row < (size.height / spacing).ceil() + 1; row++) {
+      for (var column = -1; column < (size.width / spacing).ceil() + 1; column++) {
+        final x = column * spacing + (row.isOdd ? spacing / 2 : 0);
+        final y = row * spacing;
+        final rect = Rect.fromCenter(
+          center: Offset(x + 22, y + 22),
+          width: 30,
+          height: 30,
+        );
+        canvas.drawArc(rect, .35, 1.65, false, paint);
+        canvas.drawCircle(Offset(x + 52, y + 49), 2.2, paint);
+        canvas.drawLine(
+          Offset(x + 7, y + 57),
+          Offset(x + 17, y + 47),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ChatWallpaperPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class _MessageBubble extends StatelessWidget {
