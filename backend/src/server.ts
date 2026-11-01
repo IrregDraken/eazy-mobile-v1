@@ -139,7 +139,7 @@ if (pool) {
   authOptions.postRouter = createPostRouter(postService);
   authOptions.homeRouter = createHomeRouter(postService);
   authOptions.engagementRouter = createEngagementRouter(new EngagementService(pool, undefined, notificationService));
-  const marketplaceService = new MarketplaceService(pool, undefined, storageProvider);
+  const marketplaceService = new MarketplaceService(pool, undefined, storageProvider, { version: config.SELLER_AGREEMENT_VERSION, text: config.SELLER_AGREEMENT_TEXT });
   authOptions.marketplaceRouter = createMarketplaceRouter(marketplaceService);
   authOptions.marketplaceCategoryRouter = createCategoryRouter(marketplaceService);
   authOptions.discoverRouter = createDiscoverRouter(new DiscoverService(marketplaceService, socialService));
