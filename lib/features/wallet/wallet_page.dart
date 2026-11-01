@@ -1172,6 +1172,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   String get _username =>
       username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
+  String get _maskedBalance => '${_currency == 'NGN' ? '₦' : '$_currency '}••••••';
 
   bool _validUsername(String value) =>
       RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value);
@@ -1635,7 +1636,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 const SizedBox(height: 3),
                 Text(
                   loading || !balanceVisible
-                      ? (_currency == 'NGN' ? '₦' : '$_currency ') + '••••••'
+                      ? _maskedBalance
                       : formatEazyMoney(_balance, currency: _currency),
                   style: const TextStyle(
                     color: Colors.white,
