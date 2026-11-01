@@ -102,6 +102,8 @@ export class AccountDeletionService {
       await client.query('DELETE FROM translation_requests WHERE user_id = $1', [userId]);
       await client.query('DELETE FROM user_settings WHERE user_id = $1', [userId]);
       await client.query('DELETE FROM verification_codes WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM payment_pin_verification_challenges WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM wallet_payment_pins WHERE user_id = $1', [userId]);
       if (user.email) await client.query('DELETE FROM email_verification_challenges WHERE lower(email) = lower($1)', [user.email]);
       await client.query('UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL', [userId]);
 
