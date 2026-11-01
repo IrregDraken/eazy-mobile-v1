@@ -97,6 +97,7 @@ GoRouter buildRouter(
             initialTab: state.uri.queryParameters['tab'],
             initialAction: state.uri.queryParameters['action'],
             initialUsername: state.uri.queryParameters['username'],
+            initialConversationId: state.uri.queryParameters['conversationId'],
           ),
     ),
     GoRoute(
