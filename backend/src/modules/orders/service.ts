@@ -7,7 +7,7 @@ import { OrderRepository } from './repository.js';
 export class OrderService {
   constructor(private readonly pool: Pool, private readonly repository = new OrderRepository(pool)) {}
 
-  async create(buyerId: string, idempotencyKey: string, fulfillments: { sellerId: string; method: 'delivery' | 'pickup'; addressId?: string }[]) {
+  async create(buyerId: string, idempotencyKey: string, fulfillments: { sellerId: string; method: 'delivery' | 'pickup'; addressId?: string }[] = []) {
     try {
       const orderId = await withTransaction(this.pool, client => this.repository.createFromCart(client, buyerId, idempotencyKey, fulfillments));
       const order = await this.repository.get(buyerId, orderId);
