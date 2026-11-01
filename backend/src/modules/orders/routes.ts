@@ -11,6 +11,7 @@ export function createOrderRouter(service: OrderService): Router {
   const router = Router();
   const controller = createOrderController(service);
   router.get('/seller', requireAuth, validate('query', paginationQuerySchema), controller.sellerOrders);
+  router.get('/seller/payables', requireAuth, validate('query', paginationQuerySchema), controller.sellerPayables);
   router.post('/', requireAuth, requireIdempotencyKey, validate('body', orderCreateSchema), controller.create);
   router.get('/addresses', requireAuth, controller.addresses);
   router.post('/addresses', requireAuth, validate('body', deliveryAddressSchema), controller.createAddress);
