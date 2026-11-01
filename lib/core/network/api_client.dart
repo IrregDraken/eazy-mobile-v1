@@ -92,15 +92,25 @@ class ApiClient {
   Future<void> uploadBytes(
     String signedUrl,
     List<int> bytes,
-    String contentType,
-  ) async {
-    final response = await _client
-        .put(
-          Uri.parse(signedUrl),
-          headers: {'Content-Type': contentType},
-          body: bytes,
-        )
-        .timeout(const Duration(seconds: 60));
+    String contentType, {
+    void Function(double progress)? onProgress,
+  }) async {
+    final request = http.StreamedRequest('PUT', Uri.parse(signedUrl))
+      ..headers['Content-Type'] = contentType
+      ..contentLength = bytes.length;
+    final responseFuture = _client
+        .send(request)
+        .timeout(const Duration(seconds: 60))
+        .then(http.Response.fromStream);
+    const chunkSize = 64 * 1024;
+    onProgress?.call(0);
+    for (var offset = 0; offset < bytes.length; offset += chunkSize) {
+      final end = (offset + chunkSize < bytes.length) ? offset + chunkSize : bytes.length;
+      request.sink.add(bytes.sublist(offset, end));
+      onProgress?.call(end / bytes.length);
+    }
+    await request.sink.close();
+    final response = await responseFuture;
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(
         'Media upload failed. Please try again.',
