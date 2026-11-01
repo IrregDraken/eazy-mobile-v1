@@ -86,6 +86,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Verification: source inspected and updated through GitHub. No analyzer/widget test/device test has run. PARTIAL pending CI and interactive verification.
 - Remaining: test search/category combinations, clear action, and no-category mapping behavior.
 
+### D5 — Chat list preview (partial)
+- Status: PARTIAL.
+- Cause confirmed: opening an existing chat did not force a list refresh on return; the “Start a conversation” fallback also appeared when a message existed but its body was empty (for example attachment-only content).
+- Files changed: `lib/features/chat/chat_home_screen.dart`.
+- Changes: refresh the conversation list after returning from an open conversation; render attachment-aware previews (Photo, Video, Attachment) and reserve “Start a conversation” for a missing latestMessage.
+- Verification: source inspection confirmed realtime events already trigger a quiet list reload; new code adds a return-path reload and avoids the false empty label. No Flutter analyzer, widget test or device test has run. PARTIAL pending CI and realtime/device verification.
+- Remaining: verify event delivery and preview/time updates for sent and received messages against live backend data.
+
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
 - Files changed: `docs/BUILD_PROGRESS.md` only.
