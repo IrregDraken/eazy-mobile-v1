@@ -146,7 +146,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 ),
                 onTap: () {
                   final username = (p['seller'] as Map)['username']?.toString() ?? '';
-                  if (username.isNotEmpty) context.push('/store/' + Uri.encodeComponent(username));
+                  final storeSlug = (p['seller'] as Map)['storeSlug']?.toString() ?? username;
+                  if (storeSlug.isNotEmpty) context.push('/store/' + Uri.encodeComponent(storeSlug));
                 },
               ),
             ),
