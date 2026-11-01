@@ -165,13 +165,20 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                 child: TextField(
                   controller: search,
-                  onSubmitted: (_) => load(),
+                  onSubmitted: (_) {
+                    final query = search.text.trim();
+                    if (query.length >= 2) context.push('/marketplace/search?q=${Uri.encodeQueryComponent(query)}');
+                  },
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.search_rounded),
                     hintText: 'Search products, brands...',
                     suffixIcon: IconButton(
-                      onPressed: load,
-                      icon: const Icon(Icons.tune_rounded),
+                      onPressed: () {
+                        final query = search.text.trim();
+                        if (query.length >= 2) context.push('/marketplace/search?q=${Uri.encodeQueryComponent(query)}');
+                        else load();
+                      },
+                      icon: const Icon(Icons.search_rounded),
                     ),
                   ),
                 ),
