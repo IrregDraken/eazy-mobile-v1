@@ -47,7 +47,7 @@ export const sellerStoreSchema = z.object({
   storeName: z.string().trim().min(3).max(100),
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9-]{2,59}$/),
   description: z.string().trim().max(1500).default(''),
-  supportPhone: z.string().trim().regex(/^\\+?[0-9 ()-]{7,24}$/).nullable().optional()
+  supportPhone: z.string().trim().regex(/^\+?[0-9 ()-]{7,24}$/).nullable().optional()
 }).strict();
 export const inventorySchema = z.object({ availableQuantity: z.number().int().min(0).max(1_000_000) }).strict();
 export const productIdSchema = z.object({ id: z.string().guid() });
