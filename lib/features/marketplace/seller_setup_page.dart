@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/media/media_service.dart';
 import '../../core/network/api_client.dart';
@@ -174,7 +175,7 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Become a Seller')),
+    appBar: AppBar(title: const Text('Become a Seller'), actions: [IconButton(tooltip: 'Seller orders', onPressed: () => context.push('/seller/orders'), icon: const Icon(Icons.receipt_long_rounded))]),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
