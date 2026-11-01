@@ -167,7 +167,22 @@ test('payment PINs are stored as hashes and new PINs are exactly four digits', a
   assert.equal((await service.status('user-1')).pinLength, 4);
   assert.equal(pool.record?.pin_hash.includes('4839'), false);
   await service.verify('user-1', '4839');
+  await assert.rejects(() => service.verify('user-1', '123456'), /Incorrect payment PIN/);
   await assert.rejects(() => service.setup('user-1', '483920', '483920', challenge.challengeId, challenge.code), /exactly 4 digits/);
+});
+
+test('PIN mutation requires a valid one-time email code', async () => {
+  const { email, service } = createService();
+  const challenge = await requestCode(service, email);
+  await assert.rejects(
+    () => service.setup('user-1', '4839', '4839', challenge.challengeId, '000000'),
+    /Incorrect verification code/
+  );
+  await service.setup('user-1', '4839', '4839', challenge.challengeId, challenge.code);
+  await assert.rejects(
+    () => service.change('user-1', '4839', '7261', '7261', challenge.challengeId, challenge.code),
+    /already been used/
+  );
 });
 
 test('payment PIN locks after five incorrect attempts', async () => {
