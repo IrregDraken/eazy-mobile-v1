@@ -29,10 +29,6 @@ export const orderCreateSchema = z.object({
   }
 });
 
-
-  }
-});
-
 export const orderFulfillmentParamsSchema = z.object({
   id: z.string().guid(),
   fulfillmentId: z.string().guid()
