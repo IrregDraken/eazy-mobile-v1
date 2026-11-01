@@ -99,6 +99,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
 
   @override
   Widget build(BuildContext context) {
+    final hasActiveFilters =
+        search.text.trim().length >= 2 || selectedParentSlug != null;
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: load,
@@ -211,6 +213,42 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 ),
               ),
             ),
+            if (hasActiveFilters)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          [
+                            if (search.text.trim().length >= 2)
+                              'Search: “${search.text.trim()}”',
+                            if (selectedParentSlug != null)
+                              discoverParentCategories
+                                  .firstWhere((item) => item.slug == selectedParentSlug)
+                                  .name,
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: context.eazyMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          search.clear();
+                          setState(() => selectedParentSlug = null);
+                          load();
+                        },
+                        child: const Text('Clear filters'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
@@ -311,9 +349,14 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 ),
               ),
             if (!loading && error == null && products.isEmpty)
-              const SliverFillRemaining(
+              SliverFillRemaining(
                 hasScrollBody: false,
-                child: _State('No products match your search.', null),
+                child: _State(
+                  hasActiveFilters
+                      ? 'No products match your search.'
+                      : 'No products yet.',
+                  null,
+                ),
               ),
             if (products.isNotEmpty)
               SliverPadding(
