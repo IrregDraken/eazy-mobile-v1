@@ -780,7 +780,7 @@ class _ConversationPageState extends State<ConversationPage> {
             content: const Text('Could not attach that file. Your selected file is retained for retry.'),
             action: SnackBarAction(
               label: 'Retry',
-              onPressed: () => _uploadAttachment(choice),
+              onPressed: () => _uploadAttachment(choice, retryDraft: failedAttachmentDraft),
             ),
           ),
         );
