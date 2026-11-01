@@ -110,6 +110,12 @@ export class MarketplaceService {
     return { products: products.items, sellers, categories };
   }
 
+  async myProducts(sellerId: string, pagination: Pagination) {
+    const result = await this.repository.sellerProducts(sellerId, pagination.page, pagination.limit);
+    const items = await Promise.all(result.items.map(item => this.attachMediaUrls(item)));
+    return { items, meta: paginationMeta(pagination, result.total) };
+  }
+
   async productReviews(productId: string, pagination: Pagination) {
     const product = await this.repository.getById(productId);
     if (!product) throw new AppError('NOT_FOUND', 'Product not found');
