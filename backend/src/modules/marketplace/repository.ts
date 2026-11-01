@@ -15,11 +15,21 @@ export interface ProductProjection {
   seller: { id: string; username: string; displayName: string; avatarUrl: string | null };
   media: { storageKey: string; position: number }[];
   availability: { inStock: boolean; availableQuantity?: number };
+  ratingAverage: string | null;
+  reviewCount: number;
+  sellerRatingAverage: string | null;
+  sellerReviewCount: number;
 }
 
 const productSelect = `p.id, p.name, p.description, p.price_amount::text AS "priceAmount", trim(p.currency) AS currency, p.status, p.created_at AS "createdAt",
   CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object('id', c.id, 'name', c.name, 'slug', c.slug) END AS category,
-  json_build_object('id', p.seller_id, 'username', seller.username, 'displayName', seller.display_name, 'avatarUrl', seller.avatar_url) AS seller,
+  json_build_object('id', p.seller_id, 'username', seller.username, 'displayName', seller.display_name, 'avatarUrl', seller.avatar_url,
+    'ratingAverage', (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.seller_id = p.seller_id),
+    'reviewCount', (SELECT count(*)::int FROM order_reviews r WHERE r.seller_id = p.seller_id)) AS seller,
+  (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.product_id = p.id) AS "ratingAverage",
+  (SELECT count(*)::int FROM order_reviews r WHERE r.product_id = p.id) AS "reviewCount",
+  (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.seller_id = p.seller_id) AS "sellerRatingAverage",
+  (SELECT count(*)::int FROM order_reviews r WHERE r.seller_id = p.seller_id) AS "sellerReviewCount",
   COALESCE((SELECT json_agg(json_build_object('storageKey', pm.storage_key, 'position', pm.position) ORDER BY pm.position) FROM product_media pm WHERE pm.product_id = p.id), '[]'::json) AS media,
   json_build_object('inStock', (COALESCE(i.available_quantity, 0) - COALESCE(i.reserved_quantity, 0) > 0)) AS availability`;
 
