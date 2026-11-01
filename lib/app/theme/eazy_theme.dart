@@ -147,6 +147,7 @@ abstract final class EazyTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: _DarkColors.surfaceRaised,
+        contentTextStyle: const TextStyle(color: _DarkColors.ink),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       dividerTheme: const DividerThemeData(color: _DarkColors.border),
@@ -266,6 +267,7 @@ abstract final class EazyTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: const Color(0xFF173D29),
+        contentTextStyle: const TextStyle(color: Colors.white),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       dividerTheme: const DividerThemeData(color: Color(0xFFDDEBE2)),
