@@ -498,10 +498,12 @@ class _NewChatScreenState extends State<_NewChatScreen> {
       title: Text('Find people on Eazy'),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     ),
-    body: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
+    body: SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
           child: TextField(
             controller: _query,
             autofocus: true,
@@ -570,8 +572,9 @@ class _NewChatScreenState extends State<_NewChatScreen> {
                       );
                     },
                   ),
-        ),
-      ],
+          ),
+        ],
+      ),
     ),
   );
 }
