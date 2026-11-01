@@ -4,7 +4,7 @@ import { validate } from '../../middleware/validate.js';
 import { paginationQuerySchema } from '../../utils/pagination.js';
 import { OrderService } from './service.js';
 import { createOrderController } from './controller.js';
-import { orderIdSchema } from './schemas.js';
+import { addressIdSchema, deliveryAddressSchema, orderCreateSchema, orderIdSchema } from './schemas.js';
 
 export function createOrderRouter(service: OrderService): Router {
   const router = Router();
