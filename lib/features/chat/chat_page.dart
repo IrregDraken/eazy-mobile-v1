@@ -57,6 +57,7 @@ class _ConversationPageState extends State<ConversationPage> {
   final scroll = ScrollController();
   late final EazyMediaService media;
   final List<MediaUpload> pendingAttachments = [];
+  final Map<String, Future<String>> _attachmentUrlCache = {};
   List<Map<String, dynamic>> messages = [];
   Map<String, dynamic>? replying, editing;
   bool loading = true, sending = false;
@@ -754,10 +755,12 @@ class _ConversationPageState extends State<ConversationPage> {
     }
   }
 
-  Future<void> _openAttachment(Map<String, dynamic> attachment) async {
+  Future<String> _signedAttachmentUrl(Map<String, dynamic> attachment) {
     final path = attachment['storageKey']?.toString();
-    if (path == null || path.isEmpty) return;
-    try {
+    if (path == null || path.isEmpty) {
+      return Future.error(const ApiException('The attachment could not be opened.'));
+    }
+    return _attachmentUrlCache.putIfAbsent(path, () async {
       final result = await widget.api.post(
         'media/signed-message-attachment-url',
         auth: true,
@@ -767,6 +770,13 @@ class _ConversationPageState extends State<ConversationPage> {
       if (url == null || url.isEmpty) {
         throw const ApiException('The attachment could not be opened.');
       }
+      return url;
+    });
+  }
+
+  Future<void> _openAttachment(Map<String, dynamic> attachment) async {
+    try {
+      final url = await _signedAttachmentUrl(attachment);
       final type = attachment['contentType']?.toString() ?? '';
       if (type.startsWith('image/')) {
         if (!mounted) return;
@@ -1190,6 +1200,7 @@ class _ConversationPageState extends State<ConversationPage> {
                             onReaction: (r) => reactTo(messages[i], r),
                             onTranslate: () => translate(messages[i]),
                             onOpenAttachment: _openAttachment,
+                            onLoadAttachmentUrl: _signedAttachmentUrl,
                           );
                         },
                       ),
@@ -1466,6 +1477,7 @@ class _MessageBubble extends StatelessWidget {
     required this.onReaction,
     required this.onTranslate,
     required this.onOpenAttachment,
+    required this.onLoadAttachmentUrl,
   });
   final Map<String, dynamic> message;
   final bool isMine;
@@ -1473,6 +1485,7 @@ class _MessageBubble extends StatelessWidget {
   final ValueChanged<String> onReaction;
   final VoidCallback onTranslate;
   final ValueChanged<Map<String, dynamic>> onOpenAttachment;
+  final Future<String> Function(Map<String, dynamic>) onLoadAttachmentUrl;
   @override
   Widget build(BuildContext context) {
     final sender =
@@ -1591,53 +1604,90 @@ class _MessageBubble extends StatelessWidget {
                                 bytes >= 1024 * 1024
                                     ? '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB'
                                     : '${(bytes / 1024).round()} KB';
+                            if (type.startsWith('image/')) {
+                              return FutureBuilder<String>(
+                                future: onLoadAttachmentUrl(attachment),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasError) {
+                                    return InkWell(
+                                      onTap: () => onOpenAttachment(attachment),
+                                      child: Container(
+                                        width: 220,
+                                        height: 110,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(Icons.broken_image_outlined),
+                                      ),
+                                    );
+                                  }
+                                  if (!snapshot.hasData) {
+                                    return Container(
+                                      width: 220,
+                                      height: 110,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      ),
+                                    );
+                                  }
+                                  return InkWell(
+                                    onTap: () => onOpenAttachment(attachment),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.network(
+                                        snapshot.data!,
+                                        width: 240,
+                                        height: 180,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Container(
+                                          width: 220,
+                                          height: 110,
+                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                          alignment: Alignment.center,
+                                          child: const Icon(Icons.broken_image_outlined),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }
                             return InkWell(
                               onTap: () => onOpenAttachment(attachment),
                               borderRadius: BorderRadius.circular(11),
                               child: Container(
                                 margin: const EdgeInsets.only(bottom: 5),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color:
-                                      Theme.of(
-                                        context,
-                                      ).colorScheme.surfaceContainerHighest,
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(11),
-                                  border: Border.all(
-                                    color: Theme.of(context).dividerColor,
-                                  ),
+                                  border: Border.all(color: Theme.of(context).dividerColor),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      type.startsWith('image/')
-                                          ? Icons.image_outlined
-                                          : type.startsWith('video/')
-                                          ? Icons.video_file_outlined
-                                          : Icons.description_outlined,
+                                      type.startsWith('video/') ? Icons.video_file_outlined : Icons.description_outlined,
                                       color: context.eazyAccent,
                                       size: 18,
                                     ),
                                     const SizedBox(width: 7),
                                     Text(
                                       '$label attachment',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                      ),
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
                                     ),
                                     const SizedBox(width: 7),
-                                    Text(
-                                      size,
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: context.eazyMuted,
-                                      ),
-                                    ),
+                                    Text(size, style: TextStyle(fontSize: 10, color: context.eazyMuted)),
                                   ],
                                 ),
                               ),
