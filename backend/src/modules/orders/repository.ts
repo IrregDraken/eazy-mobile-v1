@@ -137,9 +137,69 @@ export class OrderRepository {
         [orderId, item.product_id, item.seller_id, item.product_name, item.quantity, item.price, item.currency]
       );
     }
+    for (const sellerId of sellerIds) {
+      const choice = selected.get(sellerId)!;
+      const settingsResult = await client.query<{
+        delivery_enabled: boolean; pickup_enabled: boolean; delivery_fee_amount: string;
+        currency: string; pickup_instructions: string | null;
+      }>(
+        'SELECT delivery_enabled, pickup_enabled, delivery_fee_amount::text, trim(currency) AS currency, pickup_instructions FROM seller_delivery_settings WHERE seller_id = $1',
+        [sellerId]
+      );
+      const settings = settingsResult.rows[0] ?? {
+        delivery_enabled: false, pickup_enabled: true, delivery_fee_amount: '0.00',
+        currency: 'NGN', pickup_instructions: null
+      };
+      if (settings.currency !== currency) throw new Error('DELIVERY_CURRENCY_MISMATCH');
+
+      let addressSnapshot: Record<string, string | null> | null = null;
+      let deliveryFee = '0.00';
+      if (choice.method === 'delivery') {
+        if (!settings.delivery_enabled) throw new Error('DELIVERY_UNAVAILABLE');
+        if (!choice.addressId) throw new Error('DELIVERY_ADDRESS_REQUIRED');
+        const address = await client.query<{
+          recipient_name: string; phone: string; state: string; city: string;
+          area: string; address_line: string; landmark: string | null;
+        }>(
+          'SELECT recipient_name, phone, state, city, area, address_line, landmark FROM delivery_addresses WHERE id = $1 AND user_id = $2',
+          [choice.addressId, buyerId]
+        );
+        const row = address.rows[0];
+        if (!row) throw new Error('DELIVERY_ADDRESS_NOT_FOUND');
+        addressSnapshot = {
+          recipientName: row.recipient_name, phone: row.phone, state: row.state,
+          city: row.city, area: row.area, addressLine: row.address_line, landmark: row.landmark
+        };
+        deliveryFee = settings.delivery_fee_amount;
+      } else {
+        if (!settings.pickup_enabled) throw new Error('PICKUP_UNAVAILABLE');
+        if (choice.addressId) throw new Error('PICKUP_ADDRESS_NOT_ALLOWED');
+      }
+
+      const fulfillment = await client.query<{ id: string }>(
+        `INSERT INTO order_fulfillments
+          (order_id, seller_id, delivery_method, delivery_fee_amount, address_snapshot, pickup_instructions)
+         VALUES ($1,$2,$3,$4::numeric,$5::jsonb,$6) RETURNING id`,
+        [orderId, sellerId, choice.method, deliveryFee,
+          addressSnapshot ? JSON.stringify(addressSnapshot) : null, settings.pickup_instructions]
+      );
+      await client.query(
+        "INSERT INTO order_events (order_id, fulfillment_id, actor_user_id, event_type, description) VALUES ($1,$2,$3,'order_created','Order placed and awaiting payment')",
+        [orderId, fulfillment.rows[0]!.id, buyerId]
+      );
+    }
+
     await client.query(
-      `UPDATE orders o SET subtotal_amount = totals.total_amount, total_amount = totals.total_amount, updated_at = now()
-       FROM (SELECT COALESCE(sum(line_total_amount), 0)::numeric AS total_amount FROM order_items WHERE order_id = $1) totals
+      `UPDATE orders o
+       SET subtotal_amount = totals.subtotal,
+           delivery_total_amount = totals.delivery_total,
+           total_amount = totals.subtotal + totals.delivery_total,
+           updated_at = now()
+       FROM (
+         SELECT
+           (SELECT COALESCE(sum(line_total_amount), 0)::numeric FROM order_items WHERE order_id = $1) AS subtotal,
+           (SELECT COALESCE(sum(delivery_fee_amount), 0)::numeric FROM order_fulfillments WHERE order_id = $1) AS delivery_total
+       ) totals
        WHERE o.id = $1`,
       [orderId]
     );
