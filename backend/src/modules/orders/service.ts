@@ -48,17 +48,12 @@ export class OrderService {
     return { items: result.items, meta: paginationMeta(pagination, result.total) };
   }
 
-  async sellerPayables(sellerId: string, pagination: Pagination) {
-    const result = await this.repository.listSellerPayables(sellerId, pagination.page, pagination.limit);
-    return { items: result.items, meta: paginationMeta(pagination, result.total) };
-  }
-
   async sellerOrders(sellerId: string, pagination: Pagination) {
     const result = await this.repository.listSellerOrders(sellerId, pagination.page, pagination.limit);
     return { items: result.items, meta: paginationMeta(pagination, result.total) };
   }
 
-  async updateSellerFulfillment(sellerId: string, orderId: string, fulfillmentId: string, input: { action: 'accept' | 'reject' | 'ship' | 'deliver'; reason?: string }) {
+  async updateSellerFulfillment(sellerId: string, orderId: string, fulfillmentId: string, input: { action: 'accept' | 'ship' | 'deliver' }) {
     const result = await withTransaction(this.pool, client => this.repository.updateSellerFulfillment(client, sellerId, orderId, fulfillmentId, input.action, input.reason));
     if (result.error) throw mapOrderError(new Error(result.error));
     return { updated: true, status: result.status };
