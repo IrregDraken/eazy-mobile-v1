@@ -737,6 +737,7 @@ class _ConversationPageState extends State<ConversationPage> {
 
   Future<void> _uploadAttachment(String choice, {MediaUploadDraft? retryDraft}) async {
     if (uploadingAttachment || sending) return;
+    if (retryDraft == null) failedAttachmentDraft = null;
     setState(() {
       uploadingAttachment = true;
       uploadProgress = 0;
