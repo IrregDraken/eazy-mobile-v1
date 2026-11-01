@@ -4,8 +4,8 @@ ALTER TABLE orders
   CHECK (status IN ('pending','paid','accepted','processing','shipped','delivered','completed','disputed','cancelled','refunded'));
 
 ALTER TABLE orders
-  ADD COLUMN IF NOT EXISTS delivery_total_amount NUMERIC(20,2) NOT NULL DEFAULT 0
-  CHECK (delivery_total_amount >= 0);
+  ADD COLUMN IF NOT EXISTS delivery_total_kobo BIGINT NOT NULL DEFAULT 0
+  CHECK (delivery_total_kobo >= 0);
 
 CREATE TABLE IF NOT EXISTS delivery_addresses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS seller_delivery_settings (
   seller_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   delivery_enabled BOOLEAN NOT NULL DEFAULT false,
   pickup_enabled BOOLEAN NOT NULL DEFAULT true,
-  delivery_fee_amount NUMERIC(20,2) NOT NULL DEFAULT 0 CHECK (delivery_fee_amount >= 0),
+  delivery_fee_kobo BIGINT NOT NULL DEFAULT 0 CHECK (delivery_fee_kobo >= 0),
   currency CHAR(3) NOT NULL DEFAULT 'NGN',
   pickup_instructions TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS order_fulfillments (
   seller_id UUID NOT NULL REFERENCES users(id),
   delivery_method TEXT NOT NULL CHECK (delivery_method IN ('delivery','pickup')),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','shipped','delivered','completed','disputed','cancelled')),
-  delivery_fee_amount NUMERIC(20,2) NOT NULL DEFAULT 0 CHECK (delivery_fee_amount >= 0),
+  delivery_fee_kobo BIGINT NOT NULL DEFAULT 0 CHECK (delivery_fee_kobo >= 0),
   address_snapshot JSONB,
   pickup_instructions TEXT,
   accepted_at TIMESTAMPTZ,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS seller_payable_ledger (
   fulfillment_id UUID NOT NULL REFERENCES order_fulfillments(id),
   seller_id UUID NOT NULL REFERENCES users(id),
   entry_type TEXT NOT NULL CHECK (entry_type IN ('hold','release')),
-  amount NUMERIC(20,2) NOT NULL CHECK (amount > 0),
+  amount_kobo BIGINT NOT NULL CHECK (amount_kobo > 0),
   currency CHAR(3) NOT NULL,
   idempotency_key TEXT NOT NULL UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
