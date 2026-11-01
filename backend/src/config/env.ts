@@ -34,6 +34,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.union([z.string().trim().min(1).max(4096), z.literal('')]).optional(),
   RESEND_FROM_EMAIL: z.union([z.string().trim().email(), z.literal('')]).optional(),
   RESEND_REPLY_TO_EMAIL: z.union([z.string().trim().email(), z.literal('')]).optional(),
+  SUPPORT_EMAIL: z.union([z.string().trim().email(), z.literal('')]).optional(),
   RESEND_WEBHOOK_SECRET: z.union([z.string().trim().min(1).max(4096), z.literal('')]).optional(),
   OTP_HMAC_SECRET: z.union([z.string().trim().min(32).max(4096), z.literal('')]).optional(),
   OTP_TTL_MINUTES: z.coerce.number().int().min(1).max(60).optional(),
