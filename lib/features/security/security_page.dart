@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
@@ -14,8 +16,14 @@ class SecurityPage extends StatefulWidget {
 
 class _SecurityPageState extends State<SecurityPage> {
   final api = ApiClient();
+  final storage = const FlutterSecureStorage();
+  final localAuth = LocalAuthentication();
   List<Map<String, dynamic>> sessions = [];
   bool loading = true;
+  bool paymentPinConfigured = false;
+  bool biometricShortcutEnabled = false;
+  bool savingBiometric = false;
+  int paymentPinLength = 4;
   String error = '';
   @override
   void initState() {
@@ -28,19 +36,119 @@ class _SecurityPageState extends State<SecurityPage> {
       final r = await api.get('auth/sessions', auth: true);
       final x = (r['sessions'] as List? ?? r['items'] as List? ?? []);
       if (mounted) {
-        setState(
-          () =>
-              sessions =
-                  x
-                      .whereType<Map>()
-                      .map((e) => Map<String, dynamic>.from(e))
-                      .toList(),
-        );
+        setState(() {
+          sessions = x
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        });
       }
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
+    }
+    try {
+      final status = await api.get('wallet/payment-pin/status', auth: true);
+      final configured = status['configured'] == true;
+      final length = int.tryParse(status['pinLength']?.toString() ?? '') ?? 4;
+      final savedEnabled = await storage.read(key: 'eazy.wallet.biometricShortcutEnabled') == 'true';
+      final savedPin = await storage.read(key: 'eazy.wallet.biometricPaymentPin');
+      if (mounted) {
+        setState(() {
+          paymentPinConfigured = configured;
+          paymentPinLength = length;
+          biometricShortcutEnabled = configured && savedEnabled && savedPin != null;
+        });
+      }
+    } on ApiException {
+      if (mounted) setState(() {
+        paymentPinConfigured = false;
+        biometricShortcutEnabled = false;
+      });
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> _setBiometricShortcut(bool enabled) async {
+    if (savingBiometric) return;
+    if (!enabled) {
+      await storage.delete(key: 'eazy.wallet.biometricShortcutEnabled');
+      await storage.delete(key: 'eazy.wallet.biometricPaymentPin');
+      if (mounted) setState(() => biometricShortcutEnabled = false);
+      return;
+    }
+    if (!paymentPinConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Create a payment PIN in Wallet first.')),
+      );
+      return;
+    }
+    setState(() => savingBiometric = true);
+    final pinController = TextEditingController();
+    try {
+      final pin = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Enable biometric shortcut'),
+          content: TextField(
+            controller: pinController,
+            autofocus: true,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: paymentPinLength,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: paymentPinLength == 6 ? 'Current 6-digit PIN' : '4-digit payment PIN',
+              counterText: '',
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                if (pinController.text.length == paymentPinLength) {
+                  Navigator.pop(dialogContext, pinController.text);
+                }
+              },
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+      if (pin == null || !mounted) return;
+      await api.post('wallet/payment-pin/verify', auth: true, body: {'pin': pin});
+      final available = await localAuth.canCheckBiometrics;
+      if (!available) {
+        throw const ApiException(
+          'No enrolled biometrics are available on this device. Use your payment PIN instead.',
+          kind: ApiErrorKind.validation,
+        );
+      }
+      final authenticated = await localAuth.authenticate(
+        localizedReason: 'Confirm your identity to enable the Eazy payment PIN shortcut',
+        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
+      );
+      if (!authenticated) return;
+      await storage.write(key: 'eazy.wallet.biometricPaymentPin', value: pin);
+      await storage.write(key: 'eazy.wallet.biometricShortcutEnabled', value: 'true');
+      if (mounted) {
+        setState(() => biometricShortcutEnabled = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Biometric payment shortcut enabled.')),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Biometric setup could not be completed. Your PIN remains available.')),
+        );
+      }
     } finally {
-      if (mounted) setState(() => loading = false);
+      pinController.dispose();
+      if (mounted) setState(() => savingBiometric = false);
     }
   }
 
@@ -102,6 +210,20 @@ class _SecurityPageState extends State<SecurityPage> {
               child: ListView(
                 padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.paddingOf(context).bottom + 24),
                 children: [
+                  Card(
+                    child: SwitchListTile(
+                      value: biometricShortcutEnabled,
+                      onChanged: savingBiometric ? null : _setBiometricShortcut,
+                      secondary: Icon(Icons.fingerprint_rounded, color: context.eazyAccent),
+                      title: const Text('Biometric payment shortcut'),
+                      subtitle: Text(
+                        paymentPinConfigured
+                            ? 'Optional. Use device biometrics to unlock your saved payment PIN. Off by default.'
+                            : 'Create a payment PIN in Wallet before enabling this shortcut.',
+                        style: TextStyle(color: context.eazyMuted, fontSize: 12),
+                      ),
+                    ),
+                  ),
                   Card(
                     child: Padding(
                       padding: EdgeInsets.all(16),
