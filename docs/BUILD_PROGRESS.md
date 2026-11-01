@@ -40,7 +40,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 | D5 Chat preview | TODO | `lib/features/chat/chat_home_screen.dart`; latest-message and realtime refresh logic present; confirm event payload and ordering after send/receive. |
 | D6 Eazy Assist | PARTIAL | `lib/features/assist/assist_page.dart`, backend `modules/assist/context.ts`, `service.ts`, `repository.ts`; session bootstrap exists; message ordering, New chat and context need inspection. |
 | D7 Bag / Settings loading | TODO | `lib/features/marketplace/cart_page.dart`, `lib/features/settings/settings_page.dart`; Settings currently waits on a remote load before rendering. |
-| D8 Android system bars | TODO | `lib/app/app.dart`, `lib/features/home/home_shell.dart`, all route/page scaffolds and `AndroidManifest.xml`; audit safe areas, keyboard and navigation insets. |
+| D8 Android system bars | PARTIAL | `lib/app/app.dart`, `lib/features/home/home_shell.dart`, all route/page scaffolds and `AndroidManifest.xml`; audit safe areas, keyboard and navigation insets. |
 | D9 Floating AI orb | TODO | `lib/core/ui/eazy_assist_fab.dart`, `lib/features/home/home_shell.dart`; current FAB is fixed-position and not draggable/scroll-aware. |
 | D10 Toasts | TODO | Search all SnackBar/ScaffoldMessenger usage and central navigation lifecycle. |
 | D11 Chat visuals | TODO | `lib/features/chat/chat_page.dart`; inspect message bubble, timestamp, attachment layout and header theme contrast. |
@@ -109,6 +109,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Changes: Settings now renders immediately with local controls while remote preferences load, showing only a slim progress indicator; cart retries clear the previous error and the error state now provides a retry action.
 - Verification: source inspected and updated through GitHub; the shared API client timeout is 20 seconds. No runtime test has run. PARTIAL pending analyzer and network/offline UI checks.
 - Remaining: verify bag timeout/retry and Settings first-frame rendering on device; add tests if supported by existing test patterns.
+
+### D8 — Android system bars and keyboard insets (partial)
+- Status: PARTIAL.
+- Cause confirmed: the Create post modal did not opt into safe-area handling; the Find people screen's body had no bottom safe-area wrapper while its search field opens the keyboard.
+- Files changed: `lib/features/social/social_page.dart`, `lib/features/chat/chat_home_screen.dart`.
+- Changes: Create post bottom sheet now uses `useSafeArea: true`; Find people content now applies a bottom SafeArea while leaving the AppBar's normal top inset intact.
+- Verification: both source files re-fetched after updates; Find people widget tree inspected for balanced Scaffold/SafeArea/Column structure. No Android gesture-navigation or three-button-navigation device test, analyzer, or widget test has run.
+- Remaining: audit every page/modal for safe-area behavior, fix any remaining clipped Publish/Settings controls, and test keyboard + gesture/three-button navigation on physical Android devices.
 
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
