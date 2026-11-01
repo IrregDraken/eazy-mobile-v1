@@ -229,7 +229,7 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 | S1 | DONE | Personal information, edit name/username/bio; email/phone changes through verification-code flow. |
 | S2 | BLOCKED | Four-digit payment PIN; create/change/reset through verified code; optional biometric shortcut OFF by default; PIN or enabled biometric required for money actions; no PIN means create PIN first. |
 | S3 | DONE | Logout confirmation; clear tokens/cached user data; unregister push token; return to welcome screen. |
-| S4 | DOING | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
+| S4 | BLOCKED | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
 | S5 | TODO | Terms/privacy acceptance at signup; record version and timestamp; owner-approved legal copy required. |
 | S6 | TODO | Notification preferences saved to backend and respected by push delivery. |
 | S7 | TODO | Support email from configuration; report-problem form persists to backend. |
@@ -336,5 +336,5 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 - Status: DOING.
 - Existing deletion service already performs preflight blockers for non-zero wallet balance, pending payments, active buyer orders and active seller orders; it anonymizes profile/user data, removes authored personal content, retains required financial ledger/order records, revokes sessions, deletes push devices and queues external media/Firebase identity cleanup. It records `security_events.event_type = account_deleted`.
 - Added recent Firebase authentication enforcement to the delete endpoint. Password-provider accounts now reauthenticate with their current password in the client before preflight; non-password providers must have signed in recently or sign in again. Unresolved buyer/seller disputes now also block deletion.
-- Privacy page/legal policy content is absent from the repository. Do not invent legal text. S4 cannot be DONE until the owner supplies approved privacy policy copy and the in-app privacy page can render that exact copy.
-- Verification pending: backend build/tests, Flutter analyze/tests, reauthentication behavior and account-deletion preflight regression. The privacy-copy dependency is an owner blocker.
+- Privacy page/legal policy content is absent from the repository. Do not invent legal text. S4 remains BLOCKED until the owner supplies approved privacy policy copy and the in-app privacy page can render that exact copy. Account deletion now also removes stored PIN hashes/verification challenges and reports when external cleanup remains pending.
+- Verification pending: backend build/tests, Flutter analyze/tests, reauthentication behavior and account-deletion preflight regression. Exact unblock: owner supplies the approved privacy policy text and URL/version metadata; then add the privacy page without paraphrasing or inventing terms.
