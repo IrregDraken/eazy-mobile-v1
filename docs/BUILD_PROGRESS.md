@@ -48,7 +48,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 | D13 Bottom navigation | PARTIAL | `lib/features/home/home_shell.dart`; selected index is local shell state; verify transitions and duplicate selection. |
 | D14 Dialogs | TODO | Search AlertDialog/showDialog/showModalBottomSheet across client; verify opaque surfaces and theme contrast. |
 | D15 Appearance/language | TODO | `lib/features/settings/settings_page.dart`, `lib/app/theme/theme_controller.dart`; settings currently models theme as light/dark only. |
-| D16 Wallet polish | TODO | `lib/features/wallet/wallet_page.dart`, `wallet_amount_input.dart`, backend wallet/ledger; audit currency formatting and recipient flow. |
+| D16 Wallet polish | PARTIAL | `lib/features/wallet/wallet_page.dart`, `wallet_amount_input.dart`, backend wallet/ledger; audit currency formatting and recipient flow. |
 
 ### Phase 2 partial implementation noted (not yet functionally verified)
 - Settings/account routes, account deletion preflight, notification preferences, wallet PIN routes/migration, cart, seller setup, product discovery, orders, Paystack payment and virtual-account modules, notifications, translation capabilities, QR and wallet ledger modules already exist in some form.
@@ -68,7 +68,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Files changed: `lib/features/wallet/wallet_page.dart`.
 - Changes: parse both amount and available balance into integer kobo; reject invalid/zero amounts and amounts above the displayed available balance before showing the review/PIN step; remove mandatory device biometric authentication from this Eazy-user transfer path so the server-verified payment PIN is the authorization; inspect the server response and show success only when transaction status is `succeeded`; refresh wallet state/history after the response.
 - Verification: source re-fetched after edits; confirmed backend `WalletService.transferToUser` compares ledger balance against amount in minor units and writes debit/credit entries in one DB transaction. No Flutter analyzer, widget test, backend test, or device test has run yet. Therefore PARTIAL, not DONE.
-- Remaining: add automated client test coverage for the kobo comparison and execute CI/device verification.
+- Remaining: add automated client test coverage for the kobo comparison and execute CI/device verification. A malformed trailing duplicate source segment introduced during an earlier helper edit was detected by a full-file re-fetch and removed; the retained file ends at the first complete `_QrScannerPageState` definition. This correction is included in the current wallet file.
 
 ### D3 — Home feed states (partial)
 - Status: PARTIAL.
@@ -172,6 +172,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Changes: System/Light/Dark options; System is the default and is persisted locally and to the existing backend setting; reworded the language row to state that the interface is currently English while Translator supports other content languages. No fake language selector added.
 - Verification: backend schema/type already support `system`; updated theme controller and settings source re-fetched. No analyzer or system-theme/device test has run.
 - Remaining: test System mode against Android light/dark setting and verify dropdown layout on device.
+
+### D16 — Wallet money formatting and recipient flow (partial)
+- Status: PARTIAL.
+- Cause confirmed: wallet screens assembled currency code, amount and balance strings independently; recipient selection always opened a picker even when search returned one result; recipient helper copy was constrained to a single default line.
+- Files changed: `lib/core/formatters/money_formatter.dart`, `lib/features/wallet/wallet_page.dart`.
+- Changes: added one shared NGN-aware two-decimal money formatter and applied it to wallet balances, transaction details/history, pending deposits, order totals and transfer review/success messages; amount input uses the ₦ symbol; recipient picker is skipped when exactly one match is returned; helper text allows two lines.
+- Verification: source re-fetched; all wallet amount display sites inspected and converted. No analyzer/widget/device test has run. PARTIAL pending test and screen verification.
+- Remaining: run formatting, analyzer, wallet tests and verify all amounts across wallet screens in both themes.
 
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
