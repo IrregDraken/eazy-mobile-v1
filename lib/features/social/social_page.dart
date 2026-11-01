@@ -192,6 +192,7 @@ class _SocialPageState extends State<SocialPage> {
 
     final body = await showModalBottomSheet<String>(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: true,
       builder:
