@@ -22,6 +22,7 @@ import '../features/marketplace/seller_reviews_page.dart';
 import '../features/marketplace/seller_storefront_page.dart';
 import '../features/marketplace/seller_products_page.dart';
 import '../features/marketplace/marketplace_search_page.dart';
+import '../features/marketplace/product_route_page.dart';
 import '../features/marketplace/seller_setup_page.dart';
 import '../features/onboarding/profile_setup_page.dart';
 import '../features/onboarding/discovery_page.dart';
@@ -88,6 +89,7 @@ GoRouter buildRouter(
     GoRoute(path: '/store/:slug', builder: (_, state) => SellerStorefrontPage(slug: state.pathParameters['slug']!)),
     GoRoute(path: '/marketplace/search', builder: (_, state) => MarketplaceSearchPage(query: state.uri.queryParameters['q'] ?? '')),
     GoRoute(path: '/orders/:id', builder: (_, state) => OrderDetailPage(orderId: state.pathParameters['id']!)),
+    GoRoute(path: '/product/:id', builder: (_, state) => ProductRoutePage(productId: state.pathParameters['id']!)),
     GoRoute(path: '/seller', builder: (_, _) => const SellerSetupPage()),
     GoRoute(
       path: '/home',
