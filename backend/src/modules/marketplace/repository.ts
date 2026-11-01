@@ -162,4 +162,40 @@ export class MarketplaceRepository {
     );
     return Boolean(result.rowCount);
   }
+  async productReviews(productId: string, page: number, limit: number) {
+    const count = await this.pool.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM order_reviews WHERE product_id = $1',
+      [productId]
+    );
+    const result = await this.pool.query(
+      `SELECT r.id, r.rating, r.review_text AS "reviewText", r.created_at AS "createdAt",
+        reviewer.username AS "reviewerUsername", reviewer.display_name AS "reviewerDisplayName"
+       FROM order_reviews r JOIN profiles reviewer ON reviewer.user_id = r.buyer_id
+       WHERE r.product_id = $1 ORDER BY r.created_at DESC, r.id DESC
+       LIMIT $2 OFFSET $3`,
+      [productId, limit, (page - 1) * limit]
+    );
+    return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
+  async sellerReviews(username: string, page: number, limit: number) {
+    const count = await this.pool.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM order_reviews r JOIN profiles seller ON seller.user_id = r.seller_id WHERE lower(seller.username) = lower($1)',
+      [username]
+    );
+    const result = await this.pool.query(
+      `SELECT r.id, r.rating, r.review_text AS "reviewText", r.created_at AS "createdAt",
+        reviewer.username AS "reviewerUsername", reviewer.display_name AS "reviewerDisplayName",
+        p.name AS "productName"
+       FROM order_reviews r
+       JOIN profiles seller ON seller.user_id = r.seller_id
+       JOIN profiles reviewer ON reviewer.user_id = r.buyer_id
+       JOIN products p ON p.id = r.product_id
+       WHERE lower(seller.username) = lower($1)
+       ORDER BY r.created_at DESC, r.id DESC LIMIT $2 OFFSET $3`,
+      [username, limit, (page - 1) * limit]
+    );
+    return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
 }
