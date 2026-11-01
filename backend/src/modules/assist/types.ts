@@ -12,6 +12,7 @@ export interface AssistMessage {
   role: AssistRole;
   content: string;
   createdAt: string;
+  sequenceId: string;
 }
 
 export interface AssistMessageRow {
@@ -21,6 +22,7 @@ export interface AssistMessageRow {
   content: string;
   provider_reference: string | null;
   created_at: Date | string;
+  sequence_id: string | number;
 }
 
 export interface AssistSessionRow {
@@ -41,7 +43,7 @@ export function toAssistSession(row: AssistSessionRow): AssistSession {
 
 export function toAssistMessage(row: AssistMessageRow): AssistMessage {
   if (row.role !== 'user' && row.role !== 'assistant') throw new Error('Internal Assist messages cannot be exposed to clients');
-  return { id: row.id, role: row.role, content: Array.from(row.content).slice(0, 4_000).join(''), createdAt: toIso(row.created_at) };
+  return { id: row.id, role: row.role, content: Array.from(row.content).slice(0, 4_000).join(''), createdAt: toIso(row.created_at), sequenceId: String(row.sequence_id) };
 }
 
 function toIso(value: Date | string): string {
