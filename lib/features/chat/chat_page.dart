@@ -57,6 +57,8 @@ class _ConversationPageState extends State<ConversationPage> {
   final scroll = ScrollController();
   late final EazyMediaService media;
   final List<MediaUpload> pendingAttachments = [];
+  bool uploadingAttachment = false;
+  double? uploadProgress;
   final Map<String, Future<String>> _attachmentUrlCache = {};
   List<Map<String, dynamic>> messages = [];
   Map<String, dynamic>? replying, editing;
@@ -508,7 +510,7 @@ class _ConversationPageState extends State<ConversationPage> {
 
   Future<void> send() async {
     final body = draft.text.trim();
-    if ((body.isEmpty && pendingAttachments.isEmpty) || sending) return;
+    if ((body.isEmpty && pendingAttachments.isEmpty) || sending || uploadingAttachment) return;
     final pendingId = 'pending-${DateTime.now().microsecondsSinceEpoch}';
     final isEditing = editing != null;
     if (!isEditing && body.isNotEmpty) {
@@ -729,28 +731,58 @@ class _ConversationPageState extends State<ConversationPage> {
           ),
     );
     if (choice == null || !mounted) return;
+    await _uploadAttachment(choice);
+  }
+
+  Future<void> _uploadAttachment(String choice) async {
+    if (uploadingAttachment || sending) return;
+    setState(() {
+      uploadingAttachment = true;
+      uploadProgress = 0;
+    });
     try {
+      void reportProgress(double value) {
+        if (mounted) setState(() => uploadProgress = value.clamp(0.0, 1.0));
+      }
+
       final upload = switch (choice) {
-        'photo' => await media.pickAndUpload(kind: 'message'),
-        'video' => await media.pickAndUploadVideo(kind: 'message'),
-        _ => await media.pickAndUploadDocument(kind: 'message'),
+        'photo' => await media.pickAndUpload(kind: 'message', onProgress: reportProgress),
+        'video' => await media.pickAndUploadVideo(kind: 'message', onProgress: reportProgress),
+        _ => await media.pickAndUploadDocument(kind: 'message', onProgress: reportProgress),
       };
       if (upload != null && mounted) {
         setState(() => pendingAttachments.add(upload));
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${e.message} Select the file again to retry.'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _uploadAttachment(choice),
+            ),
+          ),
+        );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not attach that file. Please try again.'),
+          SnackBar(
+            content: const Text('Could not attach that file. Select it again to retry.'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _uploadAttachment(choice),
+            ),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          uploadingAttachment = false;
+          uploadProgress = null;
+        });
       }
     }
   }
@@ -1240,6 +1272,21 @@ class _ConversationPageState extends State<ConversationPage> {
                         },
                       ),
             ),
+            if (uploadingAttachment)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Uploading attachment ${((uploadProgress ?? 0) * 100).round()}%',
+                      style: TextStyle(fontSize: 11, color: context.eazyMuted),
+                    ),
+                    const SizedBox(height: 5),
+                    LinearProgressIndicator(value: uploadProgress),
+                  ],
+                ),
+              ),
             if (pendingAttachments.isNotEmpty)
               SizedBox(
                 height: 54,
@@ -1337,7 +1384,7 @@ class _ConversationPageState extends State<ConversationPage> {
                     children: [
                       IconButton(
                         tooltip: 'Attach photo, video or document',
-                        onPressed: sending ? null : _pickAttachment,
+                        onPressed: sending || uploadingAttachment ? null : _pickAttachment,
                         visualDensity: VisualDensity.compact,
                         style: IconButton.styleFrom(
                           foregroundColor: context.eazyAccent,
