@@ -23,6 +23,72 @@ export interface OrderProjection {
 export class OrderRepository {
   constructor(private readonly pool: Pool) {}
 
+  async listAddresses(userId: string) {
+    const result = await this.pool.query(
+      `SELECT id, label, recipient_name AS "recipientName", phone, state, city, area,
+        address_line AS "addressLine", landmark, is_default AS "isDefault",
+        created_at AS "createdAt"
+       FROM delivery_addresses WHERE user_id = $1 ORDER BY is_default DESC, created_at DESC, id DESC`,
+      [userId]
+    );
+    return result.rows;
+  }
+
+  async createAddress(client: DbClient, userId: string, input: {
+    label: string; recipientName: string; phone: string; state: string; city: string;
+    area: string; addressLine: string; landmark?: string | null; isDefault?: boolean;
+  }) {
+    const count = await client.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM delivery_addresses WHERE user_id = $1',
+      [userId]
+    );
+    const isDefault = input.isDefault === true || Number(count.rows[0]?.count ?? 0) === 0;
+    if (isDefault) await client.query('UPDATE delivery_addresses SET is_default = false WHERE user_id = $1', [userId]);
+    const result = await client.query(
+      `INSERT INTO delivery_addresses
+        (user_id, label, recipient_name, phone, state, city, area, address_line, landmark, is_default)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       RETURNING id, label, recipient_name AS "recipientName", phone, state, city, area,
+        address_line AS "addressLine", landmark, is_default AS "isDefault"`,
+      [userId, input.label, input.recipientName, input.phone, input.state, input.city, input.area,
+        input.addressLine, input.landmark ?? null, isDefault]
+    );
+    return result.rows[0];
+  }
+
+  async updateAddress(client: DbClient, userId: string, addressId: string, input: {
+    label: string; recipientName: string; phone: string; state: string; city: string;
+    area: string; addressLine: string; landmark?: string | null; isDefault?: boolean;
+  }) {
+    if (input.isDefault === true) await client.query('UPDATE delivery_addresses SET is_default = false WHERE user_id = $1', [userId]);
+    const result = await client.query(
+      `UPDATE delivery_addresses SET label=$3, recipient_name=$4, phone=$5, state=$6, city=$7,
+        area=$8, address_line=$9, landmark=$10, is_default=$11, updated_at=now()
+       WHERE user_id=$1 AND id=$2
+       RETURNING id, label, recipient_name AS "recipientName", phone, state, city, area,
+        address_line AS "addressLine", landmark, is_default AS "isDefault"`,
+      [userId, addressId, input.label, input.recipientName, input.phone, input.state, input.city,
+        input.area, input.addressLine, input.landmark ?? null, input.isDefault === true]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async deleteAddress(client: DbClient, userId: string, addressId: string) {
+    const result = await client.query<{ is_default: boolean }>(
+      'DELETE FROM delivery_addresses WHERE user_id = $1 AND id = $2 RETURNING is_default',
+      [userId, addressId]
+    );
+    if (!result.rowCount) return false;
+    if (result.rows[0]?.is_default) {
+      const next = await client.query<{ id: string }>(
+        'SELECT id FROM delivery_addresses WHERE user_id = $1 ORDER BY created_at ASC, id ASC LIMIT 1',
+        [userId]
+      );
+      if (next.rows[0]) await client.query('UPDATE delivery_addresses SET is_default = true WHERE id = $1', [next.rows[0].id]);
+    }
+    return true;
+  }
+
   async createFromCart(client: DbClient, buyerId: string, idempotencyKey: string): Promise<string> {
     const existing = await client.query<{ id: string; buyer_id: string }>('SELECT id, buyer_id FROM orders WHERE idempotency_key = $1 FOR UPDATE', [idempotencyKey]);
     if (existing.rows[0]) {
