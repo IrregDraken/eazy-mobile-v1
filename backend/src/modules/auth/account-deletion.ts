@@ -198,7 +198,7 @@ export class AccountDeletionService {
             AND (t.type <> 'deposit' OR t.created_at > now() - interval '24 hours'))::text AS pending,
          (SELECT count(*) FROM orders o WHERE o.buyer_id = $1 AND o.status IN ('paid', 'processing', 'shipped', 'disputed'))::text AS orders,
          (SELECT count(DISTINCT oi.order_id) FROM order_items oi JOIN orders o ON o.id = oi.order_id
-            WHERE oi.seller_id = $1 AND o.status IN ('paid', 'processing', 'shipped'))::text AS sales`, [userId]
+            WHERE oi.seller_id = $1 AND o.status IN ('paid', 'processing', 'shipped', 'disputed'))::text AS sales`, [userId]
     );
     const row = result.rows[0];
     const blockers: DeletionBlocker[] = [];
