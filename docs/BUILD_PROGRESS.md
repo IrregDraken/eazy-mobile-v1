@@ -41,7 +41,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 | D6 Eazy Assist | PARTIAL | `lib/features/assist/assist_page.dart`, backend `modules/assist/context.ts`, `service.ts`, `repository.ts`; session bootstrap exists; message ordering, New chat and context need inspection. |
 | D7 Bag / Settings loading | TODO | `lib/features/marketplace/cart_page.dart`, `lib/features/settings/settings_page.dart`; Settings currently waits on a remote load before rendering. |
 | D8 Android system bars | PARTIAL | `lib/app/app.dart`, `lib/features/home/home_shell.dart`, all route/page scaffolds and `AndroidManifest.xml`; audit safe areas, keyboard and navigation insets. |
-| D9 Floating AI orb | TODO | `lib/core/ui/eazy_assist_fab.dart`, `lib/features/home/home_shell.dart`; current FAB is fixed-position and not draggable/scroll-aware. |
+| D9 Floating AI orb | PARTIAL | `lib/core/ui/eazy_assist_fab.dart`, `lib/features/home/home_shell.dart`; current FAB is fixed-position and not draggable/scroll-aware. |
 | D10 Toasts | TODO | Search all SnackBar/ScaffoldMessenger usage and central navigation lifecycle. |
 | D11 Chat visuals | TODO | `lib/features/chat/chat_page.dart`; inspect message bubble, timestamp, attachment layout and header theme contrast. |
 | D12 Profile link | TODO | `lib/features/profile/profile_page.dart`; inspect copy-link control constraints. |
@@ -117,6 +117,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Changes: Create post bottom sheet now uses `useSafeArea: true`; Find people content now applies a bottom SafeArea while leaving the AppBar's normal top inset intact.
 - Verification: both source files re-fetched after updates; Find people widget tree inspected for balanced Scaffold/SafeArea/Column structure. No Android gesture-navigation or three-button-navigation device test, analyzer, or widget test has run.
 - Remaining: audit every page/modal for safe-area behavior, fix any remaining clipped Publish/Settings controls, and test keyboard + gesture/three-button navigation on physical Android devices.
+
+### D9 — Floating AI orb (partial)
+- Status: PARTIAL.
+- Cause confirmed: the launcher was fixed at a single bottom-right position and did not respond to keyboard visibility or scroll direction.
+- Files changed: `lib/features/home/home_shell.dart`.
+- Changes: orb can now be dragged within the HomeShell viewport; its position is persisted in secure storage; it hides while the keyboard is open and while scrolling down, and reappears on upward scrolling. It remains absent from Wallet, Chat and Assist because the HomeShell only renders it on Home, Discover and Profile.
+- Verification: source re-fetched and inspected; secure-storage dependency already exists. No gesture/device test has run. PARTIAL pending interaction tests and overlap checks.
+- Remaining: verify drag/tap gesture arbitration and persisted position on device; confirm no overlap with bottom actions and route-level launcher placements.
 
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
