@@ -81,7 +81,10 @@ class _CartPageState extends State<CartPage> {
     final subtotal = cart['subtotal']?.toString() ?? '0.00';
     final currency = cart['currency']?.toString() ?? 'NGN';
     return Scaffold(
-      appBar: AppBar(title: const Text('Your bag')),
+      appBar: AppBar(
+        title: const Text('Your bag'),
+        actions: [IconButton(tooltip: 'My orders', onPressed: () => context.push('/orders'), icon: const Icon(Icons.receipt_long_rounded))],
+      ),
       body:
           loading
               ? const Center(child: CircularProgressIndicator())
