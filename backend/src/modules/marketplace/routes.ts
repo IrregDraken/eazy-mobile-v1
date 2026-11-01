@@ -3,7 +3,7 @@ import { currentUserId, requireAuth } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { sendSuccess } from '../../utils/http.js';
 import { paginationQuerySchema, type Pagination } from '../../utils/pagination.js';
-import { MarketplaceService, inventorySchema, productCreateSchema, productIdSchema, productSearchSchema, productUpdateSchema, marketplaceSearchSchema, sellerDeliverySettingsSchema, sellerStoreSchema, sellerStoreSlugSchema, sellerUsernameSchema } from './service.js';
+import { MarketplaceService, inventorySchema, productCreateSchema, productIdSchema, productSearchSchema, productUpdateSchema, marketplaceSearchSchema, sellerAgreementAcceptSchema, sellerDeliverySettingsSchema, sellerStoreSchema, sellerStoreSlugSchema, sellerUsernameSchema } from './service.js';
 
 export function createMarketplaceRouter(service: MarketplaceService): Router {
   const router = Router();
@@ -14,6 +14,8 @@ export function createMarketplaceRouter(service: MarketplaceService): Router {
   router.get('/search', validate('query', marketplaceSearchSchema), async (request, response) => sendSuccess(response, await service.searchAll(String(request.query.q ?? ''), request.auth?.userId)));
   router.get('/products', validate('query', productSearchSchema), async (request, response) => sendSuccess(response, await service.search(request.query as never, request.auth?.userId)));
   router.get('/sellers/:id/delivery-settings', validate('params', productIdSchema), async (request, response) => sendSuccess(response, await service.sellerDeliverySettings(param(request.params.id))));
+  router.get('/seller/agreement', requireAuth, async (request, response) => sendSuccess(response, await service.sellerAgreement(currentUserId(request))));
+  router.post('/seller/agreement/accept', requireAuth, validate('body', sellerAgreementAcceptSchema), async (request, response) => sendSuccess(response, await service.acceptSellerAgreement(currentUserId(request))));
   router.get('/seller/products', requireAuth, validate('query', paginationQuerySchema), async (request, response) => sendSuccess(response, await service.myProducts(currentUserId(request), request.query as never)));
   router.get('/seller/store', requireAuth, async (request, response) => sendSuccess(response, await service.sellerStore(currentUserId(request))));
   router.put('/seller/store', requireAuth, validate('body', sellerStoreSchema), async (request, response) => sendSuccess(response, await service.updateSellerStore(currentUserId(request), request.body)));
