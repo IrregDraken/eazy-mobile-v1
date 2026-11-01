@@ -7,7 +7,7 @@ export const addressIdSchema = z.object({ id: z.string().guid() });
 export const deliveryAddressSchema = z.object({
   label: z.string().trim().min(1).max(40),
   recipientName: z.string().trim().min(2).max(120),
-  phone: z.string().trim().regex(/^\\+?[0-9 ()-]{7,24}$/),
+  phone: z.string().trim().regex(/^\+?[0-9 ()-]{7,24}$/),
   state: z.string().trim().min(2).max(80),
   city: z.string().trim().min(2).max(80),
   area: z.string().trim().min(2).max(120),
