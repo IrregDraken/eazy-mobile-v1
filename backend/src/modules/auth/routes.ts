@@ -1,4 +1,4 @@
-import { Router, type RequestHandler } from 'express';
+import { Router, type Request, type RequestHandler } from 'express';
 import { currentUserId, requireAuth } from '../../middleware/auth.js';
 import { sendSuccess } from '../../utils/http.js';
 import { AppError } from '../../middleware/errors.js';
@@ -63,7 +63,10 @@ export function createAuthRouter(authService: AuthService, accountDeletion?: Acc
       try { sendSuccess(response, await accountDeletion.preflight(currentUserId(request))); } catch (error) { next(error); }
     });
     router.post('/delete-account', requireAuth, accountDeletionLimit, validate('body', accountDeletionSchema), async (request, response, next) => {
-      try { sendSuccess(response, await accountDeletion.deleteAccount(currentUserId(request), { ipAddress: request.ip })); } catch (error) { next(error); }
+      try {
+        requireRecentAuthentication(request);
+        sendSuccess(response, await accountDeletion.deleteAccount(currentUserId(request), { ipAddress: request.ip }));
+      } catch (error) { next(error); }
     });
   }
   router.get('/sessions', requireAuth, sessionReadLimit, async (request, response, next) => {
@@ -107,4 +110,12 @@ export function createAuthRouter(authService: AuthService, accountDeletion?: Acc
     }
   });
   return router;
+}
+
+function requireRecentAuthentication(request: Request) {
+  const authTime = Number(request.auth?.claims.auth_time);
+  const ageSeconds = Date.now() / 1000 - authTime;
+  if (!Number.isFinite(authTime) || ageSeconds < 0 || ageSeconds > 300) {
+    throw new AppError('FORBIDDEN', 'For security, sign in again before deleting your account.');
+  }
 }
