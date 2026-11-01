@@ -230,7 +230,7 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
                 const SizedBox(height: 10),
                 TextField(controller: storeName, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Store name')),
                 const SizedBox(height: 10),
-                TextField(controller: storeSlug, decoration: const InputDecoration(labelText: 'Store URL slug', prefixText: 'eazy.name.ng/store/')),
+                TextField(controller: storeSlug, decoration: const InputDecoration(labelText: 'Store URL slug', prefixText: 'www.eazy.name.ng/store/')),
                 const SizedBox(height: 10),
                 TextField(controller: storeDescription, minLines: 2, maxLines: 4, maxLength: 1500, decoration: const InputDecoration(labelText: 'Store description')),
                 const SizedBox(height: 10),
