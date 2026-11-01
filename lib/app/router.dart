@@ -122,7 +122,7 @@ GoRouter buildRouter(
     GoRoute(path: '/location', builder: (_, _) => const LocationPage()),
     GoRoute(
       path: '/notifications',
-      builder: (_, _) => const NotificationsPage(),
+      builder: (_, state) => NotificationsPage(initialDeepLink: state.uri.queryParameters['deepLink']),
     ),
     GoRoute(path: '/settings', builder: (_, _) => SettingsPage(auth: auth)),
     GoRoute(path: '/account-settings', builder: (_, _) => AccountSettingsPage(auth: auth)),
