@@ -32,7 +32,8 @@ export const productUpdateSchema = z.object({
   categoryId: z.string().guid().nullable().optional(),
   priceAmount: priceSchema.optional(),
   currency: currencySchema.optional(),
-  status: statusSchema.optional()
+  status: statusSchema.optional(),
+  media: z.array(mediaSchema).max(12).optional()
 }).strict().refine(value => Object.keys(value).length > 0, 'At least one product field is required');
 
 export const sellerDeliverySettingsSchema = z.object({
