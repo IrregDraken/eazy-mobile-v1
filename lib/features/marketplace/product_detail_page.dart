@@ -151,6 +151,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
             ),
           if (p['seller'] is Map && (p['seller'] as Map)['username'] != null)
+            Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => context.push('/seller-reviews/' + Uri.encodeComponent((p['seller'] as Map)['username'].toString())), child: const Text('View seller reviews'))),
+          if (p['seller'] is Map && (p['seller'] as Map)['username'] != null)
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
