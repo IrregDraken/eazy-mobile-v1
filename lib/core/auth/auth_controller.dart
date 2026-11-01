@@ -652,7 +652,9 @@ class AuthController extends ChangeNotifier {
     // Revoke push registration and the server session while the bearer token
     // is still available. Sign-out must still complete when the network is down.
     try {
-      await PushRegistrationService.instance.unregister(api);
+      await PushRegistrationService.instance
+          .unregister(api)
+          .timeout(const Duration(seconds: 3));
     } catch (_) {}
     try {
       await api
@@ -664,10 +666,12 @@ class AuthController extends ChangeNotifier {
     } catch (_) {}
 
     try {
-      if (firebaseReady) await FirebaseAuth.instance.signOut();
+      if (firebaseReady) {
+        await FirebaseAuth.instance.signOut().timeout(const Duration(seconds: 3));
+      }
     } catch (_) {}
     try {
-      await GoogleSignIn.instance.signOut();
+      await GoogleSignIn.instance.signOut().timeout(const Duration(seconds: 3));
     } catch (_) {}
 
     const secureStorage = FlutterSecureStorage();
