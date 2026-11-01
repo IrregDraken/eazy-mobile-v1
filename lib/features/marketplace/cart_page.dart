@@ -22,7 +22,10 @@ class _CartPageState extends State<CartPage> {
   }
 
   Future<void> load() async {
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
       cart = await api.get('cart', auth: true);
     } on ApiException catch (e) {
@@ -141,7 +144,18 @@ class _CartPageState extends State<CartPage> {
               ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(error!, textAlign: TextAlign.center),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 14),
+                      OutlinedButton.icon(
+                        onPressed: loading ? null : load,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Try again'),
+                      ),
+                    ],
+                  ),
                 ),
               )
               : items.isEmpty
