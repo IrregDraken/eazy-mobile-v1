@@ -138,6 +138,51 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     _ => status,
   };
 
+  Future<void> writeReview(String itemId) async {
+    final reviewText = TextEditingController();
+    int rating = 5;
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, updateDialog) => AlertDialog(
+        title: const Text('Review this item'),
+        content: SizedBox(
+          width: 420,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            DropdownButtonFormField<int>(
+              value: rating,
+              decoration: const InputDecoration(labelText: 'Rating'),
+              items: List.generate(5, (index) => DropdownMenuItem(value: index + 1, child: Text('${index + 1} star${index == 0 ? '' : 's'}'))),
+              onChanged: (value) { if (value != null) updateDialog(() => rating = value); },
+            ),
+            const SizedBox(height: 10),
+            TextField(controller: reviewText, minLines: 3, maxLines: 5, maxLength: 1000, decoration: const InputDecoration(labelText: 'Your review')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () {
+            if (reviewText.text.trim().isNotEmpty) Navigator.pop(dialogContext, true);
+          }, child: const Text('Submit review')),
+        ],
+      )),
+    );
+    if (submitted == true && mounted) {
+      setState(() => busy = true);
+      try {
+        await api.post('orders/${widget.orderId}/items/$itemId/review', auth: true, body: {
+          'rating': rating,
+          'reviewText': reviewText.text.trim(),
+        });
+        await load();
+      } on ApiException catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      } finally {
+        if (mounted) setState(() => busy = false);
+      }
+    }
+    reviewText.dispose();
+  }
+
   Future<void> confirmReceived(String fulfillmentId) async {
     setState(() => busy = true);
     try {
@@ -241,12 +286,23 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           const Text('Items', style: TextStyle(fontWeight: FontWeight.w800)),
                           for (final item in items)
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(item['productName']?.toString() ?? 'Product'),
-                              subtitle: Text('Qty ${item['quantity']}'),
-                              trailing: Text('${data['currency'] ?? 'NGN'} ${item['lineTotal'] ?? '0.00'}'),
-                            ),
+                            Column(children: [
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(item['productName']?.toString() ?? 'Product'),
+                                subtitle: Text('Qty ${item['quantity']}'),
+                                trailing: Text('${data['currency'] ?? 'NGN'} ${item['lineTotal'] ?? '0.00'}'),
+                              ),
+                              if (data['status'] == 'completed' && item['reviewed'] != true)
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                    onPressed: busy ? null : () => writeReview(item['id'].toString()),
+                                    icon: const Icon(Icons.star_outline_rounded),
+                                    label: const Text('Write a review'),
+                                  ),
+                                ),
+                            ]),
                           const Divider(),
                           _total('Items subtotal', data['subtotal']),
                           _total('Delivery', data['deliveryTotal']),
@@ -266,6 +322,16 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                               padding: const EdgeInsets.all(14),
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 Text(fulfillment['sellerDisplayName']?.toString() ?? 'Seller', style: const TextStyle(fontWeight: FontWeight.w800)),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                    onPressed: (fulfillment['sellerUsername']?.toString().isNotEmpty ?? false)
+                                        ? () => context.go('/home?tab=chat&username=${Uri.encodeComponent(fulfillment['sellerUsername'].toString())}')
+                                        : null,
+                                    icon: const Icon(Icons.chat_bubble_outline_rounded),
+                                    label: const Text('Message seller'),
+                                  ),
+                                ),
                                 Text('${fulfillment['deliveryMethod'] == 'delivery' ? 'Delivery' : 'Pickup'} · ${statusLabel(status)}'),
                                 if (fulfillment['deliveryAddress'] is Map)
                                   Text((fulfillment['deliveryAddress'] as Map).values.where((value) => value != null).join(', ')),
