@@ -338,7 +338,10 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
                             unread: unread,
                             timestamp: _time(_activity(c)),
                             avatarUrl: p['avatarUrl']?.toString(),
-                            onTap: () => widget.onOpen(c),
+                            onTap: () async {
+                              await widget.onOpen(c);
+                              if (mounted) await _load(quiet: true);
+                            },
                             onLongPress: () {},
                           );
                         },
