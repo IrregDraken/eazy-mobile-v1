@@ -6,6 +6,7 @@ import type { CartRepository } from '../src/modules/cart/repository.js';
 import { OrderService } from '../src/modules/orders/service.js';
 import type { OrderRepository } from '../src/modules/orders/repository.js';
 import { disputeSchema, orderCreateSchema, orderReviewSchema } from '../src/modules/orders/schemas.js';
+import { productUpdateSchema, sellerAgreementAcceptSchema, sellerStoreSchema } from '../src/modules/marketplace/service.js';
 
 function fakePool() {
   const client = { query: async () => undefined, release: () => undefined };
@@ -128,4 +129,25 @@ test('automatic escrow release only releases due delivered fulfillments using in
   assert.match(release, /amount_kobo/);
   assert.match(release, /\$4::bigint/);
   assert.ok(calls.some(sql => sql.includes("status = 'completed'")));
+});
+
+test('seller store and agreement schemas require explicit valid owner data', () => {
+  const store = sellerStoreSchema.parse({
+    storeName: 'Draken Supplies',
+    slug: 'draken-supplies',
+    description: 'A verified store profile.',
+    supportPhone: '+2348012345678'
+  });
+  assert.equal(store.slug, 'draken-supplies');
+  assert.throws(() => sellerStoreSchema.parse({ storeName: 'Bad', slug: 'not valid slug' }));
+  assert.equal(sellerAgreementAcceptSchema.parse({ accepted: true }).accepted, true);
+  assert.throws(() => sellerAgreementAcceptSchema.parse({ accepted: false }));
+});
+
+test('product edit schema permits owned listing media replacement but rejects unknown fields', () => {
+  assert.equal(productUpdateSchema.parse({
+    name: 'Updated listing',
+    media: [{ storageKey: 'buyer-owned/product-image.webp', position: 0 }]
+  }).media?.length, 1);
+  assert.throws(() => productUpdateSchema.parse({ priceAmount: '100.00', sellerId: 'client-controlled' }));
 });
