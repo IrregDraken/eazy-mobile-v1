@@ -20,6 +20,10 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
   final description = TextEditingController();
   final price = TextEditingController();
   final quantity = TextEditingController(text: '1');
+  final deliveryFee = TextEditingController(text: '0');
+  final pickupInstructions = TextEditingController();
+  bool deliveryEnabled = false;
+  bool pickupEnabled = true;
   List<Map<String, dynamic>> categories = [];
   String? categoryId;
   MediaUpload? image;
@@ -32,6 +36,7 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
   void initState() {
     super.initState();
     _loadCategories();
+    _loadDeliverySettings();
   }
 
   @override
@@ -40,6 +45,8 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
     description.dispose();
     price.dispose();
     quantity.dispose();
+    deliveryFee.dispose();
+    pickupInstructions.dispose();
     super.dispose();
   }
 
@@ -57,6 +64,24 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
       if (mounted) setState(() => error = e.message);
     } finally {
       if (mounted) setState(() => loadingCategories = false);
+    }
+  }
+
+  Future<void> _loadDeliverySettings() async {
+    try {
+      final result = await api.get('marketplace/seller/delivery-settings', auth: true);
+      final settings = result['settings'] is Map
+          ? Map<String, dynamic>.from(result['settings'] as Map)
+          : <String, dynamic>{};
+      if (!mounted) return;
+      setState(() {
+        deliveryEnabled = settings['deliveryEnabled'] == true;
+        pickupEnabled = settings['pickupEnabled'] != false;
+        deliveryFee.text = settings['deliveryFeeAmount']?.toString() ?? '0';
+        pickupInstructions.text = settings['pickupInstructions']?.toString() ?? '';
+      });
+    } on ApiException catch (e) {
+      if (mounted) setState(() => error = e.message);
     }
   }
 
@@ -87,8 +112,31 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
       setState(() => error = 'Enter a valid NGN price, for example 12500 or 12500.50.');
       return;
     }
+    if (!deliveryEnabled && !pickupEnabled) {
+      setState(() => error = 'Enable delivery, pickup or both before publishing.');
+      return;
+    }
+    if (deliveryEnabled &&
+        (double.tryParse(deliveryFee.text.trim()) == null ||
+            double.parse(deliveryFee.text.trim()) < 0)) {
+      setState(() => error = 'Enter a valid delivery fee.');
+      return;
+    }
     setState(() { publishing = true; error = null; });
     try {
+      await api.patch(
+        'marketplace/seller/delivery-settings',
+        auth: true,
+        body: {
+          'deliveryEnabled': deliveryEnabled,
+          'pickupEnabled': pickupEnabled,
+          'deliveryFeeAmount': deliveryFee.text.trim(),
+          'currency': 'NGN',
+          'pickupInstructions': pickupInstructions.text.trim().isEmpty
+              ? null
+              : pickupInstructions.text.trim(),
+        },
+      );
       final result = await api.post(
         'marketplace/products',
         auth: true,
@@ -163,6 +211,46 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
           TextField(controller: price, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Price', prefixText: '₦ ', hintText: '12500')),
           const SizedBox(height: 12),
           TextField(controller: quantity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Available quantity')),
+          const SizedBox(height: 18),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Delivery and pickup', style: TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: deliveryEnabled,
+                    onChanged: publishing ? null : (value) => setState(() => deliveryEnabled = value),
+                    title: const Text('Offer delivery'),
+                    subtitle: const Text('Set the fee buyers will see at checkout.'),
+                  ),
+                  if (deliveryEnabled)
+                    TextField(
+                      controller: deliveryFee,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'Delivery fee', prefixText: '₦ '),
+                    ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: pickupEnabled,
+                    onChanged: publishing ? null : (value) => setState(() => pickupEnabled = value),
+                    title: const Text('Allow pickup'),
+                  ),
+                  if (pickupEnabled)
+                    TextField(
+                      controller: pickupInstructions,
+                      maxLength: 500,
+                      minLines: 2,
+                      maxLines: 3,
+                      decoration: const InputDecoration(labelText: 'Pickup instructions (optional)'),
+                    ),
+                ],
+              ),
+            ),
+          ),
           if (error != null) ...[
             const SizedBox(height: 14),
             Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
