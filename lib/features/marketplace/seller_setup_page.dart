@@ -175,7 +175,7 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Become a Seller'), actions: [IconButton(tooltip: 'Seller orders', onPressed: () => context.push('/seller/orders'), icon: const Icon(Icons.receipt_long_rounded))]),
+    appBar: AppBar(title: const Text('Become a Seller'), actions: [IconButton(tooltip: 'Seller orders', onPressed: () => context.push('/seller/orders'), icon: const Icon(Icons.receipt_long_rounded)), IconButton(tooltip: 'Seller payables', onPressed: () => context.push('/seller/payables'), icon: const Icon(Icons.account_balance_wallet_outlined))]),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
