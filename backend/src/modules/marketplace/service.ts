@@ -35,6 +35,13 @@ export const productUpdateSchema = z.object({
   status: statusSchema.optional()
 }).strict().refine(value => Object.keys(value).length > 0, 'At least one product field is required');
 
+export const sellerDeliverySettingsSchema = z.object({
+  deliveryEnabled: z.boolean(),
+  pickupEnabled: z.boolean(),
+  deliveryFeeAmount: priceSchema,
+  currency: currencySchema.default('NGN'),
+  pickupInstructions: z.string().trim().max(500).nullable().optional()
+}).strict().refine(value => value.deliveryEnabled || value.pickupEnabled, 'Enable delivery, pickup or both');
 export const inventorySchema = z.object({ availableQuantity: z.number().int().min(0).max(1_000_000) }).strict();
 export const productIdSchema = z.object({ id: z.string().guid() });
 export const sellerUsernameSchema = z.object({
@@ -83,6 +90,22 @@ export class MarketplaceService {
     const product = await this.repository.getById(productId, viewerId);
     if (!product) throw new AppError('NOT_FOUND', 'Product not found');
     return { product: await this.attachMediaUrls(product) };
+  }
+
+  async sellerDeliverySettings(sellerId: string) {
+    return { settings: await this.repository.sellerDeliverySettings(sellerId) };
+  }
+
+  async updateSellerDeliverySettings(sellerId: string, input: z.infer<typeof sellerDeliverySettingsSchema>) {
+    const fee = Number(input.deliveryFeeAmount);
+    if (!Number.isFinite(fee) || fee < 0) throw new AppError('VALIDATION_ERROR', 'Delivery fee must be zero or greater');
+    return {
+      settings: await this.repository.updateSellerDeliverySettings(sellerId, {
+        ...input,
+        deliveryFeeAmount: input.deliveryFeeAmount,
+        pickupInstructions: input.pickupInstructions?.trim() || null
+      })
+    };
   }
 
   async create(sellerId: string, input: z.infer<typeof productCreateSchema>) {
