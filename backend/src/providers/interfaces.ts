@@ -32,7 +32,7 @@ export interface LocationProvider {
   search(input: { query: string; limit: number }): Promise<ProviderLocationResult[]>;
   getCapabilities(): LocationProviderCapabilities;
 }
-export interface NotificationProvider { notify(input: { userId: string; title: string; body: string }): Promise<void>; }
+export interface NotificationProvider { notify(input: { userId: string; title: string; body: string; deepLink?: string | null }): Promise<void>; }
 export interface StorageProvider { put(input: { key: string; contentType: string; bytes: Uint8Array }): Promise<{ url: string }>; }
 
 export interface BankProvider {
