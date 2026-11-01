@@ -50,3 +50,6 @@ export const sellerFulfillmentActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('ship') }).strict(),
   z.object({ action: z.literal('deliver') }).strict()
 ]);
+
+export const orderItemParamsSchema = z.object({ id: z.string().guid(), itemId: z.string().guid() }).strict();
+export const orderReviewSchema = z.object({ rating: z.number().int().min(1).max(5), reviewText: z.string().trim().min(1).max(1000) }).strict();
