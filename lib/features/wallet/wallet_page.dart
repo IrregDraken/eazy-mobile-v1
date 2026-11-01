@@ -912,10 +912,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
 
     setState(() => busy = true);
     try {
-      final authenticated = await _authenticateTransfer(
-        'Authorize sending ${formatEazyMoney(amount, currency: _currency)} to $accountName',
-      );
-      if (!authenticated) return;
       final paymentPin = await _requestPaymentPin();
       if (paymentPin == null || !mounted) return;
       await api.post(
@@ -1189,8 +1185,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     if (confirmed != true) return;
     setState(() => busy = true);
     try {
-      final authenticated = await _authenticateTransfer('Authorize this QR payment');
-      if (!authenticated) return;
       final paymentPin = await _requestPaymentPin();
       if (paymentPin == null || !mounted) return;
       await action(paymentPin);
