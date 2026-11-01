@@ -100,7 +100,7 @@ export class MarketplaceRepository {
       currency: string; pickupInstructions: string | null;
     }>(
       `SELECT delivery_enabled AS "deliveryEnabled", pickup_enabled AS "pickupEnabled",
-        delivery_fee_amount::text AS "deliveryFeeAmount", trim(currency) AS currency,
+        (delivery_fee_kobo::numeric / 100)::numeric(20,2)::text AS "deliveryFeeAmount", trim(currency) AS currency,
         pickup_instructions AS "pickupInstructions"
        FROM seller_delivery_settings WHERE seller_id = $1 LIMIT 1`,
       [sellerId]
@@ -120,12 +120,12 @@ export class MarketplaceRepository {
   }) {
     const result = await this.pool.query(
       `INSERT INTO seller_delivery_settings
-        (seller_id, delivery_enabled, pickup_enabled, delivery_fee_amount, currency, pickup_instructions)
-       VALUES ($1, $2, $3, $4::numeric, $5, $6)
+        (seller_id, delivery_enabled, pickup_enabled, delivery_fee_kobo, currency, pickup_instructions)
+       VALUES ($1, $2, $3, round($4::numeric * 100)::bigint, $5, $6)
        ON CONFLICT (seller_id) DO UPDATE SET
         delivery_enabled = EXCLUDED.delivery_enabled,
         pickup_enabled = EXCLUDED.pickup_enabled,
-        delivery_fee_amount = EXCLUDED.delivery_fee_amount,
+        delivery_fee_kobo = EXCLUDED.delivery_fee_kobo,
         currency = EXCLUDED.currency,
         pickup_instructions = EXCLUDED.pickup_instructions,
         updated_at = now()`,
