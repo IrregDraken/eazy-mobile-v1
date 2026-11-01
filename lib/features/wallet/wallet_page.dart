@@ -830,8 +830,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   subtitle: Text('$selectedBank · $number'),
                 ),
                 const Divider(),
-                _Info('Amount', '$_currency $amount'),
-                _Info('Available balance', '$_currency $_balance'),
+                _Info('Amount', formatEazyMoney(amount, currency: _currency)),
+                _Info('Available balance', formatEazyMoney(_balance, currency: _currency)),
                 const SizedBox(height: 10),
                 const Text(
                   'Authenticate on this device before submitting the transfer.',
@@ -1385,7 +1385,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                               '${order['status'] ?? 'pending'} · ${order['createdAt'] ?? ''}',
                             ),
                             trailing: Text(
-                              '${order['currency'] ?? _currency} ${order['total'] ?? order['amount'] ?? '0.00'}',
+                              formatEazyMoney(order['total'] ?? order['amount'] ?? '0.00', currency: (order['currency'] ?? _currency).toString()),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
                               ),
@@ -1449,7 +1449,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 _Info(
                   'Amount',
                   balanceVisible
-                      ? '${detail['currency'] ?? _currency} ${detail['amount'] ?? '0.00'}'
+                      ? formatEazyMoney(detail['amount'] ?? '0.00', currency: (detail['currency'] ?? _currency).toString())
                       : '••••••',
                 ),
                 _Info(
@@ -1653,8 +1653,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 const SizedBox(height: 3),
                 Text(
                   loading || !balanceVisible
-                      ? '$_currency ••••••'
-                      : '$_currency $_balance',
+                      ? (_currency == 'NGN' ? '₦' : '$_currency ') + '••••••'
+                      : formatEazyMoney(_balance, currency: _currency),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 38,
@@ -1733,10 +1733,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                           ),
                         ),
                         Text(
-                          (pendingDeposit?['currency']?.toString() == 'NGN'
-                                  ? '₦'
-                                  : (pendingDeposit?['currency']?.toString() ?? _currency) + ' ') +
-                              (pendingDeposit?['amount']?.toString() ?? '0.00'),
+                          formatEazyMoney(
+                            pendingDeposit?['amount'] ?? '0.00',
+                            currency: pendingDeposit?['currency']?.toString() ?? _currency,
+                          ),
                           style: const TextStyle(fontWeight: FontWeight.w900),
                         ),
                       ],
@@ -1852,7 +1852,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   ),
                   trailing: Text(
                     balanceVisible
-                        ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}'
+                        ? formatEazyMoney(entry['amount'] ?? '0.00', currency: (entry['currency'] ?? _currency).toString())
                         : '••••••',
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
@@ -2027,7 +2027,7 @@ class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
                       ),
                       trailing: Text(
                         widget.balanceVisible
-                            ? '${entry['currency'] ?? widget.currency} ${entry['amount'] ?? '0.00'}'
+                            ? formatEazyMoney(entry['amount'] ?? '0.00', currency: (entry['currency'] ?? widget.currency).toString())
                             : '••••••',
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
