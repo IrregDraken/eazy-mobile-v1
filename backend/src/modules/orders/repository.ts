@@ -328,8 +328,32 @@ export class OrderRepository {
       row.status === 'shipped';
     if (!allowed) return { error: 'INVALID_TRANSITION' as const };
 
+    if (action === 'reject') return { error: 'REFUND_UNAVAILABLE' as const };
     if (action === 'reject' && (!reason || reason.trim().length < 5 || reason.trim().length > 500)) {
       return { error: 'REJECTION_REASON_REQUIRED' as const };
+    }
+    if (action === 'deliver') {
+      const updated = await client.query<{ count: string }>(
+        `WITH changed AS (
+           UPDATE inventory i
+           SET available_quantity = i.available_quantity - oi.quantity,
+               reserved_quantity = i.reserved_quantity - oi.quantity,
+               updated_at = now()
+           FROM order_items oi
+           WHERE oi.order_id = $1 AND oi.seller_id = $2
+             AND i.product_id = oi.product_id
+             AND i.available_quantity >= oi.quantity
+             AND i.reserved_quantity >= oi.quantity
+           RETURNING i.product_id
+         )
+         SELECT count(*)::text AS count FROM changed`,
+        [orderId, sellerId]
+      );
+      const expected = await client.query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM order_items WHERE order_id = $1 AND seller_id = $2',
+        [orderId, sellerId]
+      );
+      if (updated.rows[0]?.count !== expected.rows[0]?.count) throw new Error('INVENTORY_RESERVATION_MISMATCH');
     }
     const timestampColumn = action === 'accept' ? 'accepted_at' : action === 'ship' ? 'shipped_at' : action === 'deliver' ? 'delivered_at' : null;
     const releaseClause = action === 'deliver' ? ', release_after = now() + ($3::int * interval \'1 day\')' : '';
