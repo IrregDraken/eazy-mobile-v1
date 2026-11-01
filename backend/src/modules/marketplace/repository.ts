@@ -226,4 +226,44 @@ export class MarketplaceRepository {
     return result.rows;
   }
 
+  async sellerStoreBySeller(sellerId: string) {
+    const result = await this.pool.query(
+      `SELECT seller_id AS "sellerId", store_name AS "storeName", slug, description,
+        support_phone AS "supportPhone", status, created_at AS "createdAt", updated_at AS "updatedAt"
+       FROM seller_stores WHERE seller_id = $1 LIMIT 1`,
+      [sellerId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async sellerStoreBySlug(slug: string) {
+    const result = await this.pool.query(
+      `SELECT s.seller_id AS "sellerId", s.store_name AS "storeName", s.slug,
+        s.description, s.support_phone AS "supportPhone", s.status,
+        p.username, p.avatar_url AS "avatarUrl"
+       FROM seller_stores s JOIN profiles p ON p.user_id = s.seller_id
+       WHERE s.slug = $1 AND s.status = 'active' LIMIT 1`,
+      [slug]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async upsertSellerStore(client: DbClient, sellerId: string, input: {
+    storeName: string; slug: string; description: string; supportPhone?: string | null;
+  }) {
+    const result = await client.query(
+      `INSERT INTO seller_stores (seller_id, store_name, slug, description, support_phone)
+       VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (seller_id) DO UPDATE SET
+         store_name = EXCLUDED.store_name, slug = EXCLUDED.slug,
+         description = EXCLUDED.description, support_phone = EXCLUDED.support_phone,
+         updated_at = now()
+       RETURNING seller_id AS "sellerId", store_name AS "storeName", slug,
+         description, support_phone AS "supportPhone", status,
+         created_at AS "createdAt", updated_at AS "updatedAt"`,
+      [sellerId, input.storeName, input.slug, input.description, input.supportPhone ?? null]
+    );
+    return result.rows[0];
+  }
+
 }
