@@ -102,6 +102,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Verification: source changes and migration were committed; repository queries and type projections were re-fetched and inspected. Database migration, TypeScript build/tests, Flutter analyzer and UI tests have not run. PARTIAL until those pass.
 - Remaining: run migration against a disposable PostgreSQL database, backend tests/build, Flutter analyzer/tests, and verify new-chat/history ordering on device.
 
+### D7 — Bag and Settings loading (partial)
+- Status: PARTIAL.
+- Cause confirmed: Settings blocked its entire local screen behind a remote settings request; the cart had an error message but no retry action. API requests already have a 20-second timeout in `ApiClient`.
+- Files changed: `lib/features/settings/settings_page.dart`, `lib/features/marketplace/cart_page.dart`.
+- Changes: Settings now renders immediately with local controls while remote preferences load, showing only a slim progress indicator; cart retries clear the previous error and the error state now provides a retry action.
+- Verification: source inspected and updated through GitHub; the shared API client timeout is 20 seconds. No runtime test has run. PARTIAL pending analyzer and network/offline UI checks.
+- Remaining: verify bag timeout/retry and Settings first-frame rendering on device; add tests if supported by existing test patterns.
+
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
 - Files changed: `docs/BUILD_PROGRESS.md` only.
