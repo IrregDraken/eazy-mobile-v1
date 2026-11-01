@@ -276,6 +276,16 @@ export class MarketplaceRepository {
     return result.rows;
   }
 
+  async hasAcceptedSellerAgreement(sellerId: string, version: string) {
+    const result = await this.pool.query('SELECT 1 FROM seller_agreement_acceptances WHERE seller_id = $1 AND agreement_version = $2 LIMIT 1', [sellerId, version]);
+    return Boolean(result.rowCount);
+  }
+
+  async acceptSellerAgreement(client: DbClient, sellerId: string, version: string) {
+    await client.query('INSERT INTO seller_agreement_acceptances (seller_id, agreement_version) VALUES ($1,$2) ON CONFLICT (seller_id, agreement_version) DO NOTHING', [sellerId, version]);
+    return { accepted: true, version };
+  }
+
   async sellerStoreBySeller(sellerId: string) {
     const result = await this.pool.query(
       `SELECT seller_id AS "sellerId", store_name AS "storeName", slug, description,
