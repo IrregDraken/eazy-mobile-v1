@@ -17,21 +17,20 @@ export function createWalletRouter(service: WalletService, paymentPin?: PaymentP
   const controller = createWalletController(service);
   const rateLimit = createRateLimiter({ name: 'wallet-transfer', windowMs: 60_000, max: 10 });
   const pinMutationLimit = createRateLimiter({ name: 'wallet-payment-pin', windowMs: 10 * 60_000, max: 5 });
-  const pinCodeSchema = z.object({ challengeId: z.string().uuid(), code: z.string().regex(/^\\d{6}$/) }).strict();
   const setupPinSchema = z.object({
-    pin: z.string().regex(/^\\d{4}$/),
-    confirmation: z.string().regex(/^\\d{4}$/),
+    pin: z.string().regex(/^\d{4}$/),
+    confirmation: z.string().regex(/^\d{4}$/),
     challengeId: z.string().uuid(),
-    code: z.string().regex(/^\\d{6}$/)
+    code: z.string().regex(/^\d{6}$/)
   }).strict();
   const resetPinSchema = setupPinSchema;
-  const verifyPinSchema = z.object({ pin: z.string().regex(/^(?:\\d{4}|\\d{6})$/) }).strict();
+  const verifyPinSchema = z.object({ pin: z.string().regex(/^(?:\d{4}|\d{6})$/) }).strict();
   const changePinSchema = z.object({
-    currentPin: z.string().regex(/^(?:\\d{4}|\\d{6})$/),
-    newPin: z.string().regex(/^\\d{4}$/),
-    confirmation: z.string().regex(/^\\d{4}$/),
+    currentPin: z.string().regex(/^(?:\d{4}|\d{6})$/),
+    newPin: z.string().regex(/^\d{4}$/),
+    confirmation: z.string().regex(/^\d{4}$/),
     challengeId: z.string().uuid(),
-    code: z.string().regex(/^\\d{6}$/)
+    code: z.string().regex(/^\d{6}$/)
   }).strict();
   router.use(requireAuth);
   router.get('/', controller.getWallet);
@@ -70,7 +69,6 @@ export function createWalletRouter(service: WalletService, paymentPin?: PaymentP
     });
     router.post('/payment-pin/reset', pinMutationLimit, validate('body', resetPinSchema), async (request, response, next) => {
       try {
-        requireRecentAuthentication(request);
         const body = request.body as { pin: string; confirmation: string; challengeId: string; code: string };
         sendSuccess(response, await paymentPin.reset(currentUserId(request), body.pin, body.confirmation, body.challengeId, body.code));
       } catch (error) { next(error); }
