@@ -18,6 +18,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool follows = true, likes = true, comments = true;
   bool loading = true;
   bool deleting = false;
+  bool signingOut = false;
   String error = '';
   @override
   void initState() {
@@ -51,6 +52,24 @@ class _SettingsPageState extends State<SettingsPage> {
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  Future<void> signOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign out of Eazy?'),
+        content: const Text('You will need to sign in again to access your account on this device.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Sign out')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => signingOut = true);
+    await widget.auth.signOut();
+    if (mounted) context.go('/welcome');
   }
 
   Future<void> deleteAccount() async {
@@ -207,6 +226,16 @@ class _SettingsPageState extends State<SettingsPage> {
                       subtitle: const Text('Manage your email, phone number and password'),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () => context.push('/account-settings'),
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ListTile(
+                      leading: const Icon(Icons.logout_rounded),
+                      title: const Text('Sign out'),
+                      subtitle: const Text('Sign out of this device securely'),
+                      trailing: signingOut
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.chevron_right_rounded),
+                      onTap: signingOut ? null : signOut,
                     ),
                   ],
                 ),
