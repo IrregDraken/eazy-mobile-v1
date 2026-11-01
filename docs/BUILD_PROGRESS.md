@@ -43,7 +43,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 | D8 Android system bars | PARTIAL | `lib/app/app.dart`, `lib/features/home/home_shell.dart`, all route/page scaffolds and `AndroidManifest.xml`; audit safe areas, keyboard and navigation insets. |
 | D9 Floating AI orb | PARTIAL | `lib/core/ui/eazy_assist_fab.dart`, `lib/features/home/home_shell.dart`; current FAB is fixed-position and not draggable/scroll-aware. |
 | D10 Toasts | PARTIAL | Search all SnackBar/ScaffoldMessenger usage and central navigation lifecycle. |
-| D11 Chat visuals | TODO | `lib/features/chat/chat_page.dart`; inspect message bubble, timestamp, attachment layout and header theme contrast. |
+| D11 Chat visuals | PARTIAL | `lib/features/chat/chat_page.dart`; inspect message bubble, timestamp, attachment layout and header theme contrast. |
 | D12 Profile link | TODO | `lib/features/profile/profile_page.dart`; inspect copy-link control constraints. |
 | D13 Bottom navigation | TODO | `lib/features/home/home_shell.dart`; selected index is local shell state; verify transitions and duplicate selection. |
 | D14 Dialogs | TODO | Search AlertDialog/showDialog/showModalBottomSheet across client; verify opaque surfaces and theme contrast. |
@@ -133,6 +133,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Changes: explicit snackbar content text colours in both themes; app-level NavigatorObserver immediately removes the current snackbar on push, pop and replace. Flutter's SnackBar default duration remains the automatic-dismiss behavior.
 - Verification: source re-fetched and inspected; app-level ScaffoldMessengerKey and GoRouter construction confirmed. No analyzer/widget test/device navigation test has run.
 - Remaining: verify foreground contrast visually in both themes, ensure queued snackbar behavior is cleared as intended, and test navigation lifecycle.
+
+### D11 — Chat visuals (partial)
+- Status: PARTIAL.
+- Cause confirmed: attachment-only messages still rendered a whitespace body line; timestamp text was 9 px and used the same muted colour on both incoming and outgoing bubbles; the header did not include the other participant's avatar and did not explicitly set the display-name foreground.
+- Files changed: `lib/features/chat/chat_page.dart`.
+- Changes: hide blank message-body text when attachments exist; add participant avatar/fallback icon, explicitly theme the display name and handle, and increase timestamp size/contrast with outgoing/incoming-specific colours. D1's inline image rendering also removes the generic photo chip.
+- Verification: source re-fetched and inspected after update. No analyzer/widget/device visual test has run. PARTIAL pending light/dark screenshot verification.
+- Remaining: verify header and timestamp readability in both themes and check attachment-only bubbles on device.
 
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
