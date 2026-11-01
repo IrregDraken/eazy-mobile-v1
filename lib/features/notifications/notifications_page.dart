@@ -20,6 +20,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   int unread = 0;
   String error = '';
   bool loading = true, pushBusy = false;
+  bool assistVisible = true;
   String filter = 'all';
   StreamSubscription<String>? _tokenRefreshSubscription;
   @override
