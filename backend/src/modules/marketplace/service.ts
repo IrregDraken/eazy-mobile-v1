@@ -42,6 +42,12 @@ export const sellerDeliverySettingsSchema = z.object({
   currency: currencySchema.default('NGN'),
   pickupInstructions: z.string().trim().max(500).nullable().optional()
 }).strict().refine(value => value.deliveryEnabled || value.pickupEnabled, 'Enable delivery, pickup or both');
+export const sellerStoreSchema = z.object({
+  storeName: z.string().trim().min(3).max(100),
+  slug: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9-]{2,59}$/),
+  description: z.string().trim().max(1500).default(''),
+  supportPhone: z.string().trim().regex(/^\\+?[0-9 ()-]{7,24}$/).nullable().optional()
+}).strict();
 export const inventorySchema = z.object({ availableQuantity: z.number().int().min(0).max(1_000_000) }).strict();
 export const productIdSchema = z.object({ id: z.string().guid() });
 export const sellerUsernameSchema = z.object({
@@ -115,6 +121,31 @@ export class MarketplaceService {
     return { items: result.items, meta: paginationMeta(pagination, result.total) };
   }
 
+  async sellerStore(sellerId: string) {
+    return { store: await this.repository.sellerStoreBySeller(sellerId) };
+  }
+
+  async publicSellerStore(slug: string) {
+    const store = await this.repository.sellerStoreBySlug(slug);
+    if (!store) throw new AppError('NOT_FOUND', 'Seller store not found');
+    return { store };
+  }
+
+  async updateSellerStore(sellerId: string, input: z.infer<typeof sellerStoreSchema>) {
+    try {
+      const store = await withTransaction(this.pool, client => this.repository.upsertSellerStore(client, sellerId, {
+        storeName: input.storeName,
+        slug: input.slug,
+        description: input.description ?? '',
+        supportPhone: input.supportPhone?.trim() || null
+      }));
+      return { store };
+    } catch (error) {
+      if ((error as { code?: string })?.code === '23505') throw new AppError('CONFLICT', 'That store URL is already in use');
+      throw error;
+    }
+  }
+
   async sellerDeliverySettings(sellerId: string) {
     return { settings: await this.repository.sellerDeliverySettings(sellerId) };
   }
@@ -132,6 +163,7 @@ export class MarketplaceService {
   }
 
   async create(sellerId: string, input: z.infer<typeof productCreateSchema>) {
+    if (!await this.repository.sellerStoreBySeller(sellerId)) throw new AppError('CONFLICT', 'Create your seller store profile before publishing products');
     const positions = input.media.map(media => media.position);
     if (new Set(positions).size !== positions.length) throw new AppError('VALIDATION_ERROR', 'Media positions must be unique');
     const productId = await withTransaction(this.pool, client => this.repository.create(client, sellerId, input));
