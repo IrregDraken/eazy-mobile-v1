@@ -13,7 +13,7 @@ Base: main at 11cd49b8c35664eaf8bbaabc10cdb96656931cab
 
 ## Phase 0: Orientation
 
-Status: DOING (repository reconnaissance started; local build/test environment not available through the current GitHub connection).
+Status: DONE (repository map and initial code-to-item audit completed; runtime/build verification remains unavailable through the current GitHub-only workspace).
 
 ### Repository map
 - Flutter app: `lib/`; declared Flutter SDK >=3.29.0 and Dart >=3.7.0 in `pubspec.yaml`.
@@ -87,6 +87,7 @@ Status: DOING (repository reconnaissance started; local build/test environment n
 
 ## Verification
 - Repository metadata confirmed; default branch is `main`.
-- Branch `feature/launch-readiness` created from `main`.
-- Source files inspected through GitHub for the paths listed above.
+- Branch `feature/launch-readiness` confirmed isolated from `main`, based on `11cd49b8c35664eaf8bbaabc10cdb96656931cab`.
+- Source files inspected through GitHub for the paths listed above, plus wallet UI/routes, chat message serialization, media signing, Assist context, DVA assignment and webhook routing.
+- D1 deeper trace: Flutter stores the uploaded storage key in message attachments; backend returns `storageKey`/`contentType`/`byteSize`; chat renderer unconditionally renders an attachment chip and the composer shows `fileName` rather than `localPath` thumbnail. This explains the observed chip/filename UI, while the exact failed network read still needs device/provider reproduction. `lib/features/chat/chat_page.dart`, `lib/core/media/media_service.dart`, `backend/src/modules/chat/repository.ts`, `backend/src/modules/media/service.ts`, `backend/src/providers/supabase-storage.ts`.
 - Flutter analyzer, Flutter tests, backend typecheck/tests, Android build, device tests and provider tests have NOT been run in this environment.
