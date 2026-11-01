@@ -31,6 +31,13 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
   bool pickupEnabled = true;
   bool loadingStoreProfile = true;
   bool storeProfileReady = false;
+  bool loadingAgreement = true;
+  bool sellerAgreementConfigured = false;
+  bool sellerAgreementAccepted = false;
+  bool agreedToSellerTerms = false;
+  bool acceptingAgreement = false;
+  String? sellerAgreementVersion;
+  String? sellerAgreementText;
   bool savingStore = false;
   bool loadingDeliverySettings = true;
   bool deliverySettingsReady = false;
@@ -48,6 +55,7 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
     _loadCategories();
     _loadDeliverySettings();
     _loadStoreProfile();
+    _loadSellerAgreement();
   }
 
   @override
@@ -79,6 +87,36 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
       if (mounted) setState(() => error = e.message);
     } finally {
       if (mounted) setState(() => loadingCategories = false);
+    }
+  }
+
+  Future<void> _loadSellerAgreement() async {
+    try {
+      final result = await api.get('marketplace/seller/agreement', auth: true);
+      if (!mounted) return;
+      setState(() {
+        sellerAgreementConfigured = result['configured'] == true;
+        sellerAgreementAccepted = result['accepted'] == true;
+        sellerAgreementVersion = result['version']?.toString();
+        sellerAgreementText = result['text']?.toString();
+      });
+    } on ApiException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } finally {
+      if (mounted) setState(() => loadingAgreement = false);
+    }
+  }
+
+  Future<void> _acceptSellerAgreement() async {
+    if (!agreedToSellerTerms || !sellerAgreementConfigured) return;
+    setState(() => acceptingAgreement = true);
+    try {
+      await api.post('marketplace/seller/agreement/accept', auth: true, body: {'accepted': true});
+      if (mounted) setState(() => sellerAgreementAccepted = true);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } finally {
+      if (mounted) setState(() => acceptingAgreement = false);
     }
   }
 
@@ -150,6 +188,10 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
     }
     if (!RegExp(r'^\\d{1,18}(\\.\\d{1,2})?$').hasMatch(amount) || double.tryParse(amount) == null || double.parse(amount) <= 0) {
       setState(() => error = 'Enter a valid NGN price, for example 12500 or 12500.50.');
+      return;
+    }
+    if (!sellerAgreementAccepted || loadingAgreement) {
+      setState(() => error = 'Read and accept the current Eazy seller agreement before publishing.');
       return;
     }
     if (!storeProfileReady || loadingStoreProfile) {
@@ -244,6 +286,37 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
               ]),
             ),
           ),
+          const SizedBox(height: 14),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Seller agreement', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                if (loadingAgreement) const LinearProgressIndicator(minHeight: 2)
+                else if (!sellerAgreementConfigured)
+                  const Text('The owner-approved seller agreement has not been configured. Product publishing stays disabled until Eazy provides the approved terms.')
+                else ...[
+                  Text('Version: $sellerAgreementVersion', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  SelectableText(sellerAgreementText ?? ''),
+                  if (sellerAgreementAccepted)
+                    const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.verified_rounded), title: Text('Agreement accepted')),
+                  if (!sellerAgreementAccepted) ...[
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: agreedToSellerTerms,
+                      onChanged: acceptingAgreement ? null : (value) => setState(() => agreedToSellerTerms = value == true),
+                      title: const Text('I have read and agree to this seller agreement'),
+                    ),
+                    SizedBox(width: double.infinity, child: FilledButton(
+                      onPressed: acceptingAgreement || !agreedToSellerTerms ? null : _acceptSellerAgreement,
+                      child: Text(acceptingAgreement ? 'Saving acceptance…' : 'Accept seller agreement'),
+                    )),
+                  ],
+                ],
+              ]),
+            ),
+          ),
           const SizedBox(height: 18),
           InkWell(
             onTap: _pickImage,
@@ -329,7 +402,7 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
           ],
           const SizedBox(height: 22),
           SizedBox(height: 54, child: FilledButton(
-            onPressed: publishing || uploading || loadingDeliverySettings || loadingStoreProfile || !storeProfileReady ? null : _publish,
+            onPressed: publishing || uploading || loadingDeliverySettings || loadingStoreProfile || loadingAgreement || !storeProfileReady || !sellerAgreementAccepted ? null : _publish,
             child: publishing ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Publish product'),
           )),
           const SizedBox(height: 8),
