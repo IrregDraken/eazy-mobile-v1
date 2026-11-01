@@ -39,46 +39,18 @@ class _SellerOrdersPageState extends State<SellerOrdersPage> {
     }
   }
 
-  Future<String?> rejectionReason() async {
-    final controller = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Reject order'),
-        content: TextField(
-          controller: controller,
-          minLines: 2,
-          maxLines: 4,
-          maxLength: 500,
-          decoration: const InputDecoration(labelText: 'Reason (required)'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: () {
-            if (controller.text.trim().length >= 5) Navigator.pop(dialogContext, controller.text.trim());
-          }, child: const Text('Reject order')),
-        ],
-      ),
-    );
-    controller.dispose();
-    return result;
-  }
 
   Future<void> act(Map<String, dynamic> order, String action) async {
     final orderId = order['orderId']?.toString() ?? '';
     final fulfillmentId = order['fulfillmentId']?.toString() ?? '';
     if (orderId.isEmpty || fulfillmentId.isEmpty) return;
     String? reason;
-    if (action == 'reject') {
-      reason = await rejectionReason();
-      if (reason == null) return;
-    }
     setState(() => busy = true);
     try {
       await api.patch(
         'orders/$orderId/fulfillments/$fulfillmentId',
         auth: true,
-        body: {'action': action, if (reason != null) 'reason': reason},
+        body: {'action': action},
       );
       await load();
     } on ApiException catch (e) {
