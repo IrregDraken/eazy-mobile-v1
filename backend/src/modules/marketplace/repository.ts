@@ -12,14 +12,14 @@ export interface ProductProjection {
   status: string;
   createdAt: string;
   category: { id: string; name: string; slug: string } | null;
-  seller: { username: string; displayName: string; avatarUrl: string | null };
+  seller: { id: string; username: string; displayName: string; avatarUrl: string | null };
   media: { storageKey: string; position: number }[];
   availability: { inStock: boolean; availableQuantity?: number };
 }
 
 const productSelect = `p.id, p.name, p.description, p.price_amount::text AS "priceAmount", trim(p.currency) AS currency, p.status, p.created_at AS "createdAt",
   CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object('id', c.id, 'name', c.name, 'slug', c.slug) END AS category,
-  json_build_object('username', seller.username, 'displayName', seller.display_name, 'avatarUrl', seller.avatar_url) AS seller,
+  json_build_object('id', p.seller_id, 'username', seller.username, 'displayName', seller.display_name, 'avatarUrl', seller.avatar_url) AS seller,
   COALESCE((SELECT json_agg(json_build_object('storageKey', pm.storage_key, 'position', pm.position) ORDER BY pm.position) FROM product_media pm WHERE pm.product_id = p.id), '[]'::json) AS media,
   json_build_object('inStock', (COALESCE(i.available_quantity, 0) - COALESCE(i.reserved_quantity, 0) > 0)) AS availability`;
 
@@ -82,6 +82,46 @@ export class MarketplaceRepository {
       [productId, viewerId ?? null]
     );
     return result.rows[0] ?? null;
+  }
+
+  async sellerDeliverySettings(sellerId: string) {
+    const result = await this.pool.query<{
+      deliveryEnabled: boolean; pickupEnabled: boolean; deliveryFeeAmount: string;
+      currency: string; pickupInstructions: string | null;
+    }>(
+      `SELECT delivery_enabled AS "deliveryEnabled", pickup_enabled AS "pickupEnabled",
+        delivery_fee_amount::text AS "deliveryFeeAmount", trim(currency) AS currency,
+        pickup_instructions AS "pickupInstructions"
+       FROM seller_delivery_settings WHERE seller_id = $1 LIMIT 1`,
+      [sellerId]
+    );
+    return result.rows[0] ?? {
+      deliveryEnabled: false,
+      pickupEnabled: true,
+      deliveryFeeAmount: '0.00',
+      currency: 'NGN',
+      pickupInstructions: null
+    };
+  }
+
+  async updateSellerDeliverySettings(sellerId: string, input: {
+    deliveryEnabled: boolean; pickupEnabled: boolean; deliveryFeeAmount: string;
+    currency: string; pickupInstructions?: string | null;
+  }) {
+    const result = await this.pool.query(
+      `INSERT INTO seller_delivery_settings
+        (seller_id, delivery_enabled, pickup_enabled, delivery_fee_amount, currency, pickup_instructions)
+       VALUES ($1, $2, $3, $4::numeric, $5, $6)
+       ON CONFLICT (seller_id) DO UPDATE SET
+        delivery_enabled = EXCLUDED.delivery_enabled,
+        pickup_enabled = EXCLUDED.pickup_enabled,
+        delivery_fee_amount = EXCLUDED.delivery_fee_amount,
+        currency = EXCLUDED.currency,
+        pickup_instructions = EXCLUDED.pickup_instructions,
+        updated_at = now()`,
+      [sellerId, input.deliveryEnabled, input.pickupEnabled, input.deliveryFeeAmount, input.currency, input.pickupInstructions ?? null]
+    );
+    return this.sellerDeliverySettings(sellerId);
   }
 
   async create(client: DbClient, sellerId: string, input: { name: string; description?: string; categoryId?: string; priceAmount: string; currency: string; status: string; media: ProductMediaInput[]; availableQuantity: number }): Promise<string> {
