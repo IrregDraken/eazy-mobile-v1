@@ -40,6 +40,7 @@ async function expectReject(operation: () => Promise<unknown>, code: AppError['c
 test('deep-link parser normalizes canonical paths, full URLs, usernames, trailing slashes, and duplicate separators', () => {
   assert.deepEqual(parseDeepLink('/u/ALICE_1/'), { type: 'profile', identifier: 'alice_1' });
   assert.deepEqual(parseDeepLink('https://eazy.app/p//10000000-0000-4000-8000-000000000001/'), { type: 'post', id: resourceId });
+  assert.deepEqual(parseDeepLink('https://www.eazy.name.ng/p/' + resourceId), { type: 'post', id: resourceId });
   assert.deepEqual(parseDeepLink(`/product/${resourceId.toUpperCase()}`), { type: 'product', id: resourceId });
   assert.deepEqual(parseDeepLink(`/order/${resourceId}`), { type: 'order', id: resourceId });
   assert.deepEqual(parseDeepLink(`/notification/${resourceId}`), { type: 'notification', id: resourceId });
@@ -90,7 +91,7 @@ test('private order, notification, and conversation targets require authenticati
   await expectReject(() => service.resolve(`/chat/${resourceId}`), 'UNAUTHORIZED');
   for (const path of [`/order/${resourceId}`, `/notification/${resourceId}`, `/chat/${resourceId}`]) {
     const result = await service.resolve(path, 'viewer-id');
-    assert.equal(result.destination, path);
+    assert.equal(result.destination, path.startsWith('/order/') ? path.replace('/order/', '/orders/') : path.startsWith('/notification/') ? '/notifications' : path.startsWith('/chat/') ? '/home?tab=chat&conversationId=' + resourceId : path);
   }
   assert.deepEqual(calls, [`order:viewer-id:${resourceId}`, `notification:viewer-id:${resourceId}`, `chat:viewer-id:${resourceId}`]);
 });
@@ -106,9 +107,9 @@ test('all supported routes return stable canonical Eazy destinations without arb
     ['/u/alice_1', '/u/alice_1'],
     [`/p/${resourceId}`, `/p/${resourceId}`],
     [`/product/${resourceId}`, `/product/${resourceId}`],
-    [`/order/${resourceId}`, `/order/${resourceId}`],
-    [`/notification/${resourceId}`, `/notification/${resourceId}`],
-    [`/chat/${resourceId}`, `/chat/${resourceId}`]
+    [`/order/${resourceId}`, `/orders/${resourceId}`],
+    [`/notification/${resourceId}`, '/notifications'],
+    [`/chat/${resourceId}`, `/home?tab=chat&conversationId=${resourceId}`]
   ] as const;
   for (const [path, destination] of expected) {
     const result = await service.resolve(path, 'viewer-id');
@@ -141,7 +142,7 @@ test('HTTP resolution accepts public targets, rejects unknown query parameters, 
     const privateOwned = await fetch(`${baseUrl}?path=${encodeURIComponent(`/order/${resourceId}`)}`, { headers: { authorization: 'Bearer test-token' } });
     assert.equal(privateOwned.status, 200);
     const privateData = await privateOwned.json();
-    assert.deepEqual(privateData.data, { type: 'order', id: resourceId, destination: `/order/${resourceId}` });
+    assert.deepEqual(privateData.data, { type: 'order', id: resourceId, destination: `/orders/${resourceId}` });
     assert.equal('order' in privateData.data, false);
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
