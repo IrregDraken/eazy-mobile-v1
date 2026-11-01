@@ -75,7 +75,12 @@ export const productSearchSchema = z.object({
 });
 
 export class MarketplaceService {
-  constructor(private readonly pool: Pool, private readonly repository = new MarketplaceRepository(pool), private readonly storage?: SupabaseStorageProvider) {}
+  constructor(
+    private readonly pool: Pool,
+    private readonly repository = new MarketplaceRepository(pool),
+    private readonly storage?: SupabaseStorageProvider,
+    private readonly sellerAgreementConfig: { version?: string; text?: string } = {}
+  ) {}
 
   async categories(page = 1, limit = 20) {
     const result = await this.repository.categories(page, limit);
@@ -129,6 +134,20 @@ export class MarketplaceService {
     return { items: result.items, meta: paginationMeta(pagination, result.total) };
   }
 
+  async sellerAgreement(sellerId: string) {
+    const version = this.sellerAgreementConfig.version?.trim() ?? '';
+    const text = this.sellerAgreementConfig.text?.trim() ?? '';
+    const configured = version.length > 0 && text.length >= 50;
+    return { configured, version: configured ? version : null, text: configured ? text : null, accepted: configured ? await this.repository.hasAcceptedSellerAgreement(sellerId, version) : false };
+  }
+
+  async acceptSellerAgreement(sellerId: string) {
+    const agreement = await this.sellerAgreement(sellerId);
+    if (!agreement.configured || !agreement.version) throw new AppError('SERVICE_UNAVAILABLE', 'Seller agreement has not been configured by Eazy yet');
+    const accepted = await withTransaction(this.pool, client => this.repository.acceptSellerAgreement(client, sellerId, agreement.version!));
+    return accepted;
+  }
+
   async sellerStore(sellerId: string) {
     return { store: await this.repository.sellerStoreBySeller(sellerId) };
   }
@@ -178,6 +197,9 @@ export class MarketplaceService {
 
   async create(sellerId: string, input: z.infer<typeof productCreateSchema>) {
     if (!await this.repository.sellerStoreBySeller(sellerId)) throw new AppError('CONFLICT', 'Create your seller store profile before publishing products');
+    const agreement = await this.sellerAgreement(sellerId);
+    if (!agreement.configured) throw new AppError('SERVICE_UNAVAILABLE', 'Seller agreement has not been configured by Eazy yet');
+    if (!agreement.accepted) throw new AppError('CONFLICT', 'Accept the current seller agreement before publishing products');
     const positions = input.media.map(media => media.position);
     if (new Set(positions).size !== positions.length) throw new AppError('VALIDATION_ERROR', 'Media positions must be unique');
     const productId = await withTransaction(this.pool, client => this.repository.create(client, sellerId, input));
