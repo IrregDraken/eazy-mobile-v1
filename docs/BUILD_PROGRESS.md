@@ -35,7 +35,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 |---|---|---|
 | D1 Photo messages | PARTIAL | `lib/features/chat/chat_page.dart`, `lib/core/media/media_service.dart`, backend `modules/media` and `modules/chat`. Current media service uploads and returns a storage path, but does not expose progress/retry UI. |
 | D2 Send money | PARTIAL | `lib/features/wallet/wallet_page.dart`, backend `modules/wallet`, `modules/ledger`; inspect balance validation, PIN gating, transfer transaction and refresh. |
-| D3 Home feed | TODO | `lib/features/social/social_page.dart`; feed load has loading/error states, but no explicit cache or pull-to-refresh has yet been verified. |
+| D3 Home feed | PARTIAL | `lib/features/social/social_page.dart`; feed load has loading/error states, but no explicit cache or pull-to-refresh has yet been verified. |
 | D4 Discover | TODO | `lib/features/marketplace/marketplace_page.dart`; inspect empty-state/filter rendering and category selection. |
 | D5 Chat preview | TODO | `lib/features/chat/chat_home_screen.dart`; latest-message and realtime refresh logic present; confirm event payload and ordering after send/receive. |
 | D6 Eazy Assist | TODO | `lib/features/assist/assist_page.dart`, backend `modules/assist/context.ts`, `service.ts`, `repository.ts`; session bootstrap exists; message ordering, New chat and context need inspection. |
@@ -69,6 +69,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Changes: parse both amount and available balance into integer kobo; reject invalid/zero amounts and amounts above the displayed available balance before showing the review/PIN step; remove mandatory device biometric authentication from this Eazy-user transfer path so the server-verified payment PIN is the authorization; inspect the server response and show success only when transaction status is `succeeded`; refresh wallet state/history after the response.
 - Verification: source re-fetched after edits; confirmed backend `WalletService.transferToUser` compares ledger balance against amount in minor units and writes debit/credit entries in one DB transaction. No Flutter analyzer, widget test, backend test, or device test has run yet. Therefore PARTIAL, not DONE.
 - Remaining: add automated client test coverage for the kobo comparison and execute CI/device verification.
+
+### D3 — Home feed states (partial)
+- Status: PARTIAL.
+- Cause confirmed: the feed already had loading, error/retry, and pull-to-refresh states. The no-content state used generic copy and its action inherited the misleading “Try again” label even though it opened the post composer.
+- Files changed: `lib/features/social/social_page.dart`.
+- Changes: empty feed now says “No posts yet” and its action is explicitly “Create post”. The feed is kept alive inside the existing `IndexedStack`, so tab switching does not dispose and re-trigger its initial shimmer.
+- Verification: source inspected and updated through GitHub; `RefreshIndicator`, retained `IndexedStack` page and retry state confirmed in code. Flutter analyzer/widget tests/device check not yet run. PARTIAL until CI and on-device verification.
+- Remaining: verify behavior under offline/error and after switching tabs on a device; add/execute tests if existing coverage permits.
 
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
