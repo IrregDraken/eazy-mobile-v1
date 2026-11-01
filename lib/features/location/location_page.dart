@@ -73,7 +73,9 @@ class _LocationPageState extends State<LocationPage> {
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
-      body: Padding(
+      body: SafeArea(
+        top: false,
+        child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
@@ -99,6 +101,7 @@ class _LocationPageState extends State<LocationPage> {
               style: TextStyle(color: context.eazyMuted),
             ),
           ],
+        ),
         ),
       ),
     );
