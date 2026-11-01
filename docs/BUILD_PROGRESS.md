@@ -232,25 +232,25 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 | S4 | BLOCKED | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
 | S5 | BLOCKED | Terms/privacy acceptance at signup; record version and timestamp; owner-approved legal copy required. |
 | S6 | DONE | Notification preferences saved to backend and respected by push delivery. |
-| S7 | BLOCKED | Support email from configuration; report-problem form persists to backend. |
+| S7 | PARTIAL | Support email from configuration; report-problem form persists to backend. |
 
 ### 2B — Cart and checkout
 | ID | Status | Scope |
 |---|---|---|
 | C1 | DONE | Cart quantities, remove, empty state and totals. |
-| C2 | DOING | Delivery addresses, per-seller delivery/pickup, fees and Paystack card checkout. |
-| C3 | TODO | Escrow holds buyer payment and releases to seller only after receipt confirmation. |
-| C4 | TODO | Buyer order list/detail, timeline, confirm received, dispute with reason/photos and seller notification. |
-| C5 | TODO | Post-delivery seller rating/review. |
-| C6 | TODO | Message seller from product/order context. |
+| C2 | PARTIAL | Delivery addresses, per-seller delivery/pickup, fees and Paystack card checkout. |
+| C3 | PARTIAL | Escrow holds buyer payment and releases to seller only after receipt confirmation. |
+| C4 | PARTIAL | Buyer order list/detail, timeline, confirm received, dispute with reason/photos and seller notification. |
+| C5 | PARTIAL | Post-delivery seller rating/review. |
+| C6 | PARTIAL | Message seller from product/order context. |
 
 ### 2C — Seller flow
 | ID | Status | Scope |
 |---|---|---|
 | L1 | TODO | Seller setup and profile/store details. |
 | L2 | TODO | Product creation/editing, images and stock. |
-| L3 | TODO | Seller order management and fulfillment updates. |
-| L4 | TODO | Seller earnings/escrow status without unsupported withdrawal controls. |
+| L3 | PARTIAL | Seller order management and fulfillment updates. |
+| L4 | PARTIAL | Seller earnings/escrow status without unsupported withdrawal controls. |
 
 ### 2D — Search
 | ID | Status | Scope |
@@ -365,3 +365,60 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 - Status: DONE.
 - Product detail adds items to the authenticated user's backend cart. Cart UI groups rows by seller, changes quantity, removes items, handles empty/loading/error states and shows server-computed subtotal. Backend locks inventory and rechecks stock and currency on every add/update.
 - Verification: inspected CartPage, CartService/Repository and product detail flow; existing cart tests cover inventory/quantity and mixed-currency guards. Full CI will rerun after 2B changes.
+
+
+## Current execution update — 2026-11-01
+
+Branch: work/eazy-launch-readiness
+PR: #39 (draft, not merged)
+Latest verified workflow at time of this update: run 41358004335 built the backend TypeScript successfully and passed iOS configuration preflight. Its backend test job had one unrelated stale test fixture failure: account_deletion_routes.test.ts expected deletion success but omitted the required recent auth_time claim. The fixture was corrected in commit 1a732cf; rerun is pending. Flutter jobs and clean-database migration job still require a successful run.
+
+### C2 — Checkout (PARTIAL)
+- Added delivery-address CRUD, per-seller pickup/delivery selection, seller-configured delivery fee, server-side order price/stock recheck, order creation idempotency, Paystack card initialization and a buyer checkout screen.
+- New amounts introduced for delivery and seller payable accounting are stored as integer kobo. Product names are snapshotted on order items for durable receipts.
+- Files: backend/migrations/031_marketplace_checkout_escrow.sql; backend/src/modules/orders/{repository,service,controller,routes,schemas}.ts; backend/src/modules/marketplace/{repository,service,routes}.ts; backend/src/modules/payments/repository.ts; lib/features/marketplace/checkout_page.dart; lib/features/marketplace/cart_page.dart; lib/app/router.dart.
+- Verification: backend TypeScript build passed on run 41358004335 before the latest incremental changes. Checkout schema tests added. Clean PostgreSQL migration CI job added; no successful run yet. No device payment test.
+- Blockers: apply migration only after clean-DB CI passes; run Paystack test-mode checkout with a test account and verify the payment webhook/return flow.
+
+### C3 — Escrow (PARTIAL)
+- Verified Paystack order settlement now creates a seller payable hold per seller fulfilment in integer kobo, inside the same DB transaction as transaction settlement. Repeated successful settlement is guarded by transaction status and unique ledger keys.
+- Buyer receipt confirmation creates a matching release entry. Delivery sets a seven-day release deadline using ORDER_ESCROW_AUTO_RELEASE_DAYS. A scheduled job command, backend/src/jobs/release-due-escrow.ts, processes due releases in batches and writes events/notifications.
+- Files: backend/migrations/031_marketplace_checkout_escrow.sql; backend/src/modules/payments/repository.ts; backend/src/modules/orders/{constants,repository,service}.ts; backend/src/jobs/release-due-escrow.ts; backend/package.json.
+- Verification: tests added for verified-payment hold and auto-release SQL shape. No successful CI rerun or live test-mode end-to-end run yet.
+- Blocker: Railway production cron is not configured. Configure a Railway scheduled service to run `npm run build && npm run escrow:release-due` from the backend directory at least hourly, only after the code is merged and deployed. Do not run the job manually against production as a substitute for the schedule.
+
+### C4 — Buyer orders and disputes (PARTIAL)
+- Added buyer orders list/detail, fulfilment status, event timeline, confirm-received and dispute creation. Disputes are seller-specific, freeze auto-release, store bounded reason/description and accept optional owner-scoped storage keys. Seller notifications are persisted.
+- Seller order inbox supports accept, ship and deliver; delivery address is only returned after acceptance. Inventory reservation is consumed on delivery.
+- Files: backend/src/modules/orders/*; backend/migrations/031_marketplace_checkout_escrow.sql; lib/features/marketplace/orders_page.dart; lib/features/marketplace/seller_orders_page.dart; lib/app/router.dart.
+- Verification: schema/service tests added; no passing CI rerun, migration test or device workflow yet.
+- Blockers: dispute-photo picker/upload UI is not connected. Seller rejection is intentionally disabled because the current payment provider abstraction has no verified refund operation; enabling rejection without a confirmed refund would strand buyer funds. Add and test a server-verified Paystack refund flow before enabling it.
+
+### C5 — Reviews (PARTIAL)
+- Added one review per completed order item, 1–5 rating and text validation, product/seller review lists and average/count aggregates in product projections. Buyer order detail offers review submission after completion; product detail shows reviews and seller rating.
+- Files: backend/migrations/031_marketplace_checkout_escrow.sql; backend/src/modules/{orders,marketplace}/*; backend/test/commerce.test.ts; lib/features/marketplace/{orders_page,product_detail_page}.dart.
+- Verification: tests added; no successful CI rerun or device verification yet.
+
+### C6 — Message seller (PARTIAL)
+- Product and order detail screens route to Chat with the seller username. Chat creates or reuses the direct conversation and opens it.
+- Files: lib/features/chat/chat_page.dart; lib/features/home/home_shell.dart; lib/features/marketplace/{product_detail_page,orders_page}.dart; lib/app/router.dart.
+- Verification: source path inspected; no device verification.
+
+### L3-L4 — Seller operations (PARTIAL)
+- L3: seller inbox lists paid orders and supports accept, ship and deliver with buyer notifications. Delivery address remains hidden until accept. Seller reject is disabled pending safe refunds.
+- L4: seller payable ledger API and a simple held/released history screen are added. No withdrawal action exists.
+- Files: backend/src/modules/orders/*; lib/features/marketplace/{seller_orders_page,seller_payables_page,seller_setup_page}.dart; lib/app/router.dart.
+- Verification: tests and CI pending.
+
+### S7 — Help and support (PARTIAL)
+- Configured support email is read from SUPPORT_EMAIL. Authenticated report form persists reports and returns a reference; no hard-coded contact address.
+- Files: backend/.env.example; backend/src/config/env.ts; backend/src/modules/support/*; backend/migrations/032_support_reports.sql; backend/test/support.test.ts; lib/features/support/support_page.dart; lib/features/settings/settings_page.dart; lib/app/router.dart.
+- Verification: support unit tests passed in run 41358004335. The production Railway service did not expose SUPPORT_EMAIL in its configured variable names at last inspection.
+- Blocker: owner must confirm the monitored support inbox and set SUPPORT_EMAIL in Railway. Until then the app truthfully shows that no contact email is configured, while report submission remains available.
+
+### CI and release
+- Added a clean PostgreSQL 16 migration job to CI. It applies all SQL migrations from scratch and is a dependency of the signed release job.
+- Added commerce tests for checkout selection, disputes, reviews and auto-release, and a Paystack repository test for verified seller escrow holds.
+- Latest successful backend build evidence: run 41358004335. Its test suite had one stale recent-auth fixture failure, now corrected. Latest full CI rerun is pending.
+- No database migration has been applied to Railway production. No signed release APK/AAB has been generated or verified. Android signing still depends on GitHub Actions secrets ANDROID_KEYSTORE_BASE64, ANDROID_STORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD; the keystore currently held by Manus is not available to this GitHub workflow unless those secrets are configured.
+- No merge to main and no production deployment.
