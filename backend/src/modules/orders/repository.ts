@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import type { DbClient } from '../../database/client.js';
+import { ORDER_ESCROW_AUTO_RELEASE_DAYS } from './constants.js';
 
 export interface OrderProjection {
   id: string;
@@ -330,7 +331,7 @@ export class OrderRepository {
       return { error: 'REJECTION_REASON_REQUIRED' as const };
     }
     const timestampColumn = action === 'accept' ? 'accepted_at' : action === 'ship' ? 'shipped_at' : action === 'deliver' ? 'delivered_at' : null;
-    const releaseClause = action === 'deliver' ? ", release_after = now() + interval '7 days'" : '';
+    const releaseClause = action === 'deliver' ? ', release_after = now() + ($3::int * interval \'1 day\')' : '';
     const timestampClause = timestampColumn ? `, ${timestampColumn} = now()` : '';
     await client.query(
       `UPDATE order_fulfillments SET status = $2${timestampClause}${releaseClause}, updated_at = now() WHERE id = $1`,
@@ -460,6 +461,66 @@ export class OrderRepository {
       [row.seller_id, buyerId, orderId, `eazy://orders/${orderId}`]
     );
     return { error: null as null, disputeId: dispute.rows[0]!.id };
+  }
+
+  async releaseDueEscrow(client: DbClient, limit: number) {
+    const due = await client.query<{
+      id: string; order_id: string; seller_id: string; buyer_id: string;
+      currency: string; amount: string;
+    }>(
+      `SELECT f.id, f.order_id, f.seller_id, o.buyer_id, trim(o.currency) AS currency,
+        hold.amount::numeric(20,2)::text AS amount
+       FROM order_fulfillments f
+       JOIN orders o ON o.id = f.order_id
+       JOIN seller_payable_ledger hold ON hold.fulfillment_id = f.id AND hold.entry_type = 'hold'
+       WHERE f.status = 'delivered' AND f.release_after <= now()
+         AND NOT EXISTS (
+           SELECT 1 FROM order_disputes d
+           WHERE d.fulfillment_id = f.id AND d.status IN ('open','reviewing')
+         )
+       ORDER BY f.release_after ASC, f.id ASC
+       LIMIT $1 FOR UPDATE OF f SKIP LOCKED`,
+      [limit]
+    );
+    for (const row of due.rows) {
+      await client.query(
+        `INSERT INTO seller_payable_ledger
+          (order_id, fulfillment_id, seller_id, entry_type, amount, currency, idempotency_key)
+         VALUES ($1,$2,$3,'release',$4::numeric,$5,'order-release:' || $2::text)
+         ON CONFLICT (fulfillment_id, entry_type) DO NOTHING`,
+        [row.order_id, row.id, row.seller_id, row.amount, row.currency]
+      );
+      await client.query(
+        "UPDATE order_fulfillments SET status = 'completed', release_after = NULL, updated_at = now() WHERE id = $1 AND status = 'delivered'",
+        [row.id]
+      );
+      await client.query(
+        "INSERT INTO order_events (order_id, fulfillment_id, actor_user_id, event_type, description) VALUES ($1,$2,NULL,'escrow_auto_released','The seven-day delivery confirmation window elapsed. Seller payable funds were released.')",
+        [row.order_id, row.id]
+      );
+      await client.query(
+        `INSERT INTO notifications (user_id, actor_user_id, type, target_type, target_id, title, body, deep_link)
+         VALUES ($1,NULL,'order','order',$2,'Order completed','Your order was automatically completed after the delivery confirmation period.',$3),
+                ($4,NULL,'order','order',$2,'Payable released','The buyer did not report a problem during the delivery confirmation period. Your payable funds were released.',$3)`,
+        [row.buyer_id, row.order_id, 'eazy://orders/' + row.order_id, row.seller_id]
+      );
+      await client.query(
+        `UPDATE orders o SET status = aggregate.status, updated_at = now()
+         FROM (
+           SELECT CASE
+             WHEN bool_and(status IN ('completed','cancelled')) THEN CASE WHEN bool_or(status = 'completed') THEN 'completed' ELSE 'cancelled' END
+             WHEN bool_or(status = 'disputed') THEN 'disputed'
+             WHEN bool_and(status IN ('delivered','completed','cancelled')) THEN 'delivered'
+             WHEN bool_or(status = 'shipped') THEN 'shipped'
+             WHEN bool_or(status = 'accepted') THEN 'accepted'
+             ELSE 'paid' END AS status
+           FROM order_fulfillments WHERE order_id = $1
+         ) aggregate
+         WHERE o.id = $1`,
+        [row.order_id]
+      );
+    }
+    return due.rows.length;
   }
 
 }
