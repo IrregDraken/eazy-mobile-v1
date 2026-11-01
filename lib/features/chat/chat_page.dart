@@ -59,6 +59,7 @@ class _ConversationPageState extends State<ConversationPage> {
   final List<MediaUpload> pendingAttachments = [];
   bool uploadingAttachment = false;
   double? uploadProgress;
+  MediaUploadDraft? failedAttachmentDraft;
   final Map<String, Future<String>> _attachmentUrlCache = {};
   List<Map<String, dynamic>> messages = [];
   Map<String, dynamic>? replying, editing;
@@ -734,7 +735,7 @@ class _ConversationPageState extends State<ConversationPage> {
     await _uploadAttachment(choice);
   }
 
-  Future<void> _uploadAttachment(String choice) async {
+  Future<void> _uploadAttachment(String choice, {MediaUploadDraft? retryDraft}) async {
     if (uploadingAttachment || sending) return;
     setState(() {
       uploadingAttachment = true;
@@ -745,22 +746,28 @@ class _ConversationPageState extends State<ConversationPage> {
         if (mounted) setState(() => uploadProgress = value.clamp(0.0, 1.0).toDouble());
       }
 
-      final upload = switch (choice) {
-        'photo' => await media.pickAndUpload(kind: 'message', onProgress: reportProgress),
-        'video' => await media.pickAndUploadVideo(kind: 'message', onProgress: reportProgress),
-        _ => await media.pickAndUploadDocument(kind: 'message', onProgress: reportProgress),
+      final draft = retryDraft ?? switch (choice) {
+        'photo' => await media.pickImageDraft(kind: 'message'),
+        'video' => await media.pickVideoDraft(kind: 'message'),
+        _ => await media.pickDocumentDraft(kind: 'message'),
       };
-      if (upload != null && mounted) {
-        setState(() => pendingAttachments.add(upload));
+      if (draft == null) return;
+      failedAttachmentDraft = draft;
+      final upload = await media.uploadDraft(draft, onProgress: reportProgress);
+      if (mounted) {
+        setState(() {
+          pendingAttachments.add(upload);
+          failedAttachmentDraft = null;
+        });
       }
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${e.message} Select the file again to retry.'),
+            content: Text('${e.message} Your selected file is retained. Retry the upload.'),
             action: SnackBarAction(
               label: 'Retry',
-              onPressed: () => _uploadAttachment(choice),
+              onPressed: () => _uploadAttachment(choice, retryDraft: failedAttachmentDraft),
             ),
           ),
         );
@@ -769,7 +776,7 @@ class _ConversationPageState extends State<ConversationPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Could not attach that file. Select it again to retry.'),
+            content: const Text('Could not attach that file. Your selected file is retained for retry.'),
             action: SnackBarAction(
               label: 'Retry',
               onPressed: () => _uploadAttachment(choice),
