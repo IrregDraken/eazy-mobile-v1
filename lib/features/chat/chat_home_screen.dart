@@ -233,8 +233,17 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     final raw = c['latestMessage'];
     if (raw is! Map) return 'Start a conversation';
     if (raw['status'] == 'deleted') return '🚫 This message was deleted';
-    final body = raw['body']?.toString();
-    return body == null || body.isEmpty ? 'Start a conversation' : body;
+    final body = raw['body']?.toString().trim() ?? '';
+    if (body.isNotEmpty) return body;
+    final attachments = raw['attachments'];
+    if (attachments is List && attachments.isNotEmpty) {
+      final first = attachments.first;
+      final type = first is Map ? first['contentType']?.toString() ?? '' : '';
+      if (type.startsWith('image/')) return '📷 Photo';
+      if (type.startsWith('video/')) return '🎬 Video';
+      return '📎 Attachment';
+    }
+    return 'Message';
   }
 
   int _unread(Map<String, dynamic> c) =>
