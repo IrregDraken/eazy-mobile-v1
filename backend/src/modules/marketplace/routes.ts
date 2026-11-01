@@ -14,6 +14,7 @@ export function createMarketplaceRouter(service: MarketplaceService): Router {
   router.get('/search', validate('query', marketplaceSearchSchema), async (request, response) => sendSuccess(response, await service.searchAll(String(request.query.q ?? ''), request.auth?.userId)));
   router.get('/products', validate('query', productSearchSchema), async (request, response) => sendSuccess(response, await service.search(request.query as never, request.auth?.userId)));
   router.get('/sellers/:id/delivery-settings', validate('params', productIdSchema), async (request, response) => sendSuccess(response, await service.sellerDeliverySettings(param(request.params.id))));
+  router.get('/seller/products', requireAuth, validate('query', paginationQuerySchema), async (request, response) => sendSuccess(response, await service.myProducts(currentUserId(request), request.query as never)));
   router.get('/seller/store', requireAuth, async (request, response) => sendSuccess(response, await service.sellerStore(currentUserId(request))));
   router.put('/seller/store', requireAuth, validate('body', sellerStoreSchema), async (request, response) => sendSuccess(response, await service.updateSellerStore(currentUserId(request), request.body)));
   router.get('/stores/:slug', validate('params', sellerStoreSlugSchema), async (request, response) => sendSuccess(response, await service.publicSellerStore(param(request.params.slug))));
