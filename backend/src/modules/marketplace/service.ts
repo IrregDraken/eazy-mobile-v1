@@ -126,6 +126,12 @@ export class MarketplaceService {
     return { store: await this.repository.sellerStoreBySeller(sellerId) };
   }
 
+  async publicSellerStoreByUsername(username: string) {
+    const store = await this.repository.sellerStoreByUsername(username);
+    if (!store) throw new AppError('NOT_FOUND', 'Seller store not found');
+    return { store };
+  }
+
   async publicSellerStore(slug: string) {
     const store = await this.repository.sellerStoreBySlug(slug);
     if (!store) throw new AppError('NOT_FOUND', 'Seller store not found');
