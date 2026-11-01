@@ -81,9 +81,9 @@ class _HomeShellState extends State<HomeShell> {
     body: LayoutBuilder(
       builder: (context, constraints) {
         final defaultLeft = (constraints.maxWidth - 88).clamp(8.0, constraints.maxWidth - 80);
-        final defaultTop = (constraints.maxHeight - 170).clamp(8.0, constraints.maxHeight - 80);
+        final defaultTop = (constraints.maxHeight - 170).clamp(8.0, constraints.maxHeight - 160);
         final left = (_assistLeft ?? defaultLeft).clamp(8.0, constraints.maxWidth - 80);
-        final top = (_assistTop ?? defaultTop).clamp(8.0, constraints.maxHeight - 80);
+        final top = (_assistTop ?? defaultTop).clamp(8.0, constraints.maxHeight - 160);
         final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
         final showAssist = (index == 0 || index == 1 || index == 4) &&
             _assistVisible &&
@@ -111,7 +111,7 @@ class _HomeShellState extends State<HomeShell> {
                   onPanUpdate: (details) {
                     setState(() {
                       _assistLeft = (left + details.delta.dx).clamp(8.0, constraints.maxWidth - 80);
-                      _assistTop = (top + details.delta.dy).clamp(8.0, constraints.maxHeight - 80);
+                      _assistTop = (top + details.delta.dy).clamp(8.0, constraints.maxHeight - 160);
                     });
                   },
                   onPanEnd: (_) => _saveAssistPosition(),
