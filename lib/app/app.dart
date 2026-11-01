@@ -59,19 +59,26 @@ class _EazyAppState extends State<EazyApp> {
             ),
             action: SnackBarAction(
               label: 'View',
-              onPressed: () => _router.push('/notifications'),
+              onPressed: () => _openNotificationMessage(message),
             ),
           ),
         );
     });
-    _openedMessages = FirebaseMessaging.onMessageOpenedApp.listen((_) {
-      _router.push('/notifications');
-    });
+    _openedMessages = FirebaseMessaging.onMessageOpenedApp.listen(_openNotificationMessage);
     unawaited(
       FirebaseMessaging.instance.getInitialMessage().then((message) {
-        if (message != null) _router.go('/notifications');
+        if (message != null) _openNotificationMessage(message);
       }).catchError((_) {}),
     );
+  }
+
+  void _openNotificationMessage(RemoteMessage message) {
+    final deepLink = message.data['deepLink']?.toString();
+    if (deepLink != null && deepLink.isNotEmpty) {
+      _router.go('/notifications?deepLink=${Uri.encodeQueryComponent(deepLink)}');
+    } else {
+      _router.push('/notifications');
+    }
   }
 
   @override
