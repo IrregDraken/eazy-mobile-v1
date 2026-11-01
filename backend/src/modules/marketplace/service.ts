@@ -47,6 +47,7 @@ export const productIdSchema = z.object({ id: z.string().guid() });
 export const sellerUsernameSchema = z.object({
   username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9_.]+$/)
 }).strict();
+export const marketplaceSearchSchema = z.object({ q: z.string().trim().min(2).max(80) }).strict();
 export const productSearchSchema = z.object({
   q: z.string().trim().min(2).max(80).optional(),
   categoryId: z.string().guid().optional(),
@@ -90,6 +91,15 @@ export class MarketplaceService {
     const product = await this.repository.getById(productId, viewerId);
     if (!product) throw new AppError('NOT_FOUND', 'Product not found');
     return { product: await this.attachMediaUrls(product) };
+  }
+
+  async searchAll(query: string, viewerId?: string) {
+    const [products, sellers, categories] = await Promise.all([
+      this.search({ q: query, status: 'active', sort: 'newest', page: 1, limit: 10 }, viewerId),
+      this.repository.searchSellers(query, 10),
+      this.repository.searchCategories(query, 10)
+    ]);
+    return { products: products.items, sellers, categories };
   }
 
   async productReviews(productId: string, pagination: Pagination) {
