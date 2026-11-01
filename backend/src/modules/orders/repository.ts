@@ -385,7 +385,7 @@ export class OrderRepository {
         action === 'accept' ? 'Order accepted' : action === 'ship' ? 'Order shipped' : 'Order delivered',
         action === 'accept' ? 'The seller accepted your order.' :
         action === 'ship' ? 'Your order has been marked as shipped.' : 'Your order has been marked as delivered.',
-        `eazy://orders/${orderId}`]
+        `https://www.eazy.name.ng/order/${orderId}`]
     );
     return { error: null as null, status: next };
   }
@@ -438,7 +438,7 @@ export class OrderRepository {
     await client.query(
       `INSERT INTO notifications (user_id, actor_user_id, type, target_type, target_id, title, body, deep_link)
        VALUES ($1,$2,'order','order',$3,'Order completed','The buyer confirmed receipt. Your payable balance has been released.',$4)`,
-      [row.seller_id, buyerId, orderId, `eazy://orders/${orderId}`]
+      [row.seller_id, buyerId, orderId, `https://www.eazy.name.ng/order/${orderId}`]
     );
     return { error: null as null, alreadyCompleted: false };
   }
@@ -477,7 +477,7 @@ export class OrderRepository {
     await client.query(
       `INSERT INTO notifications (user_id, actor_user_id, type, target_type, target_id, title, body, deep_link)
        VALUES ($1,$2,'order','order',$3,'Order dispute opened','The buyer reported a problem with this order. Seller funds remain held.',$4)`,
-      [row.seller_id, buyerId, orderId, `eazy://orders/${orderId}`]
+      [row.seller_id, buyerId, orderId, `https://www.eazy.name.ng/order/${orderId}`]
     );
     return { error: null as null, disputeId: dispute.rows[0]!.id };
   }
@@ -521,7 +521,7 @@ export class OrderRepository {
         `INSERT INTO notifications (user_id, actor_user_id, type, target_type, target_id, title, body, deep_link)
          VALUES ($1,NULL,'order','order',$2,'Order completed','Your order was automatically completed after the delivery confirmation period.',$3),
                 ($4,NULL,'order','order',$2,'Payable released','The buyer did not report a problem during the delivery confirmation period. Your payable funds were released.',$3)`,
-        [row.buyer_id, row.order_id, 'eazy://orders/' + row.order_id, row.seller_id]
+        [row.buyer_id, row.order_id, 'https://www.eazy.name.ng/order/' + row.order_id, row.seller_id]
       );
       await client.query(
         `UPDATE orders o SET status = aggregate.status, updated_at = now()
