@@ -77,6 +77,9 @@ import { closeDbPool } from './database/client.js';
 import { SettingsRepository } from './modules/settings/repository.js';
 import { SettingsService } from './modules/settings/service.js';
 import { createSettingsRouter } from './modules/settings/routes.js';
+import { SupportRepository } from './modules/support/repository.js';
+import { SupportService } from './modules/support/service.js';
+import { createSupportRouter } from './modules/support/routes.js';
 import { createBlockRouter } from './modules/blocks/routes.js';
 import { safeErrorSummary } from './config/redaction.js';
 import { ResendEmailProvider, UnavailableEmailProvider } from './providers/resend-email.js';
@@ -115,6 +118,7 @@ if (pool) {
   }
 
   authOptions.settingsRouter = createSettingsRouter(new SettingsService(new SettingsRepository(pool)));
+  authOptions.supportRouter = createSupportRouter(new SupportService(new SupportRepository(pool), config.SUPPORT_EMAIL));
 
   if (storageProvider) {
     authOptions.mediaRouter = createMediaRouter(new MediaService(storageProvider, pool));
