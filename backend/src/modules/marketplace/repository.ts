@@ -248,11 +248,7 @@ export class MarketplaceRepository {
   }
   async sellerStoreBySlug(slug: string) {
     const result = await this.pool.query(
-      `SELECT s.seller_id AS "sellerId", s.store_name AS "storeName", s.slug,
-        s.description, s.support_phone AS "supportPhone", s.status,
-        p.username, p.avatar_url AS "avatarUrl"
-       FROM seller_stores s JOIN profiles p ON p.user_id = s.seller_id
-       WHERE s.slug = $1 AND s.status = 'active' LIMIT 1`,
+      `SELECT p.user_id AS "sellerId", COALESCE(s.store_name, p.display_name) AS "storeName", COALESCE(s.slug, p.username) AS slug, COALESCE(s.description, '') AS description, s.support_phone AS "supportPhone", COALESCE(s.status, 'active') AS status, p.username, p.avatar_url AS "avatarUrl" FROM profiles p LEFT JOIN seller_stores s ON s.seller_id = p.user_id WHERE COALESCE(s.slug, p.username) = $1 AND (s.status = 'active' OR s.seller_id IS NULL) LIMIT 1`,
       [slug]
     );
     return result.rows[0] ?? null;
