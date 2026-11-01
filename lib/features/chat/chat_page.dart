@@ -1102,22 +1102,54 @@ class _ConversationPageState extends State<ConversationPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-              ),
+            CircleAvatar(
+              radius: 17,
+              backgroundColor: context.eazyAccent.withValues(alpha: .12),
+              backgroundImage: (_otherParticipant['avatarUrl'] ??
+                          _otherParticipant['avatar_url']) is String &&
+                      (_otherParticipant['avatarUrl'] ??
+                              _otherParticipant['avatar_url'])
+                          .toString()
+                          .isNotEmpty
+                  ? NetworkImage(
+                      (_otherParticipant['avatarUrl'] ??
+                              _otherParticipant['avatar_url'])
+                          .toString(),
+                    )
+                  : null,
+              child: (_otherParticipant['avatarUrl'] ??
+                          _otherParticipant['avatar_url']) == null
+                  ? Icon(Icons.person_rounded, color: context.eazyAccent, size: 18)
+                  : null,
             ),
-            Text(
-              _conversationUsername,
-              style: TextStyle(
-                fontSize: 11,
-                color: context.eazyMuted,
-                fontWeight: FontWeight.w600,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    _conversationUsername,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.eazyMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1557,10 +1589,12 @@ class _MessageBubble extends StatelessWidget {
                       ),
                     ),
                   ),
-                Text(
+                if (deleted ||
+                    (message['body']?.toString().trim().isNotEmpty ?? false))
+                  Text(
                   deleted
                       ? 'Message deleted'
-                      : (message['body']?.toString() ?? ''),
+                      : message['body'].toString(),
                   style: TextStyle(
                     color:
                         deleted
@@ -1766,8 +1800,11 @@ class _MessageBubble extends StatelessWidget {
                       child: Text(
                         _time(message['createdAt'] ?? message['created_at']),
                         style: TextStyle(
-                          color: context.eazyMuted,
-                          fontSize: 9,
+                          color: isMine
+                              ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: .82)
+                              : context.eazyMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
