@@ -121,7 +121,7 @@ class _TranslationPageState extends State<TranslationPage> {
           ],
         ),
         body: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.paddingOf(context).bottom + 28),
           children: [
             const Text(
               'Translate naturally',
