@@ -562,6 +562,12 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         ),
       );
       if (action == null || !mounted) return;
+      if (newPin.text.length != 4 ||
+          confirmation.text.length != 4 ||
+          (action == 'save' && changing && currentPin.text.length != paymentPinLength)) {
+        _showError('Enter a valid 4-digit new PIN and complete the required current PIN fields.');
+        return;
+      }
 
       final codeRequest = await api.post(
         'wallet/payment-pin/request-code',
@@ -673,7 +679,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               stickyAuth: true,
             ),
           );
-          if (authenticated) return savedPin;
+          if (authenticated) {
+            try {
+              await api.post('wallet/payment-pin/verify', auth: true, body: {'pin': savedPin});
+              return savedPin;
+            } on ApiException {
+              await storage.delete(key: 'eazy.wallet.biometricShortcutEnabled');
+              await storage.delete(key: 'eazy.wallet.biometricPaymentPin');
+            }
+          }
         }
       } catch (_) {
         // Fall back to the payment PIN prompt if biometrics are unavailable.
