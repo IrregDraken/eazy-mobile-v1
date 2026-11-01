@@ -43,6 +43,29 @@ export class OrderService {
     return { deleted: true };
   }
 
+  async sellerOrders(sellerId: string, pagination: Pagination) {
+    const result = await this.repository.listSellerOrders(sellerId, pagination.page, pagination.limit);
+    return { items: result.items, meta: paginationMeta(pagination, result.total) };
+  }
+
+  async updateSellerFulfillment(sellerId: string, orderId: string, fulfillmentId: string, input: { action: 'accept' | 'reject' | 'ship' | 'deliver'; reason?: string }) {
+    const result = await withTransaction(this.pool, client => this.repository.updateSellerFulfillment(client, sellerId, orderId, fulfillmentId, input.action, input.reason));
+    if (result.error) throw mapOrderError(new Error(result.error));
+    return { updated: true, status: result.status };
+  }
+
+  async confirmReceived(buyerId: string, orderId: string, fulfillmentId: string) {
+    const result = await withTransaction(this.pool, client => this.repository.confirmReceived(client, buyerId, orderId, fulfillmentId));
+    if (result.error) throw mapOrderError(new Error(result.error));
+    return { confirmed: true, alreadyCompleted: result.alreadyCompleted === true };
+  }
+
+  async createDispute(buyerId: string, orderId: string, fulfillmentId: string, input: { reason: string; description: string; photoStorageKeys: string[] }) {
+    if (input.photoStorageKeys.some(key => !key.startsWith(buyerId + '/'))) throw new AppError('FORBIDDEN', 'Dispute photos must belong to your account');
+    const result = await withTransaction(this.pool, client => this.repository.createDispute(client, buyerId, orderId, fulfillmentId, input));
+    if (result.error) throw mapOrderError(new Error(result.error));
+    return { submitted: true, disputeId: result.disputeId };
+  }
   async get(buyerId: string, orderId: string) {
     const order = await this.repository.get(buyerId, orderId);
     if (!order) throw new AppError('NOT_FOUND', 'Order not found');
@@ -58,6 +81,15 @@ export class OrderService {
 function mapOrderError(error: unknown): AppError {
   if (error instanceof AppError) return error;
   if (!(error instanceof Error)) return new AppError('INTERNAL_ERROR', 'Order creation failed');
+  if (error.message === 'NOT_FOUND') return new AppError('NOT_FOUND', 'Order or seller fulfilment not found');
+  if (error.message === 'ORDER_NOT_PAID') return new AppError('CONFLICT', 'This order has not been paid and cannot be processed');
+  if (error.message === 'INVALID_TRANSITION') return new AppError('CONFLICT', 'This order cannot move to that status');
+  if (error.message === 'REJECTION_REASON_REQUIRED') return new AppError('VALIDATION_ERROR', 'Add a reason when rejecting an order');
+  if (error.message === 'DISPUTED') return new AppError('CONFLICT', 'This order is under dispute and funds remain held');
+  if (error.message === 'NOT_DELIVERED') return new AppError('CONFLICT', 'Confirm receipt only after the seller marks the order delivered');
+  if (error.message === 'ESCROW_HOLD_NOT_FOUND') return new AppError('CONFLICT', 'The seller payment hold could not be found');
+  if (error.message === 'INVALID_DISPUTE_STATE') return new AppError('CONFLICT', 'A problem can only be reported while the order is in progress');
+  if (error.message === '23505') return new AppError('CONFLICT', 'A dispute has already been submitted for this seller order');
   if (error.message === 'EMPTY_CART') return new AppError('BAD_REQUEST', 'Cannot create an order from an empty cart');
   if (error.message === 'INSUFFICIENT_INVENTORY') return new AppError('CONFLICT', 'Insufficient inventory');
   if (error.message === 'MIXED_CURRENCIES') return new AppError('BAD_REQUEST', 'An order cannot contain multiple currencies');
