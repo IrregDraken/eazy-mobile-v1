@@ -541,4 +541,20 @@ export class OrderRepository {
     return result.rows[0]?.id ?? null;
   }
 
+  async listSellerPayables(sellerId: string, page: number, limit: number) {
+    const count = await this.pool.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM seller_payable_ledger WHERE seller_id = $1',
+      [sellerId]
+    );
+    const result = await this.pool.query(
+      `SELECT id, order_id AS "orderId", entry_type AS "entryType",
+        amount_kobo::text AS "amountKobo", trim(currency) AS currency,
+        created_at AS "createdAt"
+       FROM seller_payable_ledger WHERE seller_id = $1
+       ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3`,
+      [sellerId, limit, (page - 1) * limit]
+    );
+    return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
 }
