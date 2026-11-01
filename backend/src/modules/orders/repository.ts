@@ -301,8 +301,7 @@ export class OrderRepository {
     sellerId: string,
     orderId: string,
     fulfillmentId: string,
-    action: 'accept' | 'reject' | 'ship' | 'deliver',
-    reason?: string
+    action: 'accept' | 'ship' | 'deliver'
   ) {
     const selected = await client.query<{
       id: string; status: string; order_status: string; buyer_id: string; seller_id: string;
@@ -320,18 +319,13 @@ export class OrderRepository {
     if (row.order_status !== 'paid' && row.order_status !== 'accepted' && row.order_status !== 'processing' && row.order_status !== 'shipped' && row.order_status !== 'delivered') {
       return { error: 'ORDER_NOT_PAID' as const };
     }
-    const next = action === 'accept' ? 'accepted' : action === 'reject' ? 'cancelled' :
-      action === 'ship' ? 'shipped' : 'delivered';
+    const next = action === 'accept' ? 'accepted' : action === 'ship' ? 'shipped' : 'delivered';
     const allowed =
-      (action === 'accept' || action === 'reject') ? row.status === 'pending' :
+      action === 'accept' ? row.status === 'pending' :
       action === 'ship' ? row.status === 'accepted' :
       row.status === 'shipped';
     if (!allowed) return { error: 'INVALID_TRANSITION' as const };
 
-    if (action === 'reject') return { error: 'REFUND_UNAVAILABLE' as const };
-    if (action === 'reject' && (!reason || reason.trim().length < 5 || reason.trim().length > 500)) {
-      return { error: 'REJECTION_REASON_REQUIRED' as const };
-    }
     if (action === 'deliver') {
       const updated = await client.query<{ count: string }>(
         `WITH changed AS (
@@ -368,10 +362,9 @@ export class OrderRepository {
       `INSERT INTO order_events (order_id, fulfillment_id, actor_user_id, event_type, description, metadata)
        VALUES ($1,$2,$3,$4,$5,$6::jsonb)`,
       [orderId, fulfillmentId, sellerId, `seller_${action}`,
-        action === 'reject' ? `Seller rejected the order: ${reason!.trim()}` :
         action === 'accept' ? 'Seller accepted the order' :
         action === 'ship' ? 'Seller marked the order as shipped' : 'Seller marked the order as delivered',
-        JSON.stringify(action === 'reject' ? { reason: reason!.trim() } : {})]
+        JSON.stringify({})]
     );
     const aggregate = await client.query<{ status: string }>(
       `SELECT CASE
@@ -389,8 +382,7 @@ export class OrderRepository {
       `INSERT INTO notifications (user_id, actor_user_id, type, target_type, target_id, title, body, deep_link)
        VALUES ($1,$2,'order','order',$3,$4,$5,$6)`,
       [row.buyer_id, sellerId, orderId,
-        action === 'accept' ? 'Order accepted' : action === 'reject' ? 'Order rejected' : action === 'ship' ? 'Order shipped' : 'Order delivered',
-        action === 'reject' ? `The seller rejected your order: ${reason!.trim()}` :
+        action === 'accept' ? 'Order accepted' : action === 'ship' ? 'Order shipped' : 'Order delivered',
         action === 'accept' ? 'The seller accepted your order.' :
         action === 'ship' ? 'Your order has been marked as shipped.' : 'Your order has been marked as delivered.',
         `eazy://orders/${orderId}`]
