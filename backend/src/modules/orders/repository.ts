@@ -469,7 +469,7 @@ export class OrderRepository {
   async releaseDueEscrow(client: DbClient, limit: number) {
     const due = await client.query<{
       id: string; order_id: string; seller_id: string; buyer_id: string;
-      currency: string; amount: string;
+      currency: string; amountKobo: string;
     }>(
       `SELECT f.id, f.order_id, f.seller_id, o.buyer_id, trim(o.currency) AS currency,
         hold.amount_kobo::text AS amountKobo
