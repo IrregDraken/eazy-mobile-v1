@@ -32,7 +32,7 @@ class _EazyAppState extends State<EazyApp> {
       widget.auth,
       observers: [
         _SnackBarNavigationObserver(
-          () => _messengerKey.currentState?.hideCurrentSnackBar(),
+          () => _messengerKey.currentState?.removeCurrentSnackBar(),
         ),
       ],
     );
