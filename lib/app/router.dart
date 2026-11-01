@@ -19,7 +19,11 @@ import '../features/onboarding/discovery_page.dart';
 import '../features/onboarding/splash_page.dart';
 import '../features/onboarding/welcome_page.dart';
 
-GoRouter buildRouter(AuthController auth) => GoRouter(
+GoRouter buildRouter(
+  AuthController auth, {
+  List<NavigatorObserver> observers = const [],
+}) => GoRouter(
+  observers: observers,
   initialLocation: '/splash',
   refreshListenable: auth,
   redirect: (context, state) {
