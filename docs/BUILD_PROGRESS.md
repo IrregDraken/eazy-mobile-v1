@@ -165,6 +165,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Verification: theme definitions updated through GitHub. Not all explicit per-sheet overrides have been exhaustively inspected, and no light-mode screenshot/device test has run.
 - Remaining: audit explicit modal overrides and verify Report account, settings dialogs and all bottom sheets in both themes.
 
+### D15 — Appearance and interface language (partial)
+- Status: PARTIAL.
+- Cause confirmed: Settings only exposed Light and Dark and the local theme controller normalized every non-dark choice to Light, despite backend settings already accepting `system`. The language row was static and did not clearly distinguish app-interface language from translation languages.
+- Files changed: `lib/app/theme/theme_controller.dart`, `lib/features/settings/settings_page.dart`.
+- Changes: System/Light/Dark options; System is the default and is persisted locally and to the existing backend setting; reworded the language row to state that the interface is currently English while Translator supports other content languages. No fake language selector added.
+- Verification: backend schema/type already support `system`; updated theme controller and settings source re-fetched. No analyzer or system-theme/device test has run.
+- Remaining: test System mode against Android light/dark setting and verify dropdown layout on device.
+
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
 - Files changed: `docs/BUILD_PROGRESS.md` only.
