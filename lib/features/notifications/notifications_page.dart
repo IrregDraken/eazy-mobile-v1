@@ -11,7 +11,8 @@ import '../../core/network/api_exception.dart';
 import '../../core/ui/eazy_assist_fab.dart';
 
 class NotificationsPage extends StatefulWidget {
-  const NotificationsPage({super.key});
+  const NotificationsPage({super.key, this.initialDeepLink});
+  final String? initialDeepLink;
   @override
   State<NotificationsPage> createState() => _NotificationsPageState();
 }
@@ -42,6 +43,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
       });
     });
     _registerExistingTokenIfAuthorized();
+    final initialLink = widget.initialDeepLink?.trim();
+    if (initialLink != null && initialLink.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => resolveDeepLink(initialLink));
+    }
   }
 
   @override
@@ -195,16 +200,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
-  Future<void> openNotification(Map<String, dynamic> notification) async {
-    final id = notification['id']?.toString();
-    if (id != null && id.isNotEmpty) {
-      try { await api.post('notifications/$id/read', auth: true); } catch (_) {}
-    }
-    final link = notification['deepLink']?.toString();
-    if (link == null || link.isEmpty || !mounted) {
-      await load();
-      return;
-    }
+  Future<void> resolveDeepLink(String link) async {
     try {
       final result = await api.get('deep-links/resolve?path=${Uri.encodeQueryComponent(link)}', auth: true);
       final destination = result['destination']?.toString();
@@ -217,9 +213,21 @@ class _NotificationsPageState extends State<NotificationsPage> {
       }
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-    } finally {
-      if (mounted) await load();
     }
+  }
+
+  Future<void> openNotification(Map<String, dynamic> notification) async {
+    final id = notification['id']?.toString();
+    if (id != null && id.isNotEmpty) {
+      try { await api.post('notifications/$id/read', auth: true); } catch (_) {}
+    }
+    final link = notification['deepLink']?.toString();
+    if (link == null || link.isEmpty || !mounted) {
+      await load();
+      return;
+    }
+    await resolveDeepLink(link);
+    if (mounted) await load();
   }
 
   Future<void> read(String id) async {
