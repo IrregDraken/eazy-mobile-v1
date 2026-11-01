@@ -223,7 +223,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               )
               : ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.fromLTRB(12, 12, 12, MediaQuery.paddingOf(context).bottom + 24),
                 itemCount: _filteredItems.isEmpty ? 2 : _filteredItems.length + 1,
                 itemBuilder: (_, i) {
                   if (i == 0) {
