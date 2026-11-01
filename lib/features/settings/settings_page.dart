@@ -181,7 +181,7 @@ class _SettingsPageState extends State<SettingsPage> {
       title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w900)),
     ),
     body: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.paddingOf(context).bottom + 24),
             children: [
               if (loading) const LinearProgressIndicator(minHeight: 2),
               if (error.isNotEmpty)
