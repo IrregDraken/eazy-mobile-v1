@@ -16,6 +16,7 @@ import '../features/profile/profile_page.dart';
 import '../features/marketplace/cart_page.dart';
 import '../features/marketplace/checkout_page.dart';
 import '../features/marketplace/orders_page.dart';
+import '../features/marketplace/seller_orders_page.dart';
 import '../features/marketplace/seller_setup_page.dart';
 import '../features/onboarding/profile_setup_page.dart';
 import '../features/onboarding/discovery_page.dart';
@@ -75,6 +76,7 @@ GoRouter buildRouter(
     GoRoute(path: '/cart', builder: (_, _) => const CartPage()),
     GoRoute(path: '/checkout', builder: (_, _) => const CheckoutPage()),
     GoRoute(path: '/orders', builder: (_, _) => const OrdersPage()),
+    GoRoute(path: '/seller/orders', builder: (_, _) => const SellerOrdersPage()),
     GoRoute(path: '/orders/:id', builder: (_, state) => OrderDetailPage(orderId: state.pathParameters['id']!)),
     GoRoute(path: '/seller', builder: (_, _) => const SellerSetupPage()),
     GoRoute(
