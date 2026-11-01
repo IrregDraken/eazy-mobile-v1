@@ -157,7 +157,7 @@ if (pool) {
   authOptions.locationRouter = createLocationRouter(new LocationService(locationProvider, new LocationRepository()));
   const walletRepository = new WalletRepository(pool);
   const walletService = new WalletService(pool, walletRepository, new LedgerService(new LedgerRepository()));
-  const paymentPinService = new PaymentPinService(pool);
+  const paymentPinService = new PaymentPinService(pool, emailProvider, config);
   authOptions.walletRouter = createWalletRouter(walletService, paymentPinService);
   authOptions.qrRouter = createQrRouter(new QrService(pool, new QrRepository(pool)), walletService, paymentPinService);
   const bankProvider = config.PAYSTACK_ENABLED && config.PAYSTACK_SECRET_KEY ? new PaystackBankProvider(config) : new UnavailableBankProvider();
