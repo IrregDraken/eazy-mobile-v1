@@ -7,6 +7,9 @@ export interface OrderProjection {
   currency: string;
   subtotal: string;
   total: string;
+  deliveryTotal?: string;
+  fulfillments?: unknown[];
+  timeline?: unknown[];
   createdAt: string;
   items: {
     id: string;
@@ -209,17 +212,44 @@ export class OrderRepository {
   }
 
   async get(buyerId: string, orderId: string): Promise<OrderProjection | null> {
-    const order = await this.pool.query<{ id: string; status: string; currency: string; subtotal: string; total: string; createdAt: string }>(
-      `SELECT id, status, trim(currency) AS currency, subtotal_amount::text AS subtotal, total_amount::text AS total, created_at AS "createdAt"
-       FROM orders WHERE id = $1 AND buyer_id = $2 LIMIT 1`, [orderId, buyerId]
+    const order = await this.pool.query<{
+      id: string; status: string; currency: string; subtotal: string;
+      deliveryTotal: string; total: string; createdAt: string;
+    }>(
+      `SELECT id, status, trim(currency) AS currency,
+        subtotal_amount::text AS subtotal, delivery_total_amount::text AS "deliveryTotal",
+        total_amount::text AS total, created_at AS "createdAt"
+       FROM orders WHERE id = $1 AND buyer_id = $2 LIMIT 1`,
+      [orderId, buyerId]
     );
     if (!order.rows[0]) return null;
     const items = await this.pool.query<OrderProjection['items'][number]>(
-      `SELECT oi.id, oi.product_id AS "productId", oi.seller_id AS "sellerId", COALESCE(oi.product_name, p.name) AS "productName", oi.quantity,
-        oi.unit_price_amount::text AS "unitPrice", oi.line_total_amount::text AS "lineTotal", trim(oi.currency) AS currency
-       FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = $1 ORDER BY oi.id ASC`, [orderId]
+      `SELECT oi.id, oi.product_id AS "productId", oi.seller_id AS "sellerId",
+        COALESCE(oi.product_name, p.name) AS "productName", oi.quantity,
+        oi.unit_price_amount::text AS "unitPrice", oi.line_total_amount::text AS "lineTotal",
+        trim(oi.currency) AS currency
+       FROM order_items oi JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1 ORDER BY oi.id ASC`,
+      [orderId]
     );
-    return { ...order.rows[0], items: items.rows };
+    const fulfillments = await this.pool.query(
+      `SELECT f.id, f.seller_id AS "sellerId", seller.username AS "sellerUsername",
+        seller.display_name AS "sellerDisplayName", f.delivery_method AS "deliveryMethod",
+        f.status, f.delivery_fee_amount::text AS "deliveryFee", f.address_snapshot AS "deliveryAddress",
+        f.pickup_instructions AS "pickupInstructions", f.accepted_at AS "acceptedAt",
+        f.shipped_at AS "shippedAt", f.delivered_at AS "deliveredAt",
+        f.release_after AS "releaseAfter",
+        EXISTS (SELECT 1 FROM order_disputes d WHERE d.fulfillment_id = f.id AND d.status IN ('open','reviewing')) AS "hasOpenDispute"
+       FROM order_fulfillments f JOIN profiles seller ON seller.user_id = f.seller_id
+       WHERE f.order_id = $1 ORDER BY f.created_at ASC, f.id ASC`,
+      [orderId]
+    );
+    const timeline = await this.pool.query(
+      `SELECT id, event_type AS type, description, created_at AS "createdAt"
+       FROM order_events WHERE order_id = $1 ORDER BY created_at ASC, id ASC`,
+      [orderId]
+    );
+    return { ...order.rows[0], items: items.rows, fulfillments: fulfillments.rows, timeline: timeline.rows };
   }
 
   async list(buyerId: string, page: number, limit: number): Promise<{ items: OrderProjection[]; total: number }> {
