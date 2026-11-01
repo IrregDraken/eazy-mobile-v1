@@ -89,7 +89,7 @@ export class OrderRepository {
     return true;
   }
 
-  async createFromCart(client: DbClient, buyerId: string, idempotencyKey: string): Promise<string> {
+  async createFromCart(client: DbClient, buyerId: string, idempotencyKey: string, fulfillments: { sellerId: string; method: 'delivery' | 'pickup'; addressId?: string }[]): Promise<string> {
     const existing = await client.query<{ id: string; buyer_id: string }>('SELECT id, buyer_id FROM orders WHERE idempotency_key = $1 FOR UPDATE', [idempotencyKey]);
     if (existing.rows[0]) {
       if (existing.rows[0].buyer_id !== buyerId) throw new Error('IDEMPOTENCY_KEY_CONFLICT');
