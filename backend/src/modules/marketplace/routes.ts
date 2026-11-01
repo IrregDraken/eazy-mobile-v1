@@ -7,6 +7,7 @@ import { MarketplaceService, inventorySchema, productCreateSchema, productIdSche
 
 export function createMarketplaceRouter(service: MarketplaceService): Router {
   const router = Router();
+  router.get('/sellers/:username/store', validate('params', sellerUsernameSchema), async (request, response) => sendSuccess(response, await service.publicSellerStoreByUsername(param(request.params.username))));
   router.get('/sellers/:username/reviews', validate('params', sellerUsernameSchema), validate('query', paginationQuerySchema), async (request, response) => sendSuccess(response, await service.sellerReviews(param(request.params.username), request.query as never)));
   router.get('/products/:id/reviews', validate('params', productIdSchema), validate('query', paginationQuerySchema), async (request, response) => sendSuccess(response, await service.productReviews(param(request.params.id), request.query as never)));
   router.get('/sellers/:username/products', validate('params', sellerUsernameSchema), validate('query', productSearchSchema), async (request, response) => sendSuccess(response, await service.sellerProductsByUsername(param(request.params.username), request.query as never, request.auth?.userId)));
