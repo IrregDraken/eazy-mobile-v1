@@ -83,7 +83,7 @@ GoRouter buildRouter(
     GoRoute(path: '/seller/orders', builder: (_, _) => const SellerOrdersPage()),
     GoRoute(path: '/seller/payables', builder: (_, _) => const SellerPayablesPage()),
     GoRoute(path: '/seller-reviews/:username', builder: (_, state) => SellerReviewsPage(username: state.pathParameters['username']!)),
-    GoRoute(path: '/store/:username', builder: (_, state) => SellerStorefrontPage(username: state.pathParameters['username']!)),
+    GoRoute(path: '/store/:slug', builder: (_, state) => SellerStorefrontPage(slug: state.pathParameters['slug']!)),
     GoRoute(path: '/marketplace/search', builder: (_, state) => MarketplaceSearchPage(query: state.uri.queryParameters['q'] ?? '')),
     GoRoute(path: '/orders/:id', builder: (_, state) => OrderDetailPage(orderId: state.pathParameters['id']!)),
     GoRoute(path: '/seller', builder: (_, _) => const SellerSetupPage()),
