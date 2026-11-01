@@ -59,7 +59,7 @@ class _SecurityPageState extends State<SecurityPage> {
           biometricShortcutEnabled = configured && savedEnabled && savedPin != null;
         });
       }
-    } on ApiException {
+    } catch (_) {
       if (mounted) setState(() {
         paymentPinConfigured = false;
         biometricShortcutEnabled = false;
@@ -213,7 +213,9 @@ class _SecurityPageState extends State<SecurityPage> {
                   Card(
                     child: SwitchListTile(
                       value: biometricShortcutEnabled,
-                      onChanged: savingBiometric ? null : _setBiometricShortcut,
+                      onChanged: savingBiometric || (!paymentPinConfigured && !biometricShortcutEnabled)
+                          ? null
+                          : _setBiometricShortcut,
                       secondary: Icon(Icons.fingerprint_rounded, color: context.eazyAccent),
                       title: const Text('Biometric payment shortcut'),
                       subtitle: Text(
