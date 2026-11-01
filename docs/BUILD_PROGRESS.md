@@ -231,7 +231,7 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 | S3 | DONE | Logout confirmation; clear tokens/cached user data; unregister push token; return to welcome screen. |
 | S4 | BLOCKED | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
 | S5 | BLOCKED | Terms/privacy acceptance at signup; record version and timestamp; owner-approved legal copy required. |
-| S6 | TODO | Notification preferences saved to backend and respected by push delivery. |
+| S6 | DONE | Notification preferences saved to backend and respected by push delivery. |
 | S7 | TODO | Support email from configuration; report-problem form persists to backend. |
 
 ### 2B — Cart and checkout
@@ -345,3 +345,10 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 - Source inspection: signup/auth page and backend auth routes/services contain no terms/privacy acceptance checkbox, version record or consent timestamp.
 - Exact blocker: no owner-approved Terms of Service or Privacy Policy text/version is present in the repository. Do not invent legal copy or silently use generic text.
 - Unblock: owner supplies the approved Terms and Privacy Policy text, public URLs and version identifiers. Then implement required signup acceptance and persist the exact accepted versions and timestamp in the backend.
+
+
+### S6 — Notification preferences
+- Status: DONE.
+- Existing Settings switches for follows, likes and comments persist through `PATCH /settings` into `user_settings`.
+- `NotificationRepository.create` checks the recipient's corresponding preference before inserting a notification. Disabled categories therefore do not reach the inbox, realtime publisher or device push delivery. Financial/order notifications remain wallet-only by design.
+- Verification: inspected Settings UI, SettingsService/Repository, NotificationRepository and NotificationService; existing `backend/test/settings_security.test.ts` and notification tests cover persistence and suppression. Latest backend test suite passed before the current S4-only changes; final CI will rerun.
