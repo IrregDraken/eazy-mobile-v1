@@ -44,8 +44,8 @@ Scope: the owner-provided launch-readiness execution prompt only.
 | D9 Floating AI orb | PARTIAL | `lib/core/ui/eazy_assist_fab.dart`, `lib/features/home/home_shell.dart`; current FAB is fixed-position and not draggable/scroll-aware. |
 | D10 Toasts | PARTIAL | Search all SnackBar/ScaffoldMessenger usage and central navigation lifecycle. |
 | D11 Chat visuals | PARTIAL | `lib/features/chat/chat_page.dart`; inspect message bubble, timestamp, attachment layout and header theme contrast. |
-| D12 Profile link | TODO | `lib/features/profile/profile_page.dart`; inspect copy-link control constraints. |
-| D13 Bottom navigation | TODO | `lib/features/home/home_shell.dart`; selected index is local shell state; verify transitions and duplicate selection. |
+| D12 Profile link | PARTIAL | `lib/features/profile/profile_page.dart`; inspect copy-link control constraints. |
+| D13 Bottom navigation | PARTIAL | `lib/features/home/home_shell.dart`; selected index is local shell state; verify transitions and duplicate selection. |
 | D14 Dialogs | TODO | Search AlertDialog/showDialog/showModalBottomSheet across client; verify opaque surfaces and theme contrast. |
 | D15 Appearance/language | TODO | `lib/features/settings/settings_page.dart`, `lib/app/theme/theme_controller.dart`; settings currently models theme as light/dark only. |
 | D16 Wallet polish | TODO | `lib/features/wallet/wallet_page.dart`, `wallet_amount_input.dart`, backend wallet/ledger; audit currency formatting and recipient flow. |
@@ -141,6 +141,21 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Changes: hide blank message-body text when attachments exist; add participant avatar/fallback icon, explicitly theme the display name and handle, and increase timestamp size/contrast with outgoing/incoming-specific colours. D1's inline image rendering also removes the generic photo chip.
 - Verification: source re-fetched and inspected after update. No analyzer/widget/device visual test has run. PARTIAL pending light/dark screenshot verification.
 - Remaining: verify header and timestamp readability in both themes and check attachment-only bubbles on device.
+
+### D12 — Profile link label (partial)
+- Status: PARTIAL.
+- Cause confirmed: the profile action row gives the copy action a constrained share of the row width; its label allowed normal wrapping.
+- Files changed: `lib/features/profile/profile_page.dart`.
+- Changes: “Copy profile link” now stays on one line and ellipsizes if the available width is insufficient.
+- Verification: source anchor and updated file commit confirmed through GitHub. No narrow-device widget/screenshot test has run.
+- Remaining: verify the action row at the smallest supported screen width and with large system font scaling.
+
+### D13 — Bottom navigation selection (partial)
+- Status: PARTIAL.
+- Cause investigation: `HomeShell` uses one integer `index` as the sole `NavigationBar.selectedIndex`, and each destination updates that one value in a single `setState`; there is no separate selected-state flag per tab in the source inspected.
+- Files changed: none.
+- Verification: static inspection of `lib/features/home/home_shell.dart` only. This supports one selected index by construction, but does not prove the transition rendering on device.
+- Remaining: run a rapid-tap/transition widget or device test. If duplicate highlight reproduces, fix the underlying transition behavior.
 
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
