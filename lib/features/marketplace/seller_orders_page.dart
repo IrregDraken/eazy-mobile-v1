@@ -150,7 +150,7 @@ class _SellerOrdersPageState extends State<SellerOrdersPage> {
                               Wrap(spacing: 8, runSpacing: 8, children: [
                                 if (status == 'pending') ...[
                                   FilledButton(onPressed: busy ? null : () => act(order, 'accept'), child: const Text('Accept')),
-                                  OutlinedButton(onPressed: busy ? null : () => act(order, 'reject'), child: const Text('Reject')),
+                                  const Text('Reject is disabled until verified refunds are available.'),
                                 ],
                                 if (status == 'accepted')
                                   FilledButton(onPressed: busy ? null : () => act(order, 'ship'), child: const Text('Mark shipped')),
