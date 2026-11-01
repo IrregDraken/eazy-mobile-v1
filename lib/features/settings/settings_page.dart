@@ -198,11 +198,28 @@ class _SettingsPageState extends State<SettingsPage> {
       confirmation.dispose();
       if (confirmed != true) return;
 
-      await api.post(
+      final deletion = await api.post(
         'auth/delete-account',
         body: {'confirmation': 'DELETE'},
         auth: true,
       );
+      if (deletion['cleanupPending'] == true && mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Account deletion recorded'),
+            content: const Text(
+              'Your account is disabled and personal data has been removed from Eazy. Some external media or sign-in cleanup is still processing. The cleanup job has been recorded; contact privacy@eazy.name.ng if you need assistance.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        );
+      }
       await widget.auth.signOut();
       if (mounted) context.go('/welcome');
     } on ApiException catch (e) {
