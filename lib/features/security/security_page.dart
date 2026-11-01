@@ -188,8 +188,7 @@ class _SecurityPageState extends State<SecurityPage> {
     );
     if (ok != true || !mounted) return;
     try {
-      await api.post('auth/sessions/revoke-all', auth: true);
-      await widget.auth.signOut();
+      await widget.auth.signOut(revokeAllSessions: true);
       if (!mounted) return;
       context.go('/welcome');
     } catch (_) {}
