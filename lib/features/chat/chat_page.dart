@@ -1120,7 +1120,10 @@ class _ConversationPageState extends State<ConversationPage> {
                     )
                   : null,
               child: (_otherParticipant['avatarUrl'] ??
-                          _otherParticipant['avatar_url']) == null
+                              _otherParticipant['avatar_url'])
+                          ?.toString()
+                          .isNotEmpty !=
+                      true
                   ? Icon(Icons.person_rounded, color: context.eazyAccent, size: 18)
                   : null,
             ),
