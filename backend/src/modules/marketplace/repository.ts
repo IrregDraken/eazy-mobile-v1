@@ -31,7 +31,7 @@ const productSelect = `p.id, p.name, p.description, p.price_amount::text AS "pri
   (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.seller_id = p.seller_id) AS "sellerRatingAverage",
   (SELECT count(*)::int FROM order_reviews r WHERE r.seller_id = p.seller_id) AS "sellerReviewCount",
   COALESCE((SELECT json_agg(json_build_object('storageKey', pm.storage_key, 'position', pm.position) ORDER BY pm.position) FROM product_media pm WHERE pm.product_id = p.id), '[]'::json) AS media,
-  json_build_object('inStock', (COALESCE(i.available_quantity, 0) - COALESCE(i.reserved_quantity, 0) > 0)) AS availability`;
+  json_build_object('inStock', (COALESCE(i.available_quantity, 0) - COALESCE(i.reserved_quantity, 0) > 0), 'availableQuantity', GREATEST(COALESCE(i.available_quantity, 0) - COALESCE(i.reserved_quantity, 0), 0)) AS availability`;
 
 export class MarketplaceRepository {
   constructor(private readonly pool: Pool) {}
