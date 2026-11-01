@@ -157,6 +157,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Verification: static inspection of `lib/features/home/home_shell.dart` only. This supports one selected index by construction, but does not prove the transition rendering on device.
 - Remaining: run a rapid-tap/transition widget or device test. If duplicate highlight reproduces, fix the underlying transition behavior.
 
+### D14 — Dialog and bottom-sheet surfaces (partial)
+- Status: PARTIAL.
+- Cause confirmed: the shared themes did not explicitly set opaque dialog and modal bottom-sheet surfaces, leaving appearance dependent on Material defaults and local overrides.
+- Files changed: `lib/app/theme/eazy_theme.dart`.
+- Changes: both light and dark themes now define opaque dialog and bottom-sheet backgrounds, transparent surface tint, rounded shapes and theme-matched borders.
+- Verification: theme definitions updated through GitHub. Not all explicit per-sheet overrides have been exhaustively inspected, and no light-mode screenshot/device test has run.
+- Remaining: audit explicit modal overrides and verify Report account, settings dialogs and all bottom sheets in both themes.
+
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
 - Files changed: `docs/BUILD_PROGRESS.md` only.
