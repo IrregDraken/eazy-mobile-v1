@@ -43,6 +43,7 @@ export const sellerDeliverySettingsSchema = z.object({
   currency: currencySchema.default('NGN'),
   pickupInstructions: z.string().trim().max(500).nullable().optional()
 }).strict().refine(value => value.deliveryEnabled || value.pickupEnabled, 'Enable delivery, pickup or both');
+export const sellerAgreementAcceptSchema = z.object({ accepted: z.literal(true) }).strict();
 export const sellerStoreSlugSchema = z.object({ slug: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9-]{2,59}$/) }).strict();
 export const sellerStoreSchema = z.object({
   storeName: z.string().trim().min(3).max(100),
