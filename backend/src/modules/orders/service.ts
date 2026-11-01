@@ -54,7 +54,7 @@ export class OrderService {
   }
 
   async updateSellerFulfillment(sellerId: string, orderId: string, fulfillmentId: string, input: { action: 'accept' | 'ship' | 'deliver' }) {
-    const result = await withTransaction(this.pool, client => this.repository.updateSellerFulfillment(client, sellerId, orderId, fulfillmentId, input.action, input.reason));
+    const result = await withTransaction(this.pool, client => this.repository.updateSellerFulfillment(client, sellerId, orderId, fulfillmentId, input.action));
     if (result.error) throw mapOrderError(new Error(result.error));
     return { updated: true, status: result.status };
   }
