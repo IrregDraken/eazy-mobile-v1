@@ -335,7 +335,7 @@ export class OrderRepository {
     const timestampClause = timestampColumn ? `, ${timestampColumn} = now()` : '';
     await client.query(
       `UPDATE order_fulfillments SET status = $2${timestampClause}${releaseClause}, updated_at = now() WHERE id = $1`,
-      [fulfillmentId, next]
+      [fulfillmentId, next, ORDER_ESCROW_AUTO_RELEASE_DAYS]
     );
     await client.query(
       `INSERT INTO order_events (order_id, fulfillment_id, actor_user_id, event_type, description, metadata)
