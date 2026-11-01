@@ -5,7 +5,7 @@ import { validate } from '../../middleware/validate.js';
 import { paginationQuerySchema } from '../../utils/pagination.js';
 import { OrderService } from './service.js';
 import { createOrderController } from './controller.js';
-import { addressIdSchema, deliveryAddressSchema, disputeSchema, orderCreateSchema, orderFulfillmentParamsSchema, orderIdSchema, sellerFulfillmentActionSchema } from './schemas.js';
+import { addressIdSchema, deliveryAddressSchema, disputeSchema, orderCreateSchema, orderFulfillmentParamsSchema, orderIdSchema, orderItemParamsSchema, orderReviewSchema, sellerFulfillmentActionSchema } from './schemas.js';
 
 export function createOrderRouter(service: OrderService): Router {
   const router = Router();
@@ -19,6 +19,7 @@ export function createOrderRouter(service: OrderService): Router {
   router.get('/', requireAuth, validate('query', paginationQuerySchema), controller.list);
   router.get('/:id', requireAuth, validate('params', orderIdSchema), controller.get);
   router.patch('/:id/fulfillments/:fulfillmentId', requireAuth, validate('params', orderFulfillmentParamsSchema), validate('body', sellerFulfillmentActionSchema), controller.updateSellerFulfillment);
+  router.post('/:id/items/:itemId/review', requireAuth, validate('params', orderItemParamsSchema), validate('body', orderReviewSchema), controller.createReview);
   router.post('/:id/fulfillments/:fulfillmentId/confirm', requireAuth, validate('params', orderFulfillmentParamsSchema), controller.confirmReceived);
   router.post('/:id/fulfillments/:fulfillmentId/disputes', requireAuth, validate('params', orderFulfillmentParamsSchema), validate('body', disputeSchema), controller.createDispute);
   return router;
