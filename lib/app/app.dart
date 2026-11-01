@@ -28,7 +28,14 @@ class _EazyAppState extends State<EazyApp> {
   void initState() {
     super.initState();
     restoreEazyThemeMode();
-    _router = buildRouter(widget.auth);
+    _router = buildRouter(
+      widget.auth,
+      observers: [
+        _SnackBarNavigationObserver(
+          () => _messengerKey.currentState?.hideCurrentSnackBar(),
+        ),
+      ],
+    );
     widget.auth.addListener(_attachMessagingListeners);
     _attachMessagingListeners();
   }
@@ -91,5 +98,29 @@ class _EazyAppState extends State<EazyApp> {
             scaffoldMessengerKey: _messengerKey,
           ),
     );
+  }
+}
+
+class _SnackBarNavigationObserver extends NavigatorObserver {
+  _SnackBarNavigationObserver(this.onNavigation);
+
+  final VoidCallback onNavigation;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    onNavigation();
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPop(route, previousRoute);
+    onNavigation();
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
+    onNavigation();
   }
 }
