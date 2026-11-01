@@ -228,7 +228,7 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 |---|---|---|
 | S1 | DONE | Personal information, edit name/username/bio; email/phone changes through verification-code flow. |
 | S2 | BLOCKED | Four-digit payment PIN; create/change/reset through verified code; optional biometric shortcut OFF by default; PIN or enabled biometric required for money actions; no PIN means create PIN first. |
-| S3 | TODO | Logout confirmation; clear tokens/cached user data; unregister push token; return to welcome screen. |
+| S3 | DOING | Logout confirmation; clear tokens/cached user data; unregister push token; return to welcome screen. |
 | S4 | TODO | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
 | S5 | TODO | Terms/privacy acceptance at signup; record version and timestamp; owner-approved legal copy required. |
 | S6 | TODO | Notification preferences saved to backend and respected by push delivery. |
@@ -323,3 +323,10 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 - Status: BLOCKED for end-to-end acceptance, not for code work.
 - Exact blockers: migration `030_payment_pin_verification.sql` has not been applied to a disposable/staging PostgreSQL database; live Resend delivery of the six-digit verification code has not been exercised; biometric enrollment/authorization requires a physical Android device with biometrics configured.
 - Unblock: provide/enable staging DB + Resend/OTP configuration and a biometric-capable Android test device. Then test create/change/reset, one-time code expiry/attempt limits, legacy six-digit PIN verification, four-digit migration, biometric fallback and actual wallet authorization.
+
+
+### S3 — Logout and local session cleanup
+- Status: DOING.
+- Settings now presents a confirmation dialog before sign-out. Centralized `AuthController.signOut` unregisters the FCM device and deletes its token, revokes the current server session (or all sessions when requested), signs out Firebase/Google, clears the API bearer token and profile snapshot, and deletes the locally stored biometric payment PIN/shortcut and pending-payment reference. It completes local sign-out even if the network is unavailable.
+- Security > Revoke all sessions now calls the same centralized sign-out with `revokeAllSessions: true`; both paths navigate to `/welcome`.
+- Verification pending: Flutter analyzer/tests, review logout route behavior and device sign-out with push permission enabled. Do not mark DONE until automated and device checks pass.
