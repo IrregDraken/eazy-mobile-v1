@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -1445,6 +1446,31 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> _openWalletAlert(Map<String, dynamic> alert) async {
+    final id = alert['id']?.toString();
+    if (id != null && id.isNotEmpty) {
+      try { await api.post('notifications/$id/read', auth: true); } catch (_) {}
+    }
+    final link = alert['deepLink']?.toString();
+    if (link != null && link.isNotEmpty && mounted) {
+      try {
+        final result = await api.get('deep-links/resolve?path=${Uri.encodeQueryComponent(link)}', auth: true);
+        final destination = result['destination']?.toString();
+        if (destination != null && destination.isNotEmpty && mounted) {
+          if (destination.startsWith('/home?')) {
+            context.go(destination);
+          } else {
+            context.push(destination);
+          }
+          return;
+        }
+      } on ApiException catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+    await load();
+  }
+
   Future<void> _readWalletAlert(String id) async {
     try {
       await api.post('notifications/$id/read', auth: true);
@@ -1841,7 +1867,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   trailing: isRead
                       ? null
                       : const Icon(Icons.circle, size: 9, color: EazyColors.green),
-                  onTap: id == null ? null : () => _readWalletAlert(id),
+                  onTap: id == null ? null : () => _openWalletAlert(alert),
                 ),
               );
             }),
