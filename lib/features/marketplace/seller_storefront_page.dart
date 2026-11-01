@@ -5,8 +5,8 @@ import '../../core/network/api_exception.dart';
 import 'product_detail_page.dart';
 
 class SellerStorefrontPage extends StatefulWidget {
-  const SellerStorefrontPage({super.key, required this.username});
-  final String username;
+  const SellerStorefrontPage({super.key, required this.slug});
+  final String slug;
   @override
   State<SellerStorefrontPage> createState() => _SellerStorefrontPageState();
 }
@@ -23,11 +23,13 @@ class _SellerStorefrontPageState extends State<SellerStorefrontPage> {
   Future<void> load() async {
     setState(() { loading = true; error = null; });
     try {
-      final a = await api.get('profiles/${Uri.encodeComponent(widget.username)}');
-      final b = await api.get('marketplace/sellers/${Uri.encodeComponent(widget.username)}/products?page=1&limit=50');
-      final d = await api.get('marketplace/sellers/${Uri.encodeComponent(widget.username)}/store');
+      final d = await api.get('marketplace/stores/${Uri.encodeComponent(widget.slug)}');
+      final storeData = Map<String, dynamic>.from(d['store'] as Map);
+      final username = storeData['username'].toString();
+      final a = await api.get('profiles/${Uri.encodeComponent(username)}');
+      final b = await api.get('marketplace/sellers/${Uri.encodeComponent(username)}/products?page=1&limit=50');
       if (!mounted) return;
-      setState(() { profile = Map<String, dynamic>.from(a['profile'] as Map); store = Map<String, dynamic>.from(d['store'] as Map); products = (b['items'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(); });
+      setState(() { profile = Map<String, dynamic>.from(a['profile'] as Map); store = storeData; products = (b['items'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(); });
     } on ApiException catch (e) { if (mounted) setState(() => error = e.message); }
     finally { if (mounted) setState(() => loading = false); }
   }
@@ -35,13 +37,13 @@ class _SellerStorefrontPageState extends State<SellerStorefrontPage> {
   Widget build(BuildContext context) {
     final seller = products.isNotEmpty && products.first['seller'] is Map ? Map<String, dynamic>.from(products.first['seller'] as Map) : <String, dynamic>{};
     final avatar = profile?['avatarUrl']?.toString() ?? '';
-    return Scaffold(appBar: AppBar(title: Text(store?['storeName']?.toString() ?? '@${widget.username}')), body: loading ? const Center(child: CircularProgressIndicator()) : error != null ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(error!), OutlinedButton(onPressed: load, child: const Text('Retry'))])) : RefreshIndicator(onRefresh: load, child: CustomScrollView(slivers: [
+    return Scaffold(appBar: AppBar(title: Text(store?['storeName']?.toString() ?? '@${store?['username'] ?? ''}')), body: loading ? const Center(child: CircularProgressIndicator()) : error != null ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(error!), OutlinedButton(onPressed: load, child: const Text('Retry'))])) : RefreshIndicator(onRefresh: load, child: CustomScrollView(slivers: [
       SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
         CircleAvatar(radius: 36, backgroundImage: avatar.startsWith('http') ? NetworkImage(avatar) : null, child: avatar.startsWith('http') ? null : const Icon(Icons.storefront_rounded, size: 32)),
-        const SizedBox(height: 10), Text(store?['storeName']?.toString() ?? profile?['displayName']?.toString() ?? widget.username, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-        Text('@${widget.username}'), if ((store?['description']?.toString() ?? '').isNotEmpty) Text(store!['description'].toString(), textAlign: TextAlign.center),
+        const SizedBox(height: 10), Text(store?['storeName']?.toString() ?? profile?['displayName']?.toString() ?? (store?['username']?.toString() ?? widget.slug), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+        Text('@${store?['username'] ?? ''}'), if ((store?['description']?.toString() ?? '').isNotEmpty) Text(store!['description'].toString(), textAlign: TextAlign.center),
         const SizedBox(height: 8), Text('${seller['ratingAverage'] ?? 'No rating'} ★ · ${seller['reviewCount'] ?? 0} reviews · ${products.length} listings'),
-        Wrap(spacing: 8, children: [OutlinedButton(onPressed: () => context.push('/seller-reviews/${Uri.encodeComponent(widget.username)}'), child: const Text('Reviews')), FilledButton(onPressed: () => context.go('/home?tab=chat&username=${Uri.encodeComponent(widget.username)}'), child: const Text('Message seller'))]),
+        Wrap(spacing: 8, children: [OutlinedButton(onPressed: () => context.push('/seller-reviews/${Uri.encodeComponent(store?['username']?.toString() ?? widget.slug)}'), child: const Text('Reviews')), FilledButton(onPressed: () => context.go('/home?tab=chat&username=${Uri.encodeComponent(store?['username']?.toString() ?? widget.slug)}'), child: const Text('Message seller'))]),
       ]))),
       SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 10), child: Text('Shop products', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)))),
       if (products.isEmpty) const SliverFillRemaining(hasScrollBody: false, child: Center(child: Text('This seller has no active listings yet.')))
