@@ -34,7 +34,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 | ID | Status | Candidate code to inspect / reproduce |
 |---|---|---|
 | D1 Photo messages | PARTIAL | `lib/features/chat/chat_page.dart`, `lib/core/media/media_service.dart`, backend `modules/media` and `modules/chat`. Current media service uploads and returns a storage path, but does not expose progress/retry UI. |
-| D2 Send money | TODO | `lib/features/wallet/wallet_page.dart`, backend `modules/wallet`, `modules/ledger`; inspect balance validation, PIN gating, transfer transaction and refresh. |
+| D2 Send money | PARTIAL | `lib/features/wallet/wallet_page.dart`, backend `modules/wallet`, `modules/ledger`; inspect balance validation, PIN gating, transfer transaction and refresh. |
 | D3 Home feed | TODO | `lib/features/social/social_page.dart`; feed load has loading/error states, but no explicit cache or pull-to-refresh has yet been verified. |
 | D4 Discover | TODO | `lib/features/marketplace/marketplace_page.dart`; inspect empty-state/filter rendering and category selection. |
 | D5 Chat preview | TODO | `lib/features/chat/chat_home_screen.dart`; latest-message and realtime refresh logic present; confirm event payload and ordering after send/receive. |
@@ -61,6 +61,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Changes: message image attachments now request a cached signed URL and render inline in the bubble; tapping the image still opens the existing full-screen interactive viewer. Composer shows a local photo thumbnail and the label “Photo”.
 - Verification: GitHub file updates succeeded in two commits (`ff016dd`, `01dc02a`); source was re-fetched for edits. A Flutter analyzer/build has not yet been run, so this is not DONE. Upload progress and retry-on-upload-failure are still missing because the current media service uploads synchronously before adding an attachment to the composer.
 - Remaining: implement observable upload progress and retryable failed uploads, then run Flutter analyze/tests/build.
+
+### D2 — Send money balance gate (partial)
+- Status: PARTIAL.
+- Cause confirmed: the review screen displayed the available balance but did not compare the requested amount against it before continuing to device authentication and PIN entry. The backend wallet service already performs an authoritative balance check inside a database transaction and records the two-sided ledger transfer.
+- Files changed: `lib/features/wallet/wallet_page.dart`.
+- Changes: parse both amount and available balance into integer kobo; reject invalid/zero amounts and amounts above the displayed available balance before showing the review/PIN step; remove mandatory device biometric authentication from this Eazy-user transfer path so the server-verified payment PIN is the authorization; inspect the server response and show success only when transaction status is `succeeded`; refresh wallet state/history after the response.
+- Verification: source re-fetched after edits; confirmed backend `WalletService.transferToUser` compares ledger balance against amount in minor units and writes debit/credit entries in one DB transaction. No Flutter analyzer, widget test, backend test, or device test has run yet. Therefore PARTIAL, not DONE.
+- Remaining: add automated client test coverage for the kobo comparison and execute CI/device verification.
 
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
