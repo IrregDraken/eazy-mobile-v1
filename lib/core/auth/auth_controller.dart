@@ -334,6 +334,29 @@ class AuthController extends ChangeNotifier {
   }
 
 
+  Future<void> reauthenticateWithPassword(String password) async {
+    _requireFirebase();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null || !hasPasswordProvider) {
+      throw const ApiException('This account uses a different sign-in method. Sign out and sign back in to confirm your identity.');
+    }
+    if (password.isEmpty) throw const ApiException('Enter your current password to continue.');
+    try {
+      await user.reauthenticateWithCredential(
+        EmailAuthProvider.credential(email: user.email!, password: password),
+      );
+      final token = await user.getIdToken(true);
+      if (token == null || token.isEmpty) {
+        throw const ApiException('Could not refresh your secure session. Sign in again.');
+      }
+      await api.saveToken(token);
+      _firebaseUser = user;
+      notifyListeners();
+    } on FirebaseAuthException catch (error) {
+      throw ApiException(_firebaseMessage(error));
+    }
+  }
+
   Future<void> requestEmailChange(
     String newEmail, {
     String? currentPassword,
