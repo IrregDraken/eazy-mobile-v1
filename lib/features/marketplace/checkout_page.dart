@@ -80,7 +80,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
           final delivery = config['deliveryEnabled'] == true;
           final pickup = config['pickupEnabled'] == true;
           methods[sellerId] = pickup ? 'pickup' : (delivery ? 'delivery' : '');
-          final defaultAddress = savedAddresses.where((address) => address['isDefault'] == true).firstOrNull;
+          Map<String, dynamic>? defaultAddress;
+          for (final address in savedAddresses) {
+            if (address['isDefault'] == true) { defaultAddress = address; break; }
+          }
           selectedAddresses[sellerId] = defaultAddress?['id']?.toString();
         }
       });
@@ -299,19 +302,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                         child: Text('${item['name']} × ${item['quantity']}'),
                                       ),
                                     const SizedBox(height: 10),
-                                    RadioGroup<String>(
-                                      groupValue: methods[sellerId] ?? '',
-                                      onChanged: (value) => setState(() => methods[sellerId] = value),
-                                      child: Column(children: [
-                                        if (sellerSettings[sellerId]?['pickupEnabled'] == true)
-                                          const RadioListTile<String>(value: 'pickup', title: Text('Pickup')),
-                                        if (sellerSettings[sellerId]?['deliveryEnabled'] == true)
-                                          RadioListTile<String>(
-                                            value: 'delivery',
-                                            title: Text('Delivery · ${money(sellerSettings[sellerId]?['deliveryFeeAmount'])}'),
-                                          ),
-                                      ]),
-                                    ),
+                                    if (sellerSettings[sellerId]?['pickupEnabled'] == true)
+                                      RadioListTile<String>(
+                                        contentPadding: EdgeInsets.zero,
+                                        value: 'pickup',
+                                        groupValue: methods[sellerId],
+                                        onChanged: busy ? null : (value) => setState(() => methods[sellerId] = value!),
+                                        title: const Text('Pickup'),
+                                      ),
+                                    if (sellerSettings[sellerId]?['deliveryEnabled'] == true)
+                                      RadioListTile<String>(
+                                        contentPadding: EdgeInsets.zero,
+                                        value: 'delivery',
+                                        groupValue: methods[sellerId],
+                                        onChanged: busy ? null : (value) => setState(() => methods[sellerId] = value!),
+                                        title: Text('Delivery · ${money(sellerSettings[sellerId]?['deliveryFeeAmount'])}'),
+                                      ),
                                     if (methods[sellerId] == 'delivery') ...[
                                       DropdownButtonFormField<String>(
                                         value: selectedAddresses[sellerId],
