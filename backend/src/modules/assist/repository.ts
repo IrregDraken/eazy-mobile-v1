@@ -66,7 +66,7 @@ export class AssistRepository implements AssistRepositoryContract {
        )
        INSERT INTO assist_messages (session_id, role, content)
        SELECT id, $3, $4 FROM owned_session
-       RETURNING id, session_id, role, content, provider_reference, created_at`,
+       RETURNING id, session_id, role, content, provider_reference, created_at, sequence_id`,
       [sessionId, userId, role, content]
     );
     return result.rows[0] ?? null;
@@ -81,10 +81,10 @@ export class AssistRepository implements AssistRepositoryContract {
         [userId, sessionId]
       ),
       this.pool.query<AssistMessageRow>(
-        `SELECT m.id, m.session_id, m.role, m.content, m.provider_reference, m.created_at
+        `SELECT m.id, m.session_id, m.role, m.content, m.provider_reference, m.created_at, m.sequence_id
          FROM assist_messages m JOIN assist_sessions s ON s.id = m.session_id
          WHERE s.user_id = $1 AND s.id = $2 AND m.role IN ('user', 'assistant')
-         ORDER BY m.created_at DESC, m.id DESC LIMIT $3 OFFSET $4`,
+         ORDER BY m.sequence_id DESC LIMIT $3 OFFSET $4`,
         [userId, sessionId, limit, (page - 1) * limit]
       )
     ]);
@@ -96,7 +96,7 @@ export class AssistRepository implements AssistRepositoryContract {
       `SELECT m.id, m.session_id, m.role, m.content, m.provider_reference, m.created_at
        FROM assist_messages m JOIN assist_sessions s ON s.id = m.session_id
        WHERE s.user_id = $1 AND s.id = $2 AND s.status = 'active' AND m.role IN ('user', 'assistant')
-       ORDER BY m.created_at DESC, m.id DESC LIMIT $3`,
+       ORDER BY m.sequence_id DESC LIMIT $3`,
       [userId, sessionId, limit]
     );
     return result.rows;
