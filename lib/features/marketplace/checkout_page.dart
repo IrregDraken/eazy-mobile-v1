@@ -26,6 +26,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? orderId;
   String? paymentId;
   String? paymentError;
+  String? checkoutUrl;
+  String? orderIdempotencyKey;
+  String? paymentIdempotencyKey;
 
   String newIdempotencyKey() {
     final bytes = List<int>.generate(16, (_) => random.nextInt(256));
@@ -172,56 +175,77 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> placeOrder() async {
-    if (items.isEmpty) return;
-    for (final sellerId in sellerIds) {
-      final method = methods[sellerId] ?? '';
-      if (method != 'delivery' && method != 'pickup') {
-        setState(() => error = 'Choose delivery or pickup for every seller.');
-        return;
-      }
-      if (method == 'delivery' && (selectedAddresses[sellerId] == null || selectedAddresses[sellerId]!.isEmpty)) {
-        setState(() => error = 'Add and select a delivery address for each delivery order.');
-        return;
+    if (items.isEmpty && orderId == null) return;
+    if (orderId == null) {
+      for (final sellerId in sellerIds) {
+        final method = methods[sellerId] ?? '';
+        if (method != 'delivery' && method != 'pickup') {
+          setState(() => error = 'Choose delivery or pickup for every seller.');
+          return;
+        }
+        if (method == 'delivery' && (selectedAddresses[sellerId] == null || selectedAddresses[sellerId]!.isEmpty)) {
+          setState(() => error = 'Add and select a delivery address for each delivery order.');
+          return;
+        }
       }
     }
     setState(() { busy = true; error = null; paymentError = null; });
     try {
-      final result = await api.post(
-        'orders',
-        auth: true,
-        headers: {'Idempotency-Key': newIdempotencyKey()},
-        body: {
-          'fulfillments': sellerIds.map((sellerId) => {
-            'sellerId': sellerId,
-            'method': methods[sellerId],
-            if (methods[sellerId] == 'delivery') 'addressId': selectedAddresses[sellerId],
-          }).toList(),
-        },
-      );
-      final order = Map<String, dynamic>.from(result['order'] as Map);
-      final createdOrderId = order['id'].toString();
-      final payment = await api.post(
-        'payments/initialize',
-        auth: true,
-        headers: {'Idempotency-Key': newIdempotencyKey()},
-        body: {'purpose': 'order_purchase', 'orderId': createdOrderId},
-      );
-      final transaction = Map<String, dynamic>.from(payment['transaction'] as Map);
-      final paymentDetails = Map<String, dynamic>.from(payment['payment'] as Map);
-      final checkoutUrl = paymentDetails['authorizationUrl']?.toString() ?? '';
-      if (checkoutUrl.isEmpty) throw const ApiException('The payment provider did not return a checkout link.');
-      if (!mounted) return;
-      setState(() {
-        orderId = createdOrderId;
-        paymentId = transaction['id']?.toString();
-      });
-      final opened = await launchUrl(Uri.parse(checkoutUrl), mode: LaunchMode.externalApplication);
-      if (!opened && mounted) setState(() => paymentError = 'Could not open Paystack checkout. Your order is saved. Retry opening payment from this screen.');
+      String currentOrderId;
+      if (orderId == null) {
+        orderIdempotencyKey ??= newIdempotencyKey();
+        final result = await api.post(
+          'orders',
+          auth: true,
+          headers: {'Idempotency-Key': orderIdempotencyKey!},
+          body: {
+            'fulfillments': sellerIds.map((sellerId) => {
+              'sellerId': sellerId,
+              'method': methods[sellerId],
+              if (methods[sellerId] == 'delivery') 'addressId': selectedAddresses[sellerId],
+            }).toList(),
+          },
+        );
+        final order = Map<String, dynamic>.from(result['order'] as Map);
+        currentOrderId = order['id'].toString();
+        if (mounted) setState(() => orderId = currentOrderId);
+      } else {
+        currentOrderId = orderId!;
+      }
+
+      if (paymentId == null || checkoutUrl == null) {
+        paymentIdempotencyKey ??= newIdempotencyKey();
+        final payment = await api.post(
+          'payments/initialize',
+          auth: true,
+          headers: {'Idempotency-Key': paymentIdempotencyKey!},
+          body: {'purpose': 'order_purchase', 'orderId': currentOrderId},
+        );
+        final transaction = Map<String, dynamic>.from(payment['transaction'] as Map);
+        final paymentDetails = Map<String, dynamic>.from(payment['payment'] as Map);
+        final url = paymentDetails['authorizationUrl']?.toString() ?? '';
+        if (url.isEmpty) throw const ApiException('The payment provider did not return a checkout link.');
+        if (mounted) setState(() {
+          paymentId = transaction['id']?.toString();
+          checkoutUrl = url;
+        });
+      }
+      await openCheckout();
     } on ApiException catch (e) {
-      if (mounted) setState(() => error = e.message);
+      if (mounted) setState(() => paymentError = e.message);
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  Future<void> openCheckout() async {
+    final url = checkoutUrl;
+    if (url == null || url.isEmpty) {
+      setState(() => paymentError = 'Payment checkout has not been initialized yet.');
+      return;
+    }
+    final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    if (!opened && mounted) setState(() => paymentError = 'Could not open Paystack checkout. Try opening it again.');
   }
 
   Future<void> verifyPayment() async {
@@ -280,7 +304,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       const SizedBox(height: 12),
                       Text('Order reference: $orderId', textAlign: TextAlign.center),
                       if (paymentError != null) Text(paymentError!, textAlign: TextAlign.center),
-                      FilledButton(onPressed: busy ? null : verifyPayment, child: Text(busy ? 'Checking…' : 'I have paid. Verify payment')),
+                      if (checkoutUrl != null)
+                        FilledButton(onPressed: busy ? null : openCheckout, child: const Text('Open Paystack checkout')),
+                      if (paymentId == null)
+                        FilledButton(onPressed: busy ? null : placeOrder, child: const Text('Retry payment setup')),
+                      if (paymentId != null)
+                        OutlinedButton(onPressed: busy ? null : verifyPayment, child: Text(busy ? 'Checking…' : 'I have paid. Verify payment')),
                       TextButton(onPressed: () => context.go('/orders/$orderId'), child: const Text('View order')),
                     ])
                   : items.isEmpty
