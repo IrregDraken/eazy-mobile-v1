@@ -117,7 +117,8 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Files changed: `lib/features/social/social_page.dart`, `lib/features/chat/chat_home_screen.dart`.
 - Changes: Create post bottom sheet now uses `useSafeArea: true`; Find people content now applies a bottom SafeArea while leaving the AppBar's normal top inset intact.
 - Verification: both source files re-fetched after updates; Find people widget tree inspected for balanced Scaffold/SafeArea/Column structure. No Android gesture-navigation or three-button-navigation device test, analyzer, or widget test has run.
-- Remaining: audit every page/modal for safe-area behavior, fix any remaining clipped Publish/Settings controls, and test keyboard + gesture/three-button navigation on physical Android devices.
+- Additional changes: added bottom-inset-aware scroll padding to Settings, Account details, Security, Translation and Notifications; Location now uses a bottom SafeArea. Wallet/Profile and the Chat composer already contained SafeArea handling in the inspected source.
+- Remaining: audit every remaining route/modal, fix any remaining clipped Publish controls, and test keyboard + gesture/three-button navigation on physical Android devices.
 
 ### D9 — Floating AI orb (partial)
 - Status: PARTIAL.
