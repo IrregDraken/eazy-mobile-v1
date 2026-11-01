@@ -16,6 +16,9 @@ class MarketplacePage extends StatefulWidget {
 class _MarketplacePageState extends State<MarketplacePage> {
   final api = ApiClient();
   final search = TextEditingController();
+  final minPrice = TextEditingController();
+  final maxPrice = TextEditingController();
+  String availability = 'all';
   bool loading = true;
   String? error;
   String? selectedParentSlug;
@@ -33,6 +36,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
   @override
   void dispose() {
     search.dispose();
+    minPrice.dispose();
+    maxPrice.dispose();
     super.dispose();
   }
 
@@ -76,6 +81,9 @@ class _MarketplacePageState extends State<MarketplacePage> {
         params['categoryIds'] = categoryIds.join(',');
       }
       if (search.text.trim().length >= 2) params['q'] = search.text.trim();
+      if (minPrice.text.trim().isNotEmpty) params['minPrice'] = minPrice.text.trim();
+      if (maxPrice.text.trim().isNotEmpty) params['maxPrice'] = maxPrice.text.trim();
+      if (availability != 'all') params['availability'] = availability;
       final qs = params.entries
           .map(
             (e) =>
@@ -95,6 +103,21 @@ class _MarketplacePageState extends State<MarketplacePage> {
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  Future<void> showFilters() async {
+    var selectedAvailability = availability;
+    final applied = await showDialog<bool>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, update) => AlertDialog(
+      title: const Text('Filter products'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: minPrice, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Minimum price (₦)')),
+        TextField(controller: maxPrice, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Maximum price (₦)')),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(value: selectedAvailability, decoration: const InputDecoration(labelText: 'Availability'), items: const [DropdownMenuItem(value: 'all', child: Text('All products')), DropdownMenuItem(value: 'in_stock', child: Text('In stock')), DropdownMenuItem(value: 'out_of_stock', child: Text('Out of stock'))], onChanged: (value) { if (value != null) update(() => selectedAvailability = value); }),
+      ]),
+      actions: [TextButton(onPressed: () { minPrice.clear(); maxPrice.clear(); update(() => selectedAvailability = 'all'); }, child: const Text('Clear')), TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Apply'))],
+    )));
+    if (applied == true && mounted) { setState(() => availability = selectedAvailability); load(); }
   }
 
   @override
@@ -269,6 +292,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       ),
                     ),
                     const Spacer(),
+                    IconButton(tooltip: 'Filter products', onPressed: showFilters, icon: const Icon(Icons.tune_rounded)),
                     PopupMenuButton<String>(
                       initialValue: sort,
                       onSelected: (v) {
