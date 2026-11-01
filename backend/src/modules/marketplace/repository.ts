@@ -198,4 +198,32 @@ export class MarketplaceRepository {
     return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
   }
 
+  async searchSellers(query: string, limit: number) {
+    const result = await this.pool.query(
+      `SELECT p.user_id AS id, p.username, p.display_name AS "displayName",
+        (SELECT count(*)::int FROM products pr WHERE pr.seller_id = p.user_id AND pr.status = 'active') AS "productCount",
+        (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.seller_id = p.user_id) AS "ratingAverage",
+        (SELECT count(*)::int FROM order_reviews r WHERE r.seller_id = p.user_id) AS "reviewCount"
+       FROM profiles p
+       JOIN users u ON u.id = p.user_id
+       WHERE u.status = 'active'
+         AND (p.username ILIKE $1 OR p.display_name ILIKE $1)
+         AND EXISTS (SELECT 1 FROM products pr WHERE pr.seller_id = p.user_id AND pr.status = 'active')
+       ORDER BY "productCount" DESC, p.username ASC
+       LIMIT $2`,
+      ['%' + query + '%', limit]
+    );
+    return result.rows;
+  }
+
+  async searchCategories(query: string, limit: number) {
+    const result = await this.pool.query(
+      `SELECT id, name, slug FROM categories
+       WHERE name ILIKE $1 OR slug ILIKE $1
+       ORDER BY name ASC, id ASC LIMIT $2`,
+      ['%' + query + '%', limit]
+    );
+    return result.rows;
+  }
+
 }
