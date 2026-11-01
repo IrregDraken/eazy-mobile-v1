@@ -73,6 +73,39 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> deleteAccount() async {
+    if (widget.auth.hasPasswordProvider) {
+      final password = TextEditingController();
+      try {
+        final entered = await showDialog<String>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Confirm your identity'),
+            content: TextField(
+              controller: password,
+              autofocus: true,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Current password'),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () {
+                  if (password.text.isNotEmpty) Navigator.pop(dialogContext, password.text);
+                },
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        );
+        if (entered == null || !mounted) return;
+        await widget.auth.reauthenticateWithPassword(entered);
+      } on ApiException catch (e) {
+        if (mounted) setState(() => error = e.message);
+        return;
+      } finally {
+        password.dispose();
+      }
+    }
     setState(() {
       deleting = true;
       error = '';
