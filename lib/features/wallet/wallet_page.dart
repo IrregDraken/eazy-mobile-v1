@@ -1471,12 +1471,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     await load();
   }
 
-  Future<void> _readWalletAlert(String id) async {
-    try {
-      await api.post('notifications/$id/read', auth: true);
-      await load();
-    } catch (_) {}
-  }
 
   Future<void> _showAllTransactions() async {
     await showModalBottomSheet<void>(
