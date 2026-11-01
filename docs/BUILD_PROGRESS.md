@@ -232,7 +232,7 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 | S4 | BLOCKED | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
 | S5 | BLOCKED | Terms/privacy acceptance at signup; record version and timestamp; owner-approved legal copy required. |
 | S6 | DONE | Notification preferences saved to backend and respected by push delivery. |
-| S7 | TODO | Support email from configuration; report-problem form persists to backend. |
+| S7 | BLOCKED | Support email from configuration; report-problem form persists to backend. |
 
 ### 2B — Cart and checkout
 | ID | Status | Scope |
@@ -352,3 +352,10 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 - Existing Settings switches for follows, likes and comments persist through `PATCH /settings` into `user_settings`.
 - `NotificationRepository.create` checks the recipient's corresponding preference before inserting a notification. Disabled categories therefore do not reach the inbox, realtime publisher or device push delivery. Financial/order notifications remain wallet-only by design.
 - Verification: inspected Settings UI, SettingsService/Repository, NotificationRepository and NotificationService; existing `backend/test/settings_security.test.ts` and notification tests cover persistence and suppression. Latest backend test suite passed before the current S4-only changes; final CI will rerun.
+
+
+### S7 Help and support
+- Status: BLOCKED for production support-contact configuration; the report workflow is implemented.
+- Added optional SUPPORT_EMAIL configuration, authenticated support config and report endpoints, a rate limit, support_reports migration 032, repository/service, Settings entry and Help & Support page. Reports are persisted and return a reference. The app does not hardcode a support address; if the setting is empty, it says so and still accepts reports.
+- Verification pending: backend tests, Flutter analyze/tests and staging migration.
+- Exact unblock: owner confirms the monitored support inbox and sets SUPPORT_EMAIL in Railway. Do not assume the Resend reply-to address is the support contact.
