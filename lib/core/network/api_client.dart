@@ -103,7 +103,7 @@ class ApiClient {
         .timeout(const Duration(seconds: 60));
     const chunkSize = 64 * 1024;
     for (var offset = 0; offset < bytes.length; offset += chunkSize) {
-      final end = (offset + chunkSize).clamp(0, bytes.length);
+      final end = (offset + chunkSize).clamp(0, bytes.length).toInt();
       request.sink.add(bytes.sublist(offset, end));
       onProgress?.call(end / bytes.length);
     }
