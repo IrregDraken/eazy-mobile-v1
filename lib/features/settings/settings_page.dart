@@ -14,7 +14,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final api = ApiClient();
-  String theme = 'light';
+  String theme = 'system';
   bool follows = true, likes = true, comments = true;
   bool loading = true;
   bool deleting = false;
@@ -32,15 +32,20 @@ class _SettingsPageState extends State<SettingsPage> {
           n = Map<String, dynamic>.from((s['notifications'] as Map?) ?? {});
       if (mounted) {
         setState(() {
-          theme = s['theme']?.toString() == 'dark' ? 'dark' : 'light';
+          final savedTheme = s['theme']?.toString();
+          theme = ['system', 'light', 'dark'].contains(savedTheme)
+              ? savedTheme!
+              : 'system';
           follows = n['follows'] != false;
           likes = n['likes'] != false;
           comments = n['comments'] != false;
         });
       }
-      await setEazyThemeMode(
-        theme == 'dark' ? ThemeMode.dark : ThemeMode.light,
-      );
+      await setEazyThemeMode(switch (theme) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      });
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
@@ -238,15 +243,18 @@ class _SettingsPageState extends State<SettingsPage> {
                     initialValue: theme,
                     decoration: const InputDecoration(labelText: 'Appearance'),
                     items: const [
+                      DropdownMenuItem(value: 'system', child: Text('System')),
                       DropdownMenuItem(value: 'light', child: Text('Light')),
                       DropdownMenuItem(value: 'dark', child: Text('Dark')),
                     ],
                     onChanged: (value) {
                       if (value == null) return;
                       setState(() => theme = value);
-                      setEazyThemeMode(
-                        value == 'dark' ? ThemeMode.dark : ThemeMode.light,
-                      );
+                      setEazyThemeMode(switch (value) {
+                        'light' => ThemeMode.light,
+                        'dark' => ThemeMode.dark,
+                        _ => ThemeMode.system,
+                      });
                       save({'theme': value});
                     },
                   ),
@@ -255,9 +263,9 @@ class _SettingsPageState extends State<SettingsPage> {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.translate_rounded),
-                  title: const Text('App language'),
+                  title: const Text('Interface language'),
                   subtitle: const Text(
-                    'English. Use Translator to translate messages and content into other supported languages.',
+                    'The Eazy interface is currently available in English. Use Translator for supported content languages.',
                   ),
                 ),
               ),
