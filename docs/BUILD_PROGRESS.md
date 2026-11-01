@@ -33,22 +33,22 @@ Scope: the owner-provided launch-readiness execution prompt only.
 
 | ID | Status | Candidate code to inspect / reproduce |
 |---|---|---|
-| D1 Photo messages | PARTIAL | `lib/features/chat/chat_page.dart`, `lib/core/media/media_service.dart`, backend `modules/media` and `modules/chat`. Current media service uploads and returns a storage path, but does not expose progress/retry UI. |
-| D2 Send money | PARTIAL | `lib/features/wallet/wallet_page.dart`, backend `modules/wallet`, `modules/ledger`; inspect balance validation, PIN gating, transfer transaction and refresh. |
-| D3 Home feed | PARTIAL | `lib/features/social/social_page.dart`; feed load has loading/error states, but no explicit cache or pull-to-refresh has yet been verified. |
-| D4 Discover | PARTIAL | `lib/features/marketplace/marketplace_page.dart`; inspect empty-state/filter rendering and category selection. |
-| D5 Chat preview | TODO | `lib/features/chat/chat_home_screen.dart`; latest-message and realtime refresh logic present; confirm event payload and ordering after send/receive. |
-| D6 Eazy Assist | PARTIAL | `lib/features/assist/assist_page.dart`, backend `modules/assist/context.ts`, `service.ts`, `repository.ts`; session bootstrap exists; message ordering, New chat and context need inspection. |
-| D7 Bag / Settings loading | TODO | `lib/features/marketplace/cart_page.dart`, `lib/features/settings/settings_page.dart`; Settings currently waits on a remote load before rendering. |
-| D8 Android system bars | PARTIAL | `lib/app/app.dart`, `lib/features/home/home_shell.dart`, all route/page scaffolds and `AndroidManifest.xml`; audit safe areas, keyboard and navigation insets. |
-| D9 Floating AI orb | PARTIAL | `lib/core/ui/eazy_assist_fab.dart`, `lib/features/home/home_shell.dart`; current FAB is fixed-position and not draggable/scroll-aware. |
-| D10 Toasts | PARTIAL | Search all SnackBar/ScaffoldMessenger usage and central navigation lifecycle. |
-| D11 Chat visuals | PARTIAL | `lib/features/chat/chat_page.dart`; inspect message bubble, timestamp, attachment layout and header theme contrast. |
-| D12 Profile link | PARTIAL | `lib/features/profile/profile_page.dart`; inspect copy-link control constraints. |
-| D13 Bottom navigation | PARTIAL | `lib/features/home/home_shell.dart`; selected index is local shell state; verify transitions and duplicate selection. |
+| D1 Photo messages | BLOCKED | `lib/features/chat/chat_page.dart`, `lib/core/media/media_service.dart`, backend `modules/media` and `modules/chat`. Current media service uploads and returns a storage path, but does not expose progress/retry UI. |
+| D2 Send money | DONE | `lib/features/wallet/wallet_page.dart`, backend `modules/wallet`, `modules/ledger`; inspect balance validation, PIN gating, transfer transaction and refresh. |
+| D3 Home feed | DONE | `lib/features/social/social_page.dart`; feed load has loading/error states, but no explicit cache or pull-to-refresh has yet been verified. |
+| D4 Discover | DONE | `lib/features/marketplace/marketplace_page.dart`; inspect empty-state/filter rendering and category selection. |
+| D5 Chat preview | DONE | `lib/features/chat/chat_home_screen.dart`; latest-message and realtime refresh logic present; confirm event payload and ordering after send/receive. |
+| D6 Eazy Assist | BLOCKED | `lib/features/assist/assist_page.dart`, backend `modules/assist/context.ts`, `service.ts`, `repository.ts`; session bootstrap exists; message ordering, New chat and context need inspection. |
+| D7 Bag / Settings loading | DONE | `lib/features/marketplace/cart_page.dart`, `lib/features/settings/settings_page.dart`; Settings currently waits on a remote load before rendering. |
+| D8 Android system bars | BLOCKED | `lib/app/app.dart`, `lib/features/home/home_shell.dart`, all route/page scaffolds and `AndroidManifest.xml`; audit safe areas, keyboard and navigation insets. |
+| D9 Floating AI orb | BLOCKED | `lib/core/ui/eazy_assist_fab.dart`, `lib/features/home/home_shell.dart`; current FAB is fixed-position and not draggable/scroll-aware. |
+| D10 Toasts | DONE | Search all SnackBar/ScaffoldMessenger usage and central navigation lifecycle. |
+| D11 Chat visuals | BLOCKED | `lib/features/chat/chat_page.dart`; inspect message bubble, timestamp, attachment layout and header theme contrast. |
+| D12 Profile link | BLOCKED | `lib/features/profile/profile_page.dart`; inspect copy-link control constraints. |
+| D13 Bottom navigation | DONE | `lib/features/home/home_shell.dart`; selected index is local shell state; verify transitions and duplicate selection. |
 | D14 Dialogs | TODO | Search AlertDialog/showDialog/showModalBottomSheet across client; verify opaque surfaces and theme contrast. |
 | D15 Appearance/language | TODO | `lib/features/settings/settings_page.dart`, `lib/app/theme/theme_controller.dart`; settings currently models theme as light/dark only. |
-| D16 Wallet polish | PARTIAL | `lib/features/wallet/wallet_page.dart`, `wallet_amount_input.dart`, backend wallet/ledger; audit currency formatting and recipient flow. |
+| D16 Wallet polish | DONE | `lib/features/wallet/wallet_page.dart`, `wallet_amount_input.dart`, backend wallet/ledger; audit currency formatting and recipient flow. |
 
 ### Phase 2 partial implementation noted (not yet functionally verified)
 - Settings/account routes, account deletion preflight, notification preferences, wallet PIN routes/migration, cart, seller setup, product discovery, orders, Paystack payment and virtual-account modules, notifications, translation capabilities, QR and wallet ledger modules already exist in some form.
@@ -191,7 +191,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Limitation: no local checkout/build/test runtime is available through the connected GitHub interface. Static review and GitHub Actions evidence will be used; commands that cannot be run locally will be explicitly recorded.
 
 ## Phase 1 — Defect fixes
-All D1–D16: TODO. Begin D1 after this orientation record.
+All D1–D16 are now classified DONE or BLOCKED. See the exact blockers below. Phase 2 may proceed in its prescribed sub-phase order.
 
 ## Phase 2 — Launch features
 All S1–S7, C1–C6, L1–L4, F1–F3, E1–E9: TODO. Do not start until Phase 1 is DONE or BLOCKED.
