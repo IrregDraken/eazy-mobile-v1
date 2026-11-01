@@ -230,7 +230,7 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 | S2 | BLOCKED | Four-digit payment PIN; create/change/reset through verified code; optional biometric shortcut OFF by default; PIN or enabled biometric required for money actions; no PIN means create PIN first. |
 | S3 | DONE | Logout confirmation; clear tokens/cached user data; unregister push token; return to welcome screen. |
 | S4 | BLOCKED | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
-| S5 | TODO | Terms/privacy acceptance at signup; record version and timestamp; owner-approved legal copy required. |
+| S5 | BLOCKED | Terms/privacy acceptance at signup; record version and timestamp; owner-approved legal copy required. |
 | S6 | TODO | Notification preferences saved to backend and respected by push delivery. |
 | S7 | TODO | Support email from configuration; report-problem form persists to backend. |
 
@@ -338,3 +338,10 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 - Added recent Firebase authentication enforcement to the delete endpoint. Password-provider accounts now reauthenticate with their current password in the client before preflight; non-password providers must have signed in recently or sign in again. Unresolved buyer/seller disputes now also block deletion.
 - Privacy page/legal policy content is absent from the repository. Do not invent legal text. S4 remains BLOCKED until the owner supplies approved privacy policy copy and the in-app privacy page can render that exact copy. Account deletion now also removes stored PIN hashes/verification challenges and reports when external cleanup remains pending.
 - Verification pending: backend build/tests, Flutter analyze/tests, reauthentication behavior and account-deletion preflight regression. Exact unblock: owner supplies the approved privacy policy text and URL/version metadata; then add the privacy page without paraphrasing or inventing terms.
+
+
+### S5 — Terms and privacy acceptance
+- Status: BLOCKED.
+- Source inspection: signup/auth page and backend auth routes/services contain no terms/privacy acceptance checkbox, version record or consent timestamp.
+- Exact blocker: no owner-approved Terms of Service or Privacy Policy text/version is present in the repository. Do not invent legal copy or silently use generic text.
+- Unblock: owner supplies the approved Terms and Privacy Policy text, public URLs and version identifiers. Then implement required signup acceptance and persist the exact accepted versions and timestamp in the backend.
