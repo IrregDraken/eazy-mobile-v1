@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/rendering.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:io';
@@ -194,6 +195,33 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
+  Future<void> openNotification(Map<String, dynamic> notification) async {
+    final id = notification['id']?.toString();
+    if (id != null && id.isNotEmpty) {
+      try { await api.post('notifications/$id/read', auth: true); } catch (_) {}
+    }
+    final link = notification['deepLink']?.toString();
+    if (link == null || link.isEmpty || !mounted) {
+      await load();
+      return;
+    }
+    try {
+      final result = await api.get('deep-links/resolve?path=${Uri.encodeQueryComponent(link)}', auth: true);
+      final destination = result['destination']?.toString();
+      if (destination != null && destination.isNotEmpty && mounted) {
+        if (destination.startsWith('/home?')) {
+          context.go(destination);
+        } else {
+          context.push(destination);
+        }
+      }
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) await load();
+    }
+  }
+
   Future<void> read(String id) async {
     try {
       await api.post('notifications/$id/read', auth: true);
@@ -300,7 +328,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   final n = _filteredItems[i - 1];
                   return Card(
                     child: ListTile(
-                      onTap: () => read(n['id'].toString()),
+                      onTap: () => openNotification(Map<String, dynamic>.from(n)),
                       leading: CircleAvatar(
                         child: Icon(icon(n['type']?.toString())),
                       ),
