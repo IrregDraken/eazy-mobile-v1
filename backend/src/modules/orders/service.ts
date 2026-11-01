@@ -103,6 +103,8 @@ function mapOrderError(error: unknown): AppError {
   if (error instanceof AppError) return error;
   if (!(error instanceof Error)) return new AppError('INTERNAL_ERROR', 'Order creation failed');
   if (error.message === 'NOT_FOUND') return new AppError('NOT_FOUND', 'Order or seller fulfilment not found');
+  if (error.message === 'REFUND_UNAVAILABLE') return new AppError('CONFLICT', 'Seller rejection is unavailable until a verified Paystack refund flow is configured');
+  if (error.message === 'INVENTORY_RESERVATION_MISMATCH') return new AppError('CONFLICT', 'Inventory reservation changed unexpectedly. Contact support before retrying.');
   if (error.message === 'ORDER_NOT_PAID') return new AppError('CONFLICT', 'This order has not been paid and cannot be processed');
   if (error.message === 'INVALID_TRANSITION') return new AppError('CONFLICT', 'This order cannot move to that status');
   if (error.message === 'REJECTION_REASON_REQUIRED') return new AppError('VALIDATION_ERROR', 'Add a reason when rejecting an order');
