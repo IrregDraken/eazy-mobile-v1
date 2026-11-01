@@ -1228,19 +1228,31 @@ class _ConversationPageState extends State<ConversationPage> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            item.contentType.startsWith('image/')
-                                ? Icons.image_outlined
-                                : item.contentType.startsWith('video/')
-                                ? Icons.video_file_outlined
-                                : Icons.description_outlined,
-                            color: context.eazyAccent,
-                            size: 18,
-                          ),
+                          if (item.contentType.startsWith('image/') && item.localPath != null)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(7),
+                              child: Image.file(
+                                File(item.localPath!),
+                                width: 38,
+                                height: 38,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const Icon(Icons.image_outlined, size: 20),
+                              ),
+                            )
+                          else
+                            Icon(
+                              item.contentType.startsWith('image/')
+                                  ? Icons.image_outlined
+                                  : item.contentType.startsWith('video/')
+                                  ? Icons.video_file_outlined
+                                  : Icons.description_outlined,
+                              color: context.eazyAccent,
+                              size: 18,
+                            ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              item.fileName,
+                              item.contentType.startsWith('image/') ? 'Photo' : item.fileName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontSize: 11),
