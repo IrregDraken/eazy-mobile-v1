@@ -101,3 +101,31 @@ test('buyer dispute photos must be scoped to the authenticated buyer', async () 
     (error: unknown) => error instanceof AppError && error.code === 'FORBIDDEN'
   );
 });
+
+test('automatic escrow release only releases due delivered fulfillments using integer kobo', async () => {
+  const calls: string[] = [];
+  const client = {
+    query: async (sql: string) => {
+      calls.push(sql);
+      if (sql.includes('FROM order_fulfillments f') && sql.includes('release_after <= now()')) {
+        return { rows: [{
+          id: 'fulfillment-id',
+          order_id: 'order-id',
+          seller_id: 'seller-id',
+          buyer_id: 'buyer-id',
+          currency: 'NGN',
+          amountKobo: '125000'
+        }], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 1 };
+    }
+  };
+  const repository = new (await import('../src/modules/orders/repository.js')).OrderRepository({} as never);
+  const released = await repository.releaseDueEscrow(client as never, 50);
+  assert.equal(released, 1);
+  const release = calls.find(sql => sql.includes('INSERT INTO seller_payable_ledger'));
+  assert.ok(release);
+  assert.match(release, /amount_kobo/);
+  assert.match(release, /\$4::bigint/);
+  assert.ok(calls.some(sql => sql.includes("status = 'completed'")));
+});
