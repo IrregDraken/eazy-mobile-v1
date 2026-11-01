@@ -7,6 +7,10 @@ ALTER TABLE orders
   ADD COLUMN IF NOT EXISTS delivery_total_kobo BIGINT NOT NULL DEFAULT 0
   CHECK (delivery_total_kobo >= 0);
 
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS product_name TEXT;
+UPDATE order_items oi SET product_name = p.name FROM products p WHERE p.id = oi.product_id AND oi.product_name IS NULL;
+ALTER TABLE order_items ALTER COLUMN product_name SET NOT NULL;
+
 CREATE TABLE IF NOT EXISTS delivery_addresses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
