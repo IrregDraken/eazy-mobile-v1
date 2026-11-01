@@ -43,6 +43,11 @@ export class OrderService {
     return { deleted: true };
   }
 
+  async sellerPayables(sellerId: string, pagination: Pagination) {
+    const result = await this.repository.listSellerPayables(sellerId, pagination.page, pagination.limit);
+    return { items: result.items, meta: paginationMeta(pagination, result.total) };
+  }
+
   async sellerOrders(sellerId: string, pagination: Pagination) {
     const result = await this.repository.listSellerOrders(sellerId, pagination.page, pagination.limit);
     return { items: result.items, meta: paginationMeta(pagination, result.total) };
