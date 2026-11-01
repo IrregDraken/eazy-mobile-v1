@@ -25,7 +25,7 @@ const productSelect = `p.id, p.name, p.description, p.price_amount::text AS "pri
   CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object('id', c.id, 'name', c.name, 'slug', c.slug) END AS category,
   json_build_object('id', p.seller_id, 'username', seller.username, 'displayName', seller.display_name, 'avatarUrl', seller.avatar_url,
     'ratingAverage', (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.seller_id = p.seller_id),
-    'reviewCount', (SELECT count(*)::int FROM order_reviews r WHERE r.seller_id = p.seller_id)) AS seller,
+    'reviewCount', (SELECT count(*)::int FROM order_reviews r WHERE r.seller_id = p.seller_id), 'storeSlug', (SELECT s.slug FROM seller_stores s WHERE s.seller_id = p.seller_id), 'storeName', (SELECT s.store_name FROM seller_stores s WHERE s.seller_id = p.seller_id)) AS seller,
   (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.product_id = p.id) AS "ratingAverage",
   (SELECT count(*)::int FROM order_reviews r WHERE r.product_id = p.id) AS "reviewCount",
   (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.seller_id = p.seller_id) AS "sellerRatingAverage",
@@ -200,12 +200,13 @@ export class MarketplaceRepository {
 
   async searchSellers(query: string, limit: number) {
     const result = await this.pool.query(
-      `SELECT p.user_id AS id, p.username, p.display_name AS "displayName",
+      `SELECT p.user_id AS id, p.username, p.display_name AS "displayName", COALESCE(store.slug, p.username) AS "storeSlug",
         (SELECT count(*)::int FROM products pr WHERE pr.seller_id = p.user_id AND pr.status = 'active') AS "productCount",
         (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.seller_id = p.user_id) AS "ratingAverage",
         (SELECT count(*)::int FROM order_reviews r WHERE r.seller_id = p.user_id) AS "reviewCount"
        FROM profiles p
        JOIN users u ON u.id = p.user_id
+       LEFT JOIN seller_stores store ON store.seller_id = p.user_id
        WHERE u.status = 'active'
          AND (p.username ILIKE $1 OR p.display_name ILIKE $1)
          AND EXISTS (SELECT 1 FROM products pr WHERE pr.seller_id = p.user_id AND pr.status = 'active')
