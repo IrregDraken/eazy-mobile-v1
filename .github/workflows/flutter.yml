@@ -90,6 +90,7 @@ jobs:
     needs:
       - flutter-analyze-test
       - backend-build-test
+      - backend-db-migration-test
       - flutter-android-debug-smoke
       - flutter-ios-simulator-smoke
       - ios-config-preflight
@@ -191,6 +192,39 @@ jobs:
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 7
+
+  backend-db-migration-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eazy_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d eazy_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/eazy_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Apply every migration to a clean PostgreSQL database
+        run: npm run db:migrate
 
   backend-build-test:
     runs-on: ubuntu-latest
