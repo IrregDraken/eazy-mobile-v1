@@ -42,7 +42,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 | D7 Bag / Settings loading | TODO | `lib/features/marketplace/cart_page.dart`, `lib/features/settings/settings_page.dart`; Settings currently waits on a remote load before rendering. |
 | D8 Android system bars | PARTIAL | `lib/app/app.dart`, `lib/features/home/home_shell.dart`, all route/page scaffolds and `AndroidManifest.xml`; audit safe areas, keyboard and navigation insets. |
 | D9 Floating AI orb | PARTIAL | `lib/core/ui/eazy_assist_fab.dart`, `lib/features/home/home_shell.dart`; current FAB is fixed-position and not draggable/scroll-aware. |
-| D10 Toasts | TODO | Search all SnackBar/ScaffoldMessenger usage and central navigation lifecycle. |
+| D10 Toasts | PARTIAL | Search all SnackBar/ScaffoldMessenger usage and central navigation lifecycle. |
 | D11 Chat visuals | TODO | `lib/features/chat/chat_page.dart`; inspect message bubble, timestamp, attachment layout and header theme contrast. |
 | D12 Profile link | TODO | `lib/features/profile/profile_page.dart`; inspect copy-link control constraints. |
 | D13 Bottom navigation | TODO | `lib/features/home/home_shell.dart`; selected index is local shell state; verify transitions and duplicate selection. |
@@ -125,6 +125,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Changes: orb can now be dragged within the HomeShell viewport; its position is persisted in secure storage; it hides while the keyboard is open and while scrolling down, and reappears on upward scrolling. It remains absent from Wallet, Chat and Assist because the HomeShell only renders it on Home, Discover and Profile.
 - Verification: source re-fetched and inspected; secure-storage dependency already exists. No gesture/device test has run. PARTIAL pending interaction tests and overlap checks.
 - Remaining: verify drag/tap gesture arbitration and persisted position on device; confirm no overlap with bottom actions and route-level launcher placements.
+
+### D10 — Toast contrast and navigation lifecycle (partial)
+- Status: PARTIAL.
+- Cause confirmed: theme-specific snackbar backgrounds existed but content foreground contrast was implicit; ScaffoldMessenger is app-scoped, so a snackbar could survive route navigation.
+- Files changed: `lib/app/app.dart`, `lib/app/router.dart`, `lib/app/theme/eazy_theme.dart`.
+- Changes: explicit snackbar content text colours in both themes; app-level NavigatorObserver immediately removes the current snackbar on push, pop and replace. Flutter's SnackBar default duration remains the automatic-dismiss behavior.
+- Verification: source re-fetched and inspected; app-level ScaffoldMessengerKey and GoRouter construction confirmed. No analyzer/widget test/device navigation test has run.
+- Remaining: verify foreground contrast visually in both themes, ensure queued snackbar behavior is cleared as intended, and test navigation lifecycle.
 
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
