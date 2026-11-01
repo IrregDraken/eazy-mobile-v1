@@ -11,11 +11,12 @@ import '../social/social_page.dart';
 import '../wallet/wallet_page.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key, required this.auth, this.initialTab, this.initialAction, this.initialUsername, this.initialUsername});
+  const HomeShell({super.key, required this.auth, this.initialTab, this.initialAction, this.initialUsername, this.initialConversationId, this.initialUsername});
   final AuthController auth;
   final String? initialTab;
   final String? initialAction;
   final String? initialUsername;
+  final String? initialConversationId;
   final String? initialUsername;
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -74,7 +75,7 @@ class _HomeShellState extends State<HomeShell> {
     SocialPage(auth: widget.auth, openComposerOnStart: widget.initialAction == 'create'),
     const MarketplacePage(),
     const WalletPage(),
-    ChatPage(initialUsername: widget.initialUsername),
+    ChatPage(initialUsername: widget.initialUsername, initialConversationId: widget.initialConversationId),
     ProfilePage(auth: widget.auth),
   ];
   @override
