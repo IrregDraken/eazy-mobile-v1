@@ -226,7 +226,7 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 ### 2A — Settings basics
 | ID | Status | Scope |
 |---|---|---|
-| S1 | TODO | Personal information, edit name/username/bio; email/phone changes through verification-code flow. |
+| S1 | DONE | Personal information, edit name/username/bio; email/phone changes through verification-code flow. |
 | S2 | TODO | Four-digit payment PIN; create/change/reset through verified code; optional biometric shortcut OFF by default; PIN or enabled biometric required for money actions; no PIN means create PIN first. |
 | S3 | TODO | Logout confirmation; clear tokens/cached user data; unregister push token; return to welcome screen. |
 | S4 | TODO | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
@@ -301,3 +301,10 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 - PRs #13 and #14 are CLOSED and UNMERGED. They are not reopened or merged under this prompt's locked scope.
 - Keep the launch-readiness PR draft until all code, device and database blockers are cleared. Do not merge merely because CI is green.
 - No production money movement, production wallet credit, real-user deletion, invented legal copy, Paystack live mode or unapproved withdrawal capability is used for verification.
+
+
+### S1 — Personal information and verified contact changes
+- Status: DONE.
+- Existing implementation verified: Profile edit sheet collects first name, last name, username and bio; PATCH `profiles/me` validates fields, normalizes username, composes display name and handles username conflicts.
+- Account details page supports email change through Firebase `verifyBeforeUpdateEmail` (with password reauthentication for password-provider accounts) and phone link/update through Firebase SMS verification, then syncs refreshed identity to the backend.
+- Verification: inspected `profile_page.dart`, `account_settings_page.dart`, `auth_controller.dart`, and backend `profiles/routes.ts`, `profiles/service.ts`, `profiles/repository.ts`. Existing CI backend/Flutter suites pass on the code revision immediately before this progress-only update. No duplicate contact-change flow was added.
