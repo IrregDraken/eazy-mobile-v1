@@ -29,15 +29,6 @@ export const orderCreateSchema = z.object({
   }
 });
 
-export const orderCreateSchema = z.object({
-  fulfillments: z.array(z.object({
-    sellerId: z.string().guid(),
-    method: z.enum(['delivery', 'pickup']),
-    addressId: z.string().guid().optional()
-  }).strict()).min(1).max(20)
-}).strict().superRefine((value, context) => {
-  const ids = value.fulfillments.map(item => item.sellerId);
-  if (new Set(ids).size !== ids.length) {
-    context.addIssue({ code: 'custom', path: ['fulfillments'], message: 'Choose one fulfillment method per seller' });
+
   }
 });
