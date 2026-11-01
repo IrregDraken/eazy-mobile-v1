@@ -237,8 +237,8 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 ### 2B — Cart and checkout
 | ID | Status | Scope |
 |---|---|---|
-| C1 | TODO | Cart quantities, remove, empty state and totals. |
-| C2 | TODO | Delivery addresses, per-seller delivery/pickup, fees and Paystack card checkout. |
+| C1 | DONE | Cart quantities, remove, empty state and totals. |
+| C2 | DOING | Delivery addresses, per-seller delivery/pickup, fees and Paystack card checkout. |
 | C3 | TODO | Escrow holds buyer payment and releases to seller only after receipt confirmation. |
 | C4 | TODO | Buyer order list/detail, timeline, confirm received, dispute with reason/photos and seller notification. |
 | C5 | TODO | Post-delivery seller rating/review. |
@@ -359,3 +359,9 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 - Added optional SUPPORT_EMAIL configuration, authenticated support config and report endpoints, a rate limit, support_reports migration 032, repository/service, Settings entry and Help & Support page. Reports are persisted and return a reference. The app does not hardcode a support address; if the setting is empty, it says so and still accepts reports.
 - Verification pending: backend tests, Flutter analyze/tests and staging migration.
 - Exact unblock: owner confirms the monitored support inbox and sets SUPPORT_EMAIL in Railway. Do not assume the Resend reply-to address is the support contact.
+
+
+### C1 — Cart
+- Status: DONE.
+- Product detail adds items to the authenticated user's backend cart. Cart UI groups rows by seller, changes quantity, removes items, handles empty/loading/error states and shows server-computed subtotal. Backend locks inventory and rechecks stock and currency on every add/update.
+- Verification: inspected CartPage, CartService/Repository and product detail flow; existing cart tests cover inventory/quantity and mixed-currency guards. Full CI will rerun after 2B changes.
