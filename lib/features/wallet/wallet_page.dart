@@ -1170,7 +1170,23 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
 
   BigInt? _toMinorUnits(String value) {
-    final match = RegExp(r'^(0|[1-9][0-9]*)(?:\\.([0-9]{1,2}))?
+    final parts = value.trim().replaceAll(',', '').split('.');
+    if (parts.length > 2 || parts.first.isEmpty) return null;
+    if (!RegExp(r'^[0-9]+$').hasMatch(parts.first)) return null;
+    if (parts.length == 2 &&
+        (parts[1].isEmpty ||
+            parts[1].length > 2 ||
+            !RegExp(r'^[0-9]+$').hasMatch(parts[1]))) {
+      return null;
+    }
+    final whole = BigInt.tryParse(parts.first);
+    final fraction = BigInt.tryParse(
+      (parts.length == 2 ? parts[1] : '').padRight(2, '0'),
+    );
+    if (whole == null || fraction == null) return null;
+    return whole * BigInt.from(100) + fraction;
+  }
+
   bool _validUsername(String value) =>
       RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value);
   Map<String, dynamic> _map(dynamic value) =>
