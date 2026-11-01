@@ -742,7 +742,7 @@ class _ConversationPageState extends State<ConversationPage> {
     });
     try {
       void reportProgress(double value) {
-        if (mounted) setState(() => uploadProgress = value.clamp(0.0, 1.0));
+        if (mounted) setState(() => uploadProgress = value.clamp(0.0, 1.0).toDouble());
       }
 
       final upload = switch (choice) {
