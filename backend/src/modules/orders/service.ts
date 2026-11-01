@@ -66,6 +66,17 @@ export class OrderService {
     if (result.error) throw mapOrderError(new Error(result.error));
     return { submitted: true, disputeId: result.disputeId };
   }
+  async createReview(buyerId: string, orderId: string, itemId: string, rating: number, reviewText: string) {
+    try {
+      const reviewId = await withTransaction(this.pool, client => this.repository.createReview(client, buyerId, orderId, itemId, rating, reviewText));
+      if (!reviewId) throw new AppError('CONFLICT', 'Reviews can only be added to completed items in your own order');
+      return { reviewId, submitted: true };
+    } catch (error) {
+      if ((error as { code?: string })?.code === '23505') throw new AppError('CONFLICT', 'You have already reviewed this order item');
+      throw error;
+    }
+  }
+
   async get(buyerId: string, orderId: string) {
     const order = await this.repository.get(buyerId, orderId);
     if (!order) throw new AppError('NOT_FOUND', 'Order not found');
