@@ -79,7 +79,7 @@ export class PaymentPinService {
           'If you did not request this, ignore this email and secure your account.',
           '',
           'Eazy | Your world, made easier.'
-        ].join('\\n'),
+        ].join('\n'),
         html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#14241b"><h2>Eazy payment PIN verification</h2><p>Use this code to continue managing your payment PIN:</p><div style="font-size:34px;font-weight:800;letter-spacing:8px;padding:20px;background:#f2f8ec;border-radius:12px;text-align:center">${code}</div><p>This code expires in ${ttlMinutes} minutes. Never share this code or your payment PIN with anyone.</p><p>If you did not request this, ignore this email and secure your account.</p><p>Eazy | Your world, made easier.</p></div>`
       });
     } catch (error) {
