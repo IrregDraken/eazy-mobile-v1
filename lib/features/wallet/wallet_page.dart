@@ -402,8 +402,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     );
     if (amount == null || !mounted) return;
 
-    final requestedKobo = _toMinorUnits(amount);
-    final availableKobo = _toMinorUnits(_balance);
+    final requestedKobo = walletAmountToMinorUnits(amount);
+    final availableKobo = walletAmountToMinorUnits(_balance);
     if (requestedKobo == null || requestedKobo <= BigInt.zero) {
       _showError('Enter a valid amount greater than ₦0.00.');
       return;
@@ -1172,24 +1172,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   String get _username =>
       username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
-
-  BigInt? _toMinorUnits(String value) {
-    final parts = value.trim().replaceAll(',', '').split('.');
-    if (parts.length > 2 || parts.first.isEmpty) return null;
-    if (!RegExp(r'^[0-9]+$').hasMatch(parts.first)) return null;
-    if (parts.length == 2 &&
-        (parts[1].isEmpty ||
-            parts[1].length > 2 ||
-            !RegExp(r'^[0-9]+$').hasMatch(parts[1]))) {
-      return null;
-    }
-    final whole = BigInt.tryParse(parts.first);
-    final fraction = BigInt.tryParse(
-      (parts.length == 2 ? parts[1] : '').padRight(2, '0'),
-    );
-    if (whole == null || fraction == null) return null;
-    return whole * BigInt.from(100) + fraction;
-  }
 
   bool _validUsername(String value) =>
       RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value);
