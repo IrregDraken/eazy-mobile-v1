@@ -3,13 +3,14 @@ import { currentUserId, requireAuth } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { sendSuccess } from '../../utils/http.js';
 import { paginationQuerySchema, type Pagination } from '../../utils/pagination.js';
-import { MarketplaceService, inventorySchema, productCreateSchema, productIdSchema, productSearchSchema, productUpdateSchema, sellerDeliverySettingsSchema, sellerUsernameSchema } from './service.js';
+import { MarketplaceService, inventorySchema, productCreateSchema, productIdSchema, productSearchSchema, productUpdateSchema, marketplaceSearchSchema, sellerDeliverySettingsSchema, sellerUsernameSchema } from './service.js';
 
 export function createMarketplaceRouter(service: MarketplaceService): Router {
   const router = Router();
   router.get('/sellers/:username/reviews', validate('params', sellerUsernameSchema), validate('query', paginationQuerySchema), async (request, response) => sendSuccess(response, await service.sellerReviews(param(request.params.username), request.query as never)));
   router.get('/products/:id/reviews', validate('params', productIdSchema), validate('query', paginationQuerySchema), async (request, response) => sendSuccess(response, await service.productReviews(param(request.params.id), request.query as never)));
   router.get('/sellers/:username/products', validate('params', sellerUsernameSchema), validate('query', productSearchSchema), async (request, response) => sendSuccess(response, await service.sellerProductsByUsername(param(request.params.username), request.query as never, request.auth?.userId)));
+  router.get('/search', validate('query', marketplaceSearchSchema), async (request, response) => sendSuccess(response, await service.searchAll(param(request.query.q), request.auth?.userId)));
   router.get('/products', validate('query', productSearchSchema), async (request, response) => sendSuccess(response, await service.search(request.query as never, request.auth?.userId)));
   router.get('/sellers/:id/delivery-settings', validate('params', productIdSchema), async (request, response) => sendSuccess(response, await service.sellerDeliverySettings(param(request.params.id))));
   router.get('/seller/delivery-settings', requireAuth, async (request, response) => sendSuccess(response, await service.sellerDeliverySettings(currentUserId(request))));
