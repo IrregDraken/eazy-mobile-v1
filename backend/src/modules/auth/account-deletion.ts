@@ -196,7 +196,7 @@ export class AccountDeletionService {
                    FROM ledger_entries le JOIN wallets w ON w.id = le.wallet_id WHERE w.user_id = $1), 0)::text AS balance,
          (SELECT count(*) FROM transactions t WHERE t.user_id = $1 AND t.status = 'pending'
             AND (t.type <> 'deposit' OR t.created_at > now() - interval '24 hours'))::text AS pending,
-         (SELECT count(*) FROM orders o WHERE o.buyer_id = $1 AND o.status IN ('paid', 'processing', 'shipped'))::text AS orders,
+         (SELECT count(*) FROM orders o WHERE o.buyer_id = $1 AND o.status IN ('paid', 'processing', 'shipped', 'disputed'))::text AS orders,
          (SELECT count(DISTINCT oi.order_id) FROM order_items oi JOIN orders o ON o.id = oi.order_id
             WHERE oi.seller_id = $1 AND o.status IN ('paid', 'processing', 'shipped'))::text AS sales`, [userId]
     );
