@@ -523,4 +523,19 @@ export class OrderRepository {
     return due.rows.length;
   }
 
+  async createReview(client: DbClient, buyerId: string, orderId: string, orderItemId: string, rating: number, reviewText: string) {
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO order_reviews (order_id, order_item_id, buyer_id, seller_id, product_id, rating, review_text)
+       SELECT o.id, oi.id, o.buyer_id, oi.seller_id, oi.product_id, $4, $5
+       FROM orders o
+       JOIN order_items oi ON oi.order_id = o.id
+       JOIN order_fulfillments f ON f.order_id = o.id AND f.seller_id = oi.seller_id
+       WHERE o.id = $1 AND o.buyer_id = $2 AND oi.id = $3
+         AND o.status = 'completed' AND f.status = 'completed'
+       RETURNING id`,
+      [orderId, buyerId, orderItemId, rating, reviewText.trim()]
+    );
+    return result.rows[0]?.id ?? null;
+  }
+
 }
