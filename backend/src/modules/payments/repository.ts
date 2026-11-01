@@ -96,16 +96,16 @@ export class PaymentRepository implements PaymentRepositoryContract {
       if (order.rows[0]) {
         await client.query(
           `INSERT INTO seller_payable_ledger
-            (order_id, fulfillment_id, seller_id, entry_type, amount, currency, idempotency_key)
+            (order_id, fulfillment_id, seller_id, entry_type, amount_kobo, currency, idempotency_key)
            SELECT f.order_id, f.id, f.seller_id, 'hold',
-             (COALESCE(sum(oi.line_total_amount), 0) + f.delivery_fee_amount)::numeric(20,2),
+             (round(COALESCE(sum(oi.line_total_amount), 0) * 100)::bigint + f.delivery_fee_kobo),
              o.currency, 'order-hold:' || f.id::text
            FROM order_fulfillments f
            JOIN orders o ON o.id = f.order_id
            LEFT JOIN order_items oi ON oi.order_id = f.order_id AND oi.seller_id = f.seller_id
            WHERE f.order_id = $1
-           GROUP BY f.order_id, f.id, f.seller_id, f.delivery_fee_amount, o.currency
-           HAVING COALESCE(sum(oi.line_total_amount), 0) + f.delivery_fee_amount > 0
+           GROUP BY f.order_id, f.id, f.seller_id, f.delivery_fee_kobo, o.currency
+           HAVING round(COALESCE(sum(oi.line_total_amount), 0) * 100)::bigint + f.delivery_fee_kobo > 0
            ON CONFLICT (fulfillment_id, entry_type) DO NOTHING`,
           [transaction.order_id]
         );
