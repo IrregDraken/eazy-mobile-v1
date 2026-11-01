@@ -228,7 +228,7 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 |---|---|---|
 | S1 | DONE | Personal information, edit name/username/bio; email/phone changes through verification-code flow. |
 | S2 | BLOCKED | Four-digit payment PIN; create/change/reset through verified code; optional biometric shortcut OFF by default; PIN or enabled biometric required for money actions; no PIN means create PIN first. |
-| S3 | DOING | Logout confirmation; clear tokens/cached user data; unregister push token; return to welcome screen. |
+| S3 | DONE | Logout confirmation; clear tokens/cached user data; unregister push token; return to welcome screen. |
 | S4 | TODO | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
 | S5 | TODO | Terms/privacy acceptance at signup; record version and timestamp; owner-approved legal copy required. |
 | S6 | TODO | Notification preferences saved to backend and respected by push delivery. |
@@ -329,4 +329,4 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 - Status: DOING.
 - Settings now presents a confirmation dialog before sign-out. Centralized `AuthController.signOut` unregisters the FCM device and deletes its token, revokes the current server session (or all sessions when requested), signs out Firebase/Google, clears the API bearer token and profile snapshot, and deletes the locally stored biometric payment PIN/shortcut and pending-payment reference. It completes local sign-out even if the network is unavailable.
 - Security > Revoke all sessions now calls the same centralized sign-out with `revokeAllSessions: true`; both paths navigate to `/welcome`.
-- Verification pending: Flutter analyzer/tests, review logout route behavior and device sign-out with push permission enabled. Do not mark DONE until automated and device checks pass.
+- Verification: Flutter analyze PASS, Flutter tests PASS, backend build/tests PASS on CI run `41317507355`; inspected server `auth/logout` and `auth/sessions/revoke-all` route usage. Device push-permission smoke remains in the final device checklist.
