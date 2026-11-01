@@ -124,7 +124,7 @@ export class OrderRepository {
     }
 
     const order = await client.query<{ id: string }>(
-      "INSERT INTO orders (buyer_id, status, currency, subtotal_amount, delivery_total_amount, total_amount, idempotency_key) VALUES ($1, 'pending', $2, 0, 0, 0, $3) RETURNING id",
+      "INSERT INTO orders (buyer_id, status, currency, subtotal_amount, delivery_total_kobo, total_amount, idempotency_key) VALUES ($1, 'pending', $2, 0, 0, 0, $3) RETURNING id",
       [buyerId, currency, idempotencyKey]
     );
     const orderId = order.rows[0]!.id;
@@ -144,14 +144,14 @@ export class OrderRepository {
     for (const sellerId of sellerIds) {
       const choice = selected.get(sellerId)!;
       const settingsResult = await client.query<{
-        delivery_enabled: boolean; pickup_enabled: boolean; delivery_fee_amount: string;
+        delivery_enabled: boolean; pickup_enabled: boolean; delivery_fee_kobo: string;
         currency: string; pickup_instructions: string | null;
       }>(
-        'SELECT delivery_enabled, pickup_enabled, delivery_fee_amount::text, trim(currency) AS currency, pickup_instructions FROM seller_delivery_settings WHERE seller_id = $1',
+        'SELECT delivery_enabled, pickup_enabled, delivery_fee_kobo::text, trim(currency) AS currency, pickup_instructions FROM seller_delivery_settings WHERE seller_id = $1',
         [sellerId]
       );
       const settings = settingsResult.rows[0] ?? {
-        delivery_enabled: false, pickup_enabled: true, delivery_fee_amount: '0.00',
+        delivery_enabled: false, pickup_enabled: true, delivery_fee_kobo: '0',
         currency: 'NGN', pickup_instructions: null
       };
       if (settings.currency !== currency) throw new Error('DELIVERY_CURRENCY_MISMATCH');
@@ -174,7 +174,7 @@ export class OrderRepository {
           recipientName: row.recipient_name, phone: row.phone, state: row.state,
           city: row.city, area: row.area, addressLine: row.address_line, landmark: row.landmark
         };
-        deliveryFee = settings.delivery_fee_amount;
+        deliveryFee = settings.delivery_fee_kobo;
       } else {
         if (!settings.pickup_enabled) throw new Error('PICKUP_UNAVAILABLE');
         if (choice.addressId) throw new Error('PICKUP_ADDRESS_NOT_ALLOWED');
@@ -182,7 +182,7 @@ export class OrderRepository {
 
       const fulfillment = await client.query<{ id: string }>(
         `INSERT INTO order_fulfillments
-          (order_id, seller_id, delivery_method, delivery_fee_amount, address_snapshot, pickup_instructions)
+          (order_id, seller_id, delivery_method, delivery_fee_kobo, address_snapshot, pickup_instructions)
          VALUES ($1,$2,$3,$4::numeric,$5::jsonb,$6) RETURNING id`,
         [orderId, sellerId, choice.method, deliveryFee,
           addressSnapshot ? JSON.stringify(addressSnapshot) : null, settings.pickup_instructions]
@@ -196,13 +196,13 @@ export class OrderRepository {
     await client.query(
       `UPDATE orders o
        SET subtotal_amount = totals.subtotal,
-           delivery_total_amount = totals.delivery_total,
-           total_amount = totals.subtotal + totals.delivery_total,
+           delivery_total_kobo = totals.delivery_total_kobo,
+           total_amount = totals.subtotal + (totals.delivery_total_kobo::numeric / 100),
            updated_at = now()
        FROM (
          SELECT
            (SELECT COALESCE(sum(line_total_amount), 0)::numeric FROM order_items WHERE order_id = $1) AS subtotal,
-           (SELECT COALESCE(sum(delivery_fee_amount), 0)::numeric FROM order_fulfillments WHERE order_id = $1) AS delivery_total
+           (SELECT COALESCE(sum(delivery_fee_kobo), 0)::bigint FROM order_fulfillments WHERE order_id = $1) AS delivery_total_kobo
        ) totals
        WHERE o.id = $1`,
       [orderId]
@@ -218,7 +218,7 @@ export class OrderRepository {
       deliveryTotal: string; total: string; createdAt: string;
     }>(
       `SELECT id, status, trim(currency) AS currency,
-        subtotal_amount::text AS subtotal, delivery_total_amount::text AS "deliveryTotal",
+        subtotal_amount::text AS subtotal, (delivery_total_kobo::numeric / 100)::numeric(20,2)::text AS "deliveryTotal",
         total_amount::text AS total, created_at AS "createdAt"
        FROM orders WHERE id = $1 AND buyer_id = $2 LIMIT 1`,
       [orderId, buyerId]
@@ -386,16 +386,16 @@ export class OrderRepository {
     if (row.status === 'disputed') return { error: 'DISPUTED' as const };
     if (row.status !== 'delivered') return { error: 'NOT_DELIVERED' as const };
     const hold = await client.query<{ amount: string }>(
-      "SELECT amount::numeric(20,2)::text AS amount FROM seller_payable_ledger WHERE fulfillment_id = $1 AND entry_type = 'hold' FOR UPDATE",
+      "SELECT amount_kobo::text AS amountKobo FROM seller_payable_ledger WHERE fulfillment_id = $1 AND entry_type = 'hold' FOR UPDATE",
       [fulfillmentId]
     );
     if (!hold.rows[0]) return { error: 'ESCROW_HOLD_NOT_FOUND' as const };
     await client.query(
       `INSERT INTO seller_payable_ledger
-        (order_id, fulfillment_id, seller_id, entry_type, amount, currency, idempotency_key)
+        (order_id, fulfillment_id, seller_id, entry_type, amount_kobo, currency, idempotency_key)
        VALUES ($1,$2,$3,'release',$4::numeric,$5,'order-release:' || $2::text)
        ON CONFLICT (fulfillment_id, entry_type) DO NOTHING`,
-      [orderId, fulfillmentId, row.seller_id, hold.rows[0].amount, row.currency]
+      [orderId, fulfillmentId, row.seller_id, hold.rows[0].amountKobo, row.currency]
     );
     await client.query(
       "UPDATE order_fulfillments SET status = 'completed', release_after = NULL, updated_at = now() WHERE id = $1",
@@ -470,7 +470,7 @@ export class OrderRepository {
       currency: string; amount: string;
     }>(
       `SELECT f.id, f.order_id, f.seller_id, o.buyer_id, trim(o.currency) AS currency,
-        hold.amount::numeric(20,2)::text AS amount
+        hold.amount_kobo::text AS amountKobo
        FROM order_fulfillments f
        JOIN orders o ON o.id = f.order_id
        JOIN seller_payable_ledger hold ON hold.fulfillment_id = f.id AND hold.entry_type = 'hold'
@@ -489,7 +489,7 @@ export class OrderRepository {
           (order_id, fulfillment_id, seller_id, entry_type, amount, currency, idempotency_key)
          VALUES ($1,$2,$3,'release',$4::numeric,$5,'order-release:' || $2::text)
          ON CONFLICT (fulfillment_id, entry_type) DO NOTHING`,
-        [row.order_id, row.id, row.seller_id, row.amount, row.currency]
+        [row.order_id, row.id, row.seller_id, row.amountKobo, row.currency]
       );
       await client.query(
         "UPDATE order_fulfillments SET status = 'completed', release_after = NULL, updated_at = now() WHERE id = $1 AND status = 'delivered'",
