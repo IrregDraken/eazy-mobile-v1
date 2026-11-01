@@ -119,7 +119,7 @@ export class PaymentRepository implements PaymentRepositoryContract {
           `INSERT INTO notifications (user_id, actor_user_id, type, target_type, target_id, title, body, deep_link)
            SELECT DISTINCT oi.seller_id, $2, 'order', 'order', $1,
              'New paid order', 'A buyer has paid for an order. Review the order to accept or reject it.',
-             'eazy://orders/' || $1::text
+             'https://www.eazy.name.ng/order/' || $1::text
            FROM order_items oi WHERE oi.order_id = $1`,
           [transaction.order_id, order.rows[0].buyer_id]
         );
