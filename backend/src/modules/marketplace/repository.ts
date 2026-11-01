@@ -236,6 +236,16 @@ export class MarketplaceRepository {
     return result.rows[0] ?? null;
   }
 
+  async sellerStoreByUsername(username: string) {
+    const result = await this.pool.query(
+      `SELECT s.seller_id AS "sellerId", s.store_name AS "storeName", s.slug, s.description,
+        s.support_phone AS "supportPhone", s.status, p.username, p.avatar_url AS "avatarUrl"
+       FROM seller_stores s JOIN profiles p ON p.user_id = s.seller_id
+       WHERE lower(p.username) = lower($1) AND s.status = 'active' LIMIT 1`,
+      [username]
+    );
+    return result.rows[0] ?? null;
+  }
   async sellerStoreBySlug(slug: string) {
     const result = await this.pool.query(
       `SELECT s.seller_id AS "sellerId", s.store_name AS "storeName", s.slug,
