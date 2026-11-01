@@ -89,7 +89,41 @@ export class PaymentRepository implements PaymentRepositoryContract {
         ON CONFLICT (idempotency_key) DO NOTHING`, [transaction.wallet_id, transactionId, amount, currency]);
     }
     if (transaction.type === 'purchase' && transaction.order_id) {
-      await client.query("UPDATE orders SET status = 'paid', updated_at = now() WHERE id = $1 AND status = 'pending'", [transaction.order_id]);
+      const order = await client.query<{ buyer_id: string }>(
+        "UPDATE orders SET status = 'paid', updated_at = now() WHERE id = $1 AND status = 'pending' RETURNING buyer_id",
+        [transaction.order_id]
+      );
+      if (order.rows[0]) {
+        await client.query(
+          `INSERT INTO seller_payable_ledger
+            (order_id, fulfillment_id, seller_id, entry_type, amount, currency, idempotency_key)
+           SELECT f.order_id, f.id, f.seller_id, 'hold',
+             (COALESCE(sum(oi.line_total_amount), 0) + f.delivery_fee_amount)::numeric(20,2),
+             o.currency, 'order-hold:' || f.id::text
+           FROM order_fulfillments f
+           JOIN orders o ON o.id = f.order_id
+           LEFT JOIN order_items oi ON oi.order_id = f.order_id AND oi.seller_id = f.seller_id
+           WHERE f.order_id = $1
+           GROUP BY f.order_id, f.id, f.seller_id, f.delivery_fee_amount, o.currency
+           HAVING COALESCE(sum(oi.line_total_amount), 0) + f.delivery_fee_amount > 0
+           ON CONFLICT (fulfillment_id, entry_type) DO NOTHING`,
+          [transaction.order_id]
+        );
+        await client.query(
+          `INSERT INTO order_events (order_id, fulfillment_id, actor_user_id, event_type, description)
+           SELECT f.order_id, f.id, $2, 'payment_held', 'Payment verified. Funds are held until order completion.'
+           FROM order_fulfillments f WHERE f.order_id = $1`,
+          [transaction.order_id, order.rows[0].buyer_id]
+        );
+        await client.query(
+          `INSERT INTO notifications (user_id, actor_user_id, type, target_type, target_id, title, body, deep_link)
+           SELECT DISTINCT oi.seller_id, $2, 'order', 'order', $1,
+             'New paid order', 'A buyer has paid for an order. Review the order to accept or reject it.',
+             'eazy://orders/' || $1::text
+           FROM order_items oi WHERE oi.order_id = $1`,
+          [transaction.order_id, order.rows[0].buyer_id]
+        );
+      }
     }
     return true;
   }
