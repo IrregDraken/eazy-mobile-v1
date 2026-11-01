@@ -69,7 +69,8 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Files changed: `lib/features/wallet/wallet_page.dart`.
 - Changes: parse both amount and available balance into integer kobo; reject invalid/zero amounts and amounts above the displayed available balance before showing the review/PIN step; remove mandatory device biometric authentication from this Eazy-user transfer path so the server-verified payment PIN is the authorization; inspect the server response and show success only when transaction status is `succeeded`; refresh wallet state/history after the response.
 - Verification: source re-fetched after edits; confirmed backend `WalletService.transferToUser` compares ledger balance against amount in minor units and writes debit/credit entries in one DB transaction. No Flutter analyzer, widget test, backend test, or device test has run yet. Therefore PARTIAL, not DONE.
-- Remaining: add automated client test coverage for the kobo comparison and execute CI/device verification. A malformed trailing duplicate source segment introduced during an earlier helper edit was detected by a full-file re-fetch and removed; the retained file ends at the first complete `_QrScannerPageState` definition. This correction is included in the current wallet file.
+- Additional changes: moved the integer kobo conversion into the shared wallet amount utility and added unit tests for whole naira, fractional kobo and invalid precision. A malformed trailing duplicate source segment introduced during an earlier helper edit was detected by a full-file re-fetch and removed; the retained file ends at the first complete `_QrScannerPageState` definition.
+- Remaining: run the new tests in CI and verify the balance gate on device.
 
 ### D3 — Home feed states (partial)
 - Status: PARTIAL.
