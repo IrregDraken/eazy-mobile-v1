@@ -12,6 +12,7 @@ import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import 'wallet_amount_input.dart';
+import '../../core/formatters/money_formatter.dart';
 
 class WalletPage extends StatefulWidget {
   const WalletPage({super.key});
@@ -284,6 +285,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 hintText: 'e.g. Ada Okafor or ada_okafor',
                 prefixIcon: Icon(Icons.search_rounded),
                 helperText: 'Search by the person’s name or Eazy username.',
+                helperMaxLines: 2,
               ),
             ),
             actions: [
@@ -332,7 +334,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       return;
     }
 
-    final recipient = await showDialog<Map<String, dynamic>>(
+    final recipient = matches.length == 1
+        ? matches.single
+        : await showDialog<Map<String, dynamic>>(
       context: context,
       builder:
           (dialogContext) => AlertDialog(
@@ -405,7 +409,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       return;
     }
     if (availableKobo == null || requestedKobo > availableKobo) {
-      _showError('Insufficient funds. Your available balance is $_currency $_balance.');
+      _showError('Insufficient funds. Your available balance is ${formatEazyMoney(_balance, currency: _currency)}.');
       return;
     }
 
@@ -432,8 +436,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   subtitle: Text('@$handle'),
                 ),
                 const Divider(),
-                _Info('Amount', '$_currency $amount'),
-                _Info('Available balance', '$_currency $_balance'),
+                _Info('Amount', formatEazyMoney(amount, currency: _currency)),
+                _Info('Available balance', formatEazyMoney(_balance, currency: _currency)),
                 const SizedBox(height: 10),
                 const Text(
                   'Confirm with your Eazy payment PIN. Eazy never asks you to share it.',
@@ -479,7 +483,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       final transaction = _map(transferResult['transaction']);
       await load();
       if (transaction['status']?.toString().toLowerCase() == 'succeeded') {
-        _showMessage('Transfer successful. $_currency $amount sent to @$handle.');
+        _showMessage('Transfer successful. ${formatEazyMoney(amount, currency: _currency)} sent to @$handle.');
       } else {
         _showError('The transfer was not confirmed. Check wallet activity before trying again.');
       }
@@ -856,7 +860,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     setState(() => busy = true);
     try {
       final authenticated = await _authenticateTransfer(
-        'Authorize sending $_currency $amount to $accountName',
+        'Authorize sending ${formatEazyMoney(amount, currency: _currency)} to $accountName',
       );
       if (!authenticated) return;
       final paymentPin = await _requestPaymentPin();
@@ -992,7 +996,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       await _confirmAndRun(
         title: 'Confirm QR payment',
         message:
-            'Pay $_currency $amount to ${recipient['displayName'] ?? recipient['username'] ?? 'this Eazy user'}?',
+            'Pay ${formatEazyMoney(amount, currency: _currency)} to ${recipient['displayName'] ?? recipient['username'] ?? 'this Eazy user'}?',
         action: (paymentPin) => api.post(
           'wallet/qr/pay',
           auth: true,
@@ -1046,7 +1050,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                         ],
                         decoration: InputDecoration(
                           labelText: 'Amount',
-                          prefixText: '$_currency ',
+                          prefixText: _currency == 'NGN' ? '₦ ' : '$_currency ',
                           hintText: '5000',
                         ),
                       ),
