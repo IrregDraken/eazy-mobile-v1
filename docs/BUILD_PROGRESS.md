@@ -38,7 +38,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 | D3 Home feed | PARTIAL | `lib/features/social/social_page.dart`; feed load has loading/error states, but no explicit cache or pull-to-refresh has yet been verified. |
 | D4 Discover | PARTIAL | `lib/features/marketplace/marketplace_page.dart`; inspect empty-state/filter rendering and category selection. |
 | D5 Chat preview | TODO | `lib/features/chat/chat_home_screen.dart`; latest-message and realtime refresh logic present; confirm event payload and ordering after send/receive. |
-| D6 Eazy Assist | TODO | `lib/features/assist/assist_page.dart`, backend `modules/assist/context.ts`, `service.ts`, `repository.ts`; session bootstrap exists; message ordering, New chat and context need inspection. |
+| D6 Eazy Assist | PARTIAL | `lib/features/assist/assist_page.dart`, backend `modules/assist/context.ts`, `service.ts`, `repository.ts`; session bootstrap exists; message ordering, New chat and context need inspection. |
 | D7 Bag / Settings loading | TODO | `lib/features/marketplace/cart_page.dart`, `lib/features/settings/settings_page.dart`; Settings currently waits on a remote load before rendering. |
 | D8 Android system bars | TODO | `lib/app/app.dart`, `lib/features/home/home_shell.dart`, all route/page scaffolds and `AndroidManifest.xml`; audit safe areas, keyboard and navigation insets. |
 | D9 Floating AI orb | TODO | `lib/core/ui/eazy_assist_fab.dart`, `lib/features/home/home_shell.dart`; current FAB is fixed-position and not draggable/scroll-aware. |
@@ -93,6 +93,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Changes: refresh the conversation list after returning from an open conversation; render attachment-aware previews (Photo, Video, Attachment) and reserve “Start a conversation” for a missing latestMessage.
 - Verification: source inspection confirmed realtime events already trigger a quiet list reload; new code adds a return-path reload and avoids the false empty label. No Flutter analyzer, widget test or device test has run. PARTIAL pending CI and realtime/device verification.
 - Remaining: verify event delivery and preview/time updates for sent and received messages against live backend data.
+
+### D6 — Eazy Assist chronology and new chat (partial)
+- Status: PARTIAL.
+- Cause confirmed: Assist history was returned newest-first and the client rendered that order without reversing it; Assist had no New chat action. The system context described Eazy as only a marketplace.
+- Files changed: `lib/features/assist/assist_page.dart`, `backend/src/modules/assist/context.ts`, `backend/src/modules/assist/repository.ts`, `backend/src/modules/assist/types.ts`, `backend/migrations/029_assist_message_sequence.sql`.
+- Changes: add a per-message identity sequence and unique per-session index; return sequenceId in API message projections; order backend history by sequence; sort client history and newly sent pairs chronologically; add New chat action; update Eazy Assist's system description to cover social posts, chat, marketplace, wallet, translation and Assist. Existing server-side recent history already reverses newest-first rows before provider context construction.
+- Verification: source changes and migration were committed; repository queries and type projections were re-fetched and inspected. Database migration, TypeScript build/tests, Flutter analyzer and UI tests have not run. PARTIAL until those pass.
+- Remaining: run migration against a disposable PostgreSQL database, backend tests/build, Flutter analyzer/tests, and verify new-chat/history ordering on device.
 
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
