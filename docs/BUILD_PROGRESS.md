@@ -201,3 +201,103 @@ P0–P11: TODO. Do not start until Phases 1 and 2 are DONE or BLOCKED.
 
 ## Phase 4 — Premium visual polish
 V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
+
+
+## Phase 1 blockers and exact unblocks
+
+| ID | Blocker | Exact unblock |
+|---|---|---|
+| D1 | Private media storage flow is implemented but not exercised end-to-end against staging storage. | Provide an authenticated staging Eazy account and staging Supabase storage configuration; verify photo upload, progress, same-file retry, inline preview and full-screen open on Android. |
+| D6 | Migration 029 and chronological Assist history have not been exercised against a database. | Apply migrations to a disposable/staging PostgreSQL database and run Assist history/new-chat tests. Do not apply an unverified migration directly to production. |
+| D8 | Safe-area changes have not been tested in both Android navigation modes. | Test gesture navigation and three-button navigation, including keyboard open, Create post, Settings, Account, Security, Find people and chat composer. |
+| D9 | Draggable orb code is implemented in HomeShell and Notifications; device drag, persisted position, scroll-hide and no-overlap behavior are unverified. | Test Home, Discover, Profile and Notifications on Android; drag, switch routes, reopen app, scroll and open keyboard. Translation and Location hide the orb because their primary actions must remain unobstructed. |
+| D11 | Chat header/avatar, bubble and timestamp changes need visual confirmation in both themes. | Capture light and dark chat screenshots with incoming/outgoing text and photo-only messages. |
+| D12 | One-line copy label is implemented but narrow-width and accessibility text scaling are untested. | Test the smallest supported Android width and large system font scale. |
+| D14 | Opaque dialog/sheet themes are implemented; per-dialog overrides and visual contrast need review. | Inspect Report account, Settings dialogs and bottom sheets in light and dark themes. |
+| D15 | System appearance is persisted and is the default; OS-driven switching needs device verification. | Switch Android appearance Light/Dark/System and verify Eazy follows System while explicit choices remain fixed. |
+
+## Phase 1 CI evidence
+- Run `41316333935`: backend TypeScript build and tests PASS; Flutter analyze PASS; Flutter tests PASS; iOS configuration preflight PASS.
+- Android debug APK and iOS simulator build jobs were still running at the last check. This workflow produces a DEBUG smoke APK, not a signed release APK.
+- No changes have been merged to `main`.
+
+## Phase 2 — Launch features (item-level status)
+
+### 2A — Settings basics
+| ID | Status | Scope |
+|---|---|---|
+| S1 | TODO | Personal information, edit name/username/bio; email/phone changes through verification-code flow. |
+| S2 | TODO | Four-digit payment PIN; create/change/reset through verified code; optional biometric shortcut OFF by default; PIN or enabled biometric required for money actions; no PIN means create PIN first. |
+| S3 | TODO | Logout confirmation; clear tokens/cached user data; unregister push token; return to welcome screen. |
+| S4 | TODO | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
+| S5 | TODO | Terms/privacy acceptance at signup; record version and timestamp; owner-approved legal copy required. |
+| S6 | TODO | Notification preferences saved to backend and respected by push delivery. |
+| S7 | TODO | Support email from configuration; report-problem form persists to backend. |
+
+### 2B — Cart and checkout
+| ID | Status | Scope |
+|---|---|---|
+| C1 | TODO | Cart quantities, remove, empty state and totals. |
+| C2 | TODO | Delivery addresses, per-seller delivery/pickup, fees and Paystack card checkout. |
+| C3 | TODO | Escrow holds buyer payment and releases to seller only after receipt confirmation. |
+| C4 | TODO | Buyer order list/detail, timeline, confirm received, dispute with reason/photos and seller notification. |
+| C5 | TODO | Post-delivery seller rating/review. |
+| C6 | TODO | Message seller from product/order context. |
+
+### 2C — Seller flow
+| ID | Status | Scope |
+|---|---|---|
+| L1 | TODO | Seller setup and profile/store details. |
+| L2 | TODO | Product creation/editing, images and stock. |
+| L3 | TODO | Seller order management and fulfillment updates. |
+| L4 | TODO | Seller earnings/escrow status without unsupported withdrawal controls. |
+
+### 2D — Search
+| ID | Status | Scope |
+|---|---|---|
+| F1 | TODO | Search products, sellers and categories. |
+| F2 | TODO | Seller profile/storefront and product listings. |
+| F3 | TODO | Filters, sorting and useful empty states. |
+
+### 2E — Small improvements
+| ID | Status | Scope |
+|---|---|---|
+| E1 | TODO | Consistent loading, error and empty states. |
+| E2 | TODO | Navigation and deep-link correctness. |
+| E3 | TODO | Accessibility, responsive layout and keyboard behavior. |
+| E4 | TODO | Image/media reliability. |
+| E5 | TODO | Push notification routing. |
+| E6 | TODO | Translator coverage/provider behavior. |
+| E7 | TODO | Account/settings consistency. |
+| E8 | TODO | Performance and regression checks. |
+| E9 | TODO | Final feature regression and release checklist. |
+
+## Phase 3 — Paystack wallet
+| ID | Status | Scope |
+|---|---|---|
+| P0 | TODO | KYC policy gate; default `PAYSTACK_REQUIRE_BVN=true` until owner confirms legal category and permitted validation requirements. |
+| P1 | TODO | Wallet activation entry point; do not create a wallet at signup. |
+| P2 | TODO | Activation details and validation. |
+| P3 | TODO | Paystack customer creation and virtual-account assignment. |
+| P4 | TODO | Webhook signature verification and idempotent funding credit. |
+| P5 | TODO | Ledger and balance reconciliation. |
+| P6 | TODO | Funding status, pending/failed states and recovery. |
+| P7 | TODO | Virtual account display and copy/share. |
+| P8 | TODO | PIN and optional biometric setup after activation. |
+| P9 | TODO | Wallet notifications/history. |
+| P10 | TODO | Hide unsupported withdrawal/bank-send controls; blocked pending owner-approved product/legal decision. |
+| P11 | TODO | End-to-end sandbox reconciliation and regression. |
+
+## Phase 4 — Premium visual polish
+| ID | Status | Scope |
+|---|---|---|
+| V1 | TODO | Typography, spacing, surfaces and component consistency. |
+| V2 | TODO | Light/dark contrast and dialogs. |
+| V3 | TODO | Motion, skeletons and transitions. |
+| V4 | TODO | Responsive and accessibility pass. |
+| V5 | TODO | Final visual regression and release sign-off. |
+
+## Scope notes
+- PRs #13 and #14 are CLOSED and UNMERGED. They are not reopened or merged under this prompt's locked scope.
+- Keep the launch-readiness PR draft until all code, device and database blockers are cleared. Do not merge merely because CI is green.
+- No production money movement, production wallet credit, real-user deletion, invented legal copy, Paystack live mode or unapproved withdrawal capability is used for verification.
