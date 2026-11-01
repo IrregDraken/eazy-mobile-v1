@@ -44,7 +44,6 @@ class _SellerOrdersPageState extends State<SellerOrdersPage> {
     final orderId = order['orderId']?.toString() ?? '';
     final fulfillmentId = order['fulfillmentId']?.toString() ?? '';
     if (orderId.isEmpty || fulfillmentId.isEmpty) return;
-    String? reason;
     setState(() => busy = true);
     try {
       await api.patch(
