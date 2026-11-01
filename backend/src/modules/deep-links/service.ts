@@ -11,7 +11,7 @@ import { usernameSchema } from '../profiles/service.js';
 import { SocialRepository } from '../social/repository.js';
 
 const resourceIdSchema = z.string().guid();
-const canonicalHost = 'eazy.app';
+const allowedHosts = new Set(['eazy.app', 'eazy.name.ng', 'www.eazy.name.ng']);
 
 export interface DeepLinkServices {
   profiles: Pick<ProfileService, 'getPublic'>;
@@ -60,17 +60,17 @@ export class DeepLinkService {
       case 'order': {
         const userId = requireViewer(viewerId);
         await this.services.orders.get(userId, parsed.id);
-        return { type: 'order', id: parsed.id, destination: `/order/${parsed.id}` };
+        return { type: 'order', id: parsed.id, destination: `/orders/${parsed.id}` };
       }
       case 'notification': {
         const userId = requireViewer(viewerId);
         await this.services.notifications.get(userId, parsed.id);
-        return { type: 'notification', id: parsed.id, destination: `/notification/${parsed.id}` };
+        return { type: 'notification', id: parsed.id, destination: '/notifications' };
       }
       case 'conversation': {
         const userId = requireViewer(viewerId);
         await this.services.chat.getConversation(userId, parsed.id);
-        return { type: 'conversation', id: parsed.id, destination: `/chat/${parsed.id}` };
+        return { type: 'conversation', id: parsed.id, destination: `/home?tab=chat&conversationId=${parsed.id}` };
       }
     }
   }
@@ -84,7 +84,7 @@ export function parseDeepLink(input: string): ParsedDeepLink {
   let path = input;
   const absolute = input.match(/^([a-z][a-z0-9+.-]*):\/\/([^/?#]*)(.*)$/i);
   if (absolute) {
-    if (absolute[1]?.toLowerCase() !== 'https' || absolute[2]?.toLowerCase() !== canonicalHost) {
+    if (absolute[1]?.toLowerCase() !== 'https' || !allowedHosts.has(absolute[2]?.toLowerCase() ?? '')) {
       throw new AppError('VALIDATION_ERROR', 'Unsupported deep-link scheme or host');
     }
     path = absolute[3] || '/';
