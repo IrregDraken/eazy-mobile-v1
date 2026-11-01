@@ -24,6 +24,8 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
   final pickupInstructions = TextEditingController();
   bool deliveryEnabled = false;
   bool pickupEnabled = true;
+  bool loadingDeliverySettings = true;
+  bool deliverySettingsReady = false;
   List<Map<String, dynamic>> categories = [];
   String? categoryId;
   MediaUpload? image;
@@ -79,9 +81,11 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
         pickupEnabled = settings['pickupEnabled'] != false;
         deliveryFee.text = settings['deliveryFeeAmount']?.toString() ?? '0';
         pickupInstructions.text = settings['pickupInstructions']?.toString() ?? '';
+        loadingDeliverySettings = false;
+        deliverySettingsReady = true;
       });
     } on ApiException catch (e) {
-      if (mounted) setState(() => error = e.message);
+      if (mounted) setState(() { error = e.message; loadingDeliverySettings = false; });
     }
   }
 
@@ -110,6 +114,10 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
     }
     if (!RegExp(r'^\\d{1,18}(\\.\\d{1,2})?$').hasMatch(amount) || double.tryParse(amount) == null || double.parse(amount) <= 0) {
       setState(() => error = 'Enter a valid NGN price, for example 12500 or 12500.50.');
+      return;
+    }
+    if (!deliverySettingsReady || loadingDeliverySettings) {
+      setState(() => error = 'Delivery settings could not be loaded. Reopen this screen and try again.');
       return;
     }
     if (!deliveryEnabled && !pickupEnabled) {
@@ -257,7 +265,7 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
           ],
           const SizedBox(height: 22),
           SizedBox(height: 54, child: FilledButton(
-            onPressed: publishing || uploading ? null : _publish,
+            onPressed: publishing || uploading || loadingDeliverySettings ? null : _publish,
             child: publishing ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Publish product'),
           )),
           const SizedBox(height: 8),
