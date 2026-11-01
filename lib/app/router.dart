@@ -6,6 +6,7 @@ import '../features/assist/assist_page.dart';
 import '../features/location/location_page.dart';
 import '../features/translation/translation_page.dart';
 import '../features/notifications/notifications_page.dart';
+import '../features/posts/post_detail_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/security/security_page.dart';
 import '../features/settings/account_settings_page.dart';
@@ -90,6 +91,7 @@ GoRouter buildRouter(
     GoRoute(path: '/marketplace/search', builder: (_, state) => MarketplaceSearchPage(query: state.uri.queryParameters['q'] ?? '')),
     GoRoute(path: '/orders/:id', builder: (_, state) => OrderDetailPage(orderId: state.pathParameters['id']!)),
     GoRoute(path: '/product/:id', builder: (_, state) => ProductRoutePage(productId: state.pathParameters['id']!)),
+    GoRoute(path: '/p/:id', builder: (_, state) => PostDetailPage(postId: state.pathParameters['id']!)),
     GoRoute(path: '/seller', builder: (_, _) => const SellerSetupPage()),
     GoRoute(
       path: '/home',
