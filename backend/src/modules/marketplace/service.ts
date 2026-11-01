@@ -92,6 +92,19 @@ export class MarketplaceService {
     return { product: await this.attachMediaUrls(product) };
   }
 
+  async productReviews(productId: string, pagination: Pagination) {
+    const product = await this.repository.getById(productId);
+    if (!product) throw new AppError('NOT_FOUND', 'Product not found');
+    const result = await this.repository.productReviews(productId, pagination.page, pagination.limit);
+    return { items: result.items, meta: paginationMeta(pagination, result.total) };
+  }
+
+  async sellerReviews(username: string, pagination: Pagination) {
+    if (!await this.repository.userIdByUsername(username)) throw new AppError('NOT_FOUND', 'Seller not found');
+    const result = await this.repository.sellerReviews(username, pagination.page, pagination.limit);
+    return { items: result.items, meta: paginationMeta(pagination, result.total) };
+  }
+
   async sellerDeliverySettings(sellerId: string) {
     return { settings: await this.repository.sellerDeliverySettings(sellerId) };
   }
