@@ -237,7 +237,7 @@ export class OrderRepository {
     const fulfillments = await this.pool.query(
       `SELECT f.id, f.seller_id AS "sellerId", seller.username AS "sellerUsername",
         seller.display_name AS "sellerDisplayName", f.delivery_method AS "deliveryMethod",
-        f.status, f.(delivery_fee_kobo::numeric / 100)::numeric(20,2)::text AS "deliveryFee", f.address_snapshot AS "deliveryAddress",
+        f.status, (f.delivery_fee_kobo::numeric / 100)::numeric(20,2)::text AS "deliveryFee", f.address_snapshot AS "deliveryAddress",
         f.pickup_instructions AS "pickupInstructions", f.accepted_at AS "acceptedAt",
         f.shipped_at AS "shippedAt", f.delivered_at AS "deliveredAt",
         f.release_after AS "releaseAfter",
@@ -270,7 +270,7 @@ export class OrderRepository {
     );
     const result = await this.pool.query(
       `SELECT f.id AS "fulfillmentId", f.order_id AS "orderId", f.status,
-        f.delivery_method AS "deliveryMethod", f.(delivery_fee_kobo::numeric / 100)::numeric(20,2)::text AS "deliveryFee",
+        f.delivery_method AS "deliveryMethod", (f.delivery_fee_kobo::numeric / 100)::numeric(20,2)::text AS "deliveryFee",
         f.created_at AS "createdAt", f.accepted_at AS "acceptedAt",
         f.shipped_at AS "shippedAt", f.delivered_at AS "deliveredAt",
         CASE WHEN f.accepted_at IS NULL THEN NULL ELSE f.address_snapshot END AS "deliveryAddress",
