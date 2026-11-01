@@ -38,6 +38,7 @@ export interface AppOptions {
   deepLinkRouter?: Router;
   assistRouter?: Router;
   settingsRouter?: Router;
+  supportRouter?: Router;
   blockRouter?: Router;
   mediaRouter?: Router;
   storiesRouter?: Router;
@@ -113,6 +114,7 @@ export function createApp(config: AppConfig, logger: Logger, options: AppOptions
   if (options.deepLinkRouter) app.use('/v1/deep-links', options.deepLinkRouter);
   if (options.assistRouter) app.use('/v1/assist', options.assistRouter);
   if (options.settingsRouter) app.use('/v1/settings', options.settingsRouter);
+  if (options.supportRouter) app.use('/v1/support', options.supportRouter);
   if (options.blockRouter) app.use('/v1/blocks', options.blockRouter);
   if (options.mediaRouter) app.use('/v1/media', options.mediaRouter);
   if (options.storiesRouter) app.use('/v1/stories', options.storiesRouter);
