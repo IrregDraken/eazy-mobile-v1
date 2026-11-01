@@ -17,8 +17,9 @@ import 'chat_home_screen.dart';
 const _reactions = <String>['👍', '❤️', '😂', '😮', '😢', '🙏', '👏', '🔥'];
 
 class ChatPage extends StatefulWidget {
-  const ChatPage({super.key, this.initialUsername});
+  const ChatPage({super.key, this.initialUsername, this.initialConversationId});
   final String? initialUsername;
+  final String? initialConversationId;
   @override
   State<ChatPage> createState() => _ChatPageState();
 }
@@ -30,9 +31,26 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+    final conversationId = widget.initialConversationId?.trim();
     final username = widget.initialUsername?.trim();
-    if (username != null && username.isNotEmpty) {
+    if (conversationId != null && conversationId.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openById(conversationId));
+    } else if (username != null && username.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _openByUsername(username));
+    }
+  }
+
+  Future<void> _openById(String conversationId) async {
+    if (_openingInitialConversation || !mounted) return;
+    _openingInitialConversation = true;
+    try {
+      final result = await api.get('chat/conversations/$conversationId', auth: true);
+      final conversation = result['conversation'];
+      if (conversation is Map && mounted) await _openConversation(Map<String, dynamic>.from(conversation));
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      _openingInitialConversation = false;
     }
   }
 
