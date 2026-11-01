@@ -26,7 +26,7 @@ class EazyMediaService {
   final ApiClient api;
   final ImagePicker picker = ImagePicker();
 
-  Future<MediaUpload?> pickAndUploadVideo({required String kind}) async {
+  Future<MediaUpload?> pickAndUploadVideo({required String kind, void Function(double progress)? onProgress}) async {
     final file = await picker.pickVideo(
       source: ImageSource.gallery,
       maxDuration: const Duration(seconds: 60),
@@ -67,7 +67,7 @@ class EazyMediaService {
         kind: ApiErrorKind.validation,
       );
     }
-    await api.uploadBytes(signedUrl, bytes, contentType);
+    await api.uploadBytes(signedUrl, bytes, contentType, onProgress: onProgress);
     return MediaUpload(
       path: path,
       contentType: contentType,
@@ -77,7 +77,7 @@ class EazyMediaService {
     );
   }
 
-  Future<MediaUpload?> pickAndUpload({required String kind, ImageSource source = ImageSource.gallery}) async {
+  Future<MediaUpload?> pickAndUpload({required String kind, ImageSource source = ImageSource.gallery, void Function(double progress)? onProgress}) async {
     final file = await picker.pickImage(
       source: source,
       imageQuality: 88,
@@ -134,7 +134,7 @@ class EazyMediaService {
     );
   }
 
-  Future<MediaUpload?> pickAndUploadDocument({required String kind}) async {
+  Future<MediaUpload?> pickAndUploadDocument({required String kind, void Function(double progress)? onProgress}) async {
     const group = XTypeGroup(
       label: 'Documents and files',
       extensions: ['pdf', 'txt', 'csv', 'doc', 'docx'],
