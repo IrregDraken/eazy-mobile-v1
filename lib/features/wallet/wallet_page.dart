@@ -28,6 +28,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   bool busy = false;
   bool balanceVisible = true;
   bool paymentPinConfigured = false;
+  int paymentPinLength = 4;
   bool reconcilingPayment = false;
   String? error;
   Map<String, dynamic>? wallet;
@@ -503,164 +504,216 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     final newPin = TextEditingController();
     final confirmation = TextEditingController();
     final changing = paymentPinConfigured;
-    final action = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(changing ? 'Change payment PIN' : 'Create payment PIN'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (changing) ...[
+    try {
+      final action = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(changing ? 'Change payment PIN' : 'Create payment PIN'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (changing) ...[
+                TextField(
+                  controller: currentPin,
+                  obscureText: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: paymentPinLength,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(labelText: 'Current $paymentPinLength-digit PIN'),
+                ),
+                const SizedBox(height: 8),
+              ],
               TextField(
-                controller: currentPin,
+                controller: newPin,
                 obscureText: true,
                 keyboardType: TextInputType.number,
-                maxLength: 6,
+                maxLength: 4,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(labelText: 'Current 6-digit PIN'),
+                decoration: InputDecoration(labelText: changing ? 'New 4-digit PIN' : '4-digit PIN'),
               ),
               const SizedBox(height: 8),
+              TextField(
+                controller: confirmation,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(labelText: 'Confirm 4-digit PIN'),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'A verification code will be sent to your verified email before this change is saved.',
+                style: TextStyle(color: context.eazyMuted, fontSize: 12),
+              ),
             ],
-            TextField(
-              controller: newPin,
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(labelText: changing ? 'New 6-digit PIN' : '6-digit PIN'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: confirmation,
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(labelText: 'Confirm PIN'),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Use a PIN you do not use for your bank card or other accounts.',
-              style: TextStyle(color: context.eazyMuted, fontSize: 12),
+          ),
+          actions: [
+            if (changing)
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, 'reset'),
+                child: const Text('Forgot PIN?'),
+              ),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, 'save'),
+              child: Text(changing ? 'Continue' : 'Create PIN'),
             ),
           ],
         ),
-        actions: [
-          if (changing)
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, 'reset'),
-              child: const Text('Forgot PIN?'),
-            ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, 'save'),
-            child: Text(changing ? 'Save new PIN' : 'Create PIN'),
-          ),
-        ],
-      ),
-    );
-    if (action != null && mounted) {
-      try {
-        if (action == 'reset') {
-          await api.post(
-            'wallet/payment-pin/reset',
-            auth: true,
-            body: {'pin': newPin.text, 'confirmation': confirmation.text},
-          );
-        } else if (changing) {
-          await api.post(
-            'wallet/payment-pin/change',
-            auth: true,
-            body: {
-              'currentPin': currentPin.text,
-              'newPin': newPin.text,
-              'confirmation': confirmation.text,
-            },
-          );
-        } else {
-          await api.post(
-            'wallet/payment-pin/setup',
-            auth: true,
-            body: {'pin': newPin.text, 'confirmation': confirmation.text},
-          );
-        }
-        if (mounted) {
-          setState(() => paymentPinConfigured = true);
-          _showMessage(action == 'reset' ? 'Payment PIN reset.' : changing ? 'Payment PIN updated.' : 'Payment PIN created.');
-        }
-      } on ApiException catch (e) {
-        _showError(e.message);
+      );
+      if (action == null || !mounted) return;
+
+      final codeRequest = await api.post(
+        'wallet/payment-pin/request-code',
+        auth: true,
+        body: const {},
+      );
+      final challengeId = codeRequest['challengeId']?.toString();
+      if (challengeId == null || challengeId.isEmpty) {
+        throw const ApiException('Eazy could not start PIN verification. Try again.');
       }
+      final codeController = TextEditingController();
+      String? code;
+      try {
+        code = await showDialog<String>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Verify payment PIN change'),
+            content: TextField(
+              controller: codeController,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: '6-digit email verification code',
+                counterText: '',
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () {
+                  if (codeController.text.length == 6) {
+                    Navigator.pop(dialogContext, codeController.text);
+                  }
+                },
+                child: const Text('Verify'),
+              ),
+            ],
+          ),
+        );
+      } finally {
+        codeController.dispose();
+      }
+      if (code == null || !mounted) return;
+
+      final body = <String, dynamic>{
+        'pin': newPin.text,
+        'confirmation': confirmation.text,
+        'challengeId': challengeId,
+        'code': code,
+      };
+      if (action == 'reset') {
+        await api.post('wallet/payment-pin/reset', auth: true, body: body);
+      } else if (changing) {
+        body
+          ..remove('pin')
+          ..remove('confirmation')
+          ..addAll({
+            'currentPin': currentPin.text,
+            'newPin': newPin.text,
+            'confirmation': confirmation.text,
+          });
+        await api.post('wallet/payment-pin/change', auth: true, body: body);
+      } else {
+        await api.post('wallet/payment-pin/setup', auth: true, body: body);
+      }
+      paymentPinConfigured = true;
+      paymentPinLength = 4;
+      if (await storage.read(key: 'eazy.wallet.biometricShortcutEnabled') == 'true') {
+        await storage.write(key: 'eazy.wallet.biometricPaymentPin', value: newPin.text);
+      }
+      if (mounted) {
+        setState(() {});
+        _showMessage(
+          action == 'reset'
+              ? 'Payment PIN reset.'
+              : changing
+                  ? 'Payment PIN updated.'
+                  : 'Payment PIN created.',
+        );
+      }
+    } on ApiException catch (e) {
+      _showError(e.message);
+    } finally {
+      currentPin.dispose();
+      newPin.dispose();
+      confirmation.dispose();
     }
-    currentPin.dispose();
-    newPin.dispose();
-    confirmation.dispose();
   }
 
   Future<String?> _requestPaymentPin() async {
     if (!paymentPinConfigured) {
-      _showError('Create a payment PIN in Wallet settings before sending money.');
-      return null;
+      await _managePaymentPin();
+      if (!paymentPinConfigured || !mounted) return null;
     }
-    final controller = TextEditingController();
-    final pin = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Enter payment PIN'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            labelText: '6-digit payment PIN',
-            counterText: '',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (controller.text.length == 6) {
-                Navigator.pop(dialogContext, controller.text);
-              }
-            },
-            child: const Text('Authorize'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    return pin;
-  }
 
-  Future<bool> _authenticateTransfer(String reason) async {
-    final localAuth = LocalAuthentication();
-    final supported = await localAuth.isDeviceSupported();
-    final canCheck = await localAuth.canCheckBiometrics;
-    if (!supported && !canCheck) {
-      throw const ApiException(
-        'Set up a device screen lock or biometric authentication before sending money.',
-        kind: ApiErrorKind.validation,
-      );
+    final biometricEnabled =
+        await storage.read(key: 'eazy.wallet.biometricShortcutEnabled') == 'true';
+    final savedPin = await storage.read(key: 'eazy.wallet.biometricPaymentPin');
+    if (biometricEnabled && savedPin != null) {
+      try {
+        final localAuth = LocalAuthentication();
+        if (await localAuth.canCheckBiometrics) {
+          final authenticated = await localAuth.authenticate(
+            localizedReason: 'Confirm your identity to authorize this Eazy payment',
+            options: const AuthenticationOptions(
+              biometricOnly: true,
+              stickyAuth: true,
+            ),
+          );
+          if (authenticated) return savedPin;
+        }
+      } catch (_) {
+        // Fall back to the payment PIN prompt if biometrics are unavailable.
+      }
     }
-    final authenticated = await localAuth.authenticate(
-      localizedReason: reason,
-      options: const AuthenticationOptions(
-        biometricOnly: false,
-        stickyAuth: true,
-      ),
-    );
-    if (!authenticated) return false;
-    return true;
+
+    final controller = TextEditingController();
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Enter payment PIN'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: paymentPinLength,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: paymentPinLength == 6 ? 'Current 6-digit PIN' : '4-digit payment PIN',
+              counterText: '',
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                if (controller.text.length == paymentPinLength) {
+                  Navigator.pop(dialogContext, controller.text);
+                }
+              },
+              child: const Text('Authorize'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   Future<void> sendToExternalBank() async {
