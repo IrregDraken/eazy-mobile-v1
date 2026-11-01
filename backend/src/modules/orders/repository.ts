@@ -228,10 +228,11 @@ export class OrderRepository {
       `SELECT oi.id, oi.product_id AS "productId", oi.seller_id AS "sellerId",
         COALESCE(oi.product_name, p.name) AS "productName", oi.quantity,
         oi.unit_price_amount::text AS "unitPrice", oi.line_total_amount::text AS "lineTotal",
-        trim(oi.currency) AS currency
+        trim(oi.currency) AS currency,
+        EXISTS (SELECT 1 FROM order_reviews r WHERE r.order_item_id = oi.id AND r.buyer_id = $2) AS reviewed
        FROM order_items oi JOIN products p ON p.id = oi.product_id
        WHERE oi.order_id = $1 ORDER BY oi.id ASC`,
-      [orderId]
+      [orderId, buyerId]
     );
     const fulfillments = await this.pool.query(
       `SELECT f.id, f.seller_id AS "sellerId", seller.username AS "sellerUsername",
