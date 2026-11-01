@@ -175,11 +175,10 @@ class _SettingsPageState extends State<SettingsPage> {
     appBar: AppBar(
       title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w900)),
     ),
-    body: loading
-        ? const Center(child: CircularProgressIndicator())
-        : ListView(
+    body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (loading) const LinearProgressIndicator(minHeight: 2),
               if (error.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
