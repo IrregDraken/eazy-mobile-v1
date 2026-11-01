@@ -192,6 +192,25 @@ export class MarketplaceRepository {
     );
     return Boolean(result.rowCount);
   }
+  async sellerProducts(sellerId: string, page: number, limit: number) {
+    const count = await this.pool.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM products WHERE seller_id = $1',
+      [sellerId]
+    );
+    const result = await this.pool.query<ProductProjection>(
+      `SELECT ${productSelect}
+       FROM products p
+       JOIN users seller_user ON seller_user.id = p.seller_id
+       LEFT JOIN profiles seller ON seller.user_id = p.seller_id
+       LEFT JOIN categories c ON c.id = p.category_id
+       LEFT JOIN inventory i ON i.product_id = p.id
+       WHERE p.seller_id = $1
+       ORDER BY p.created_at DESC, p.id DESC LIMIT $2 OFFSET $3`,
+      [sellerId, limit, (page - 1) * limit]
+    );
+    return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
   async productReviews(productId: string, page: number, limit: number) {
     const count = await this.pool.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM order_reviews WHERE product_id = $1',
