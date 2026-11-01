@@ -231,4 +231,205 @@ export class OrderRepository {
     const items = await Promise.all(orders.rows.map(order => this.get(buyerId, order.id)));
     return { items: items.filter((item): item is OrderProjection => item !== null), total: Number(count.rows[0]?.count ?? 0) };
   }
+  async listSellerOrders(sellerId: string, page: number, limit: number) {
+    const count = await this.pool.query<{ count: string }>(
+      'SELECT count(DISTINCT f.order_id)::text AS count FROM order_fulfillments f JOIN orders o ON o.id = f.order_id WHERE f.seller_id = $1 AND o.status <> \'pending\'',
+      [sellerId]
+    );
+    const result = await this.pool.query(
+      `SELECT f.id AS "fulfillmentId", f.order_id AS "orderId", f.status,
+        f.delivery_method AS "deliveryMethod", f.delivery_fee_amount::text AS "deliveryFee",
+        f.created_at AS "createdAt", f.accepted_at AS "acceptedAt",
+        f.shipped_at AS "shippedAt", f.delivered_at AS "deliveredAt",
+        CASE WHEN f.accepted_at IS NULL THEN NULL ELSE f.address_snapshot END AS "deliveryAddress",
+        f.pickup_instructions AS "pickupInstructions",
+        o.status AS "orderStatus", o.currency, o.total_amount::text AS "orderTotal",
+        buyer.username AS "buyerUsername", buyer.display_name AS "buyerDisplayName",
+        COALESCE(items.rows, '[]'::json) AS items
+       FROM order_fulfillments f
+       JOIN orders o ON o.id = f.order_id
+       JOIN profiles buyer ON buyer.user_id = o.buyer_id
+       LEFT JOIN LATERAL (
+         SELECT json_agg(json_build_object(
+           'productId', oi.product_id, 'productName', oi.product_name,
+           'quantity', oi.quantity, 'unitPrice', oi.unit_price_amount::text,
+           'lineTotal', oi.line_total_amount::text
+         ) ORDER BY oi.id) AS rows
+         FROM order_items oi WHERE oi.order_id = f.order_id AND oi.seller_id = f.seller_id
+       ) items ON true
+       WHERE f.seller_id = $1 AND o.status <> 'pending'
+       ORDER BY f.created_at DESC, f.id DESC LIMIT $2 OFFSET $3`,
+      [sellerId, limit, (page - 1) * limit]
+    );
+    return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
+  async updateSellerFulfillment(
+    client: DbClient,
+    sellerId: string,
+    orderId: string,
+    fulfillmentId: string,
+    action: 'accept' | 'reject' | 'ship' | 'deliver',
+    reason?: string
+  ) {
+    const selected = await client.query<{
+      id: string; status: string; order_status: string; buyer_id: string; seller_id: string;
+      delivery_method: string; order_currency: string;
+    }>(
+      `SELECT f.id, f.status, o.status AS order_status, o.buyer_id, f.seller_id,
+        f.delivery_method, o.currency AS order_currency
+       FROM order_fulfillments f JOIN orders o ON o.id = f.order_id
+       WHERE f.id = $1 AND f.order_id = $2 AND f.seller_id = $3
+       FOR UPDATE OF f, o`,
+      [fulfillmentId, orderId, sellerId]
+    );
+    const row = selected.rows[0];
+    if (!row) return { error: 'NOT_FOUND' as const };
+    if (row.order_status !== 'paid' && row.order_status !== 'accepted' && row.order_status !== 'processing' && row.order_status !== 'shipped' && row.order_status !== 'delivered') {
+      return { error: 'ORDER_NOT_PAID' as const };
+    }
+    const next = action === 'accept' ? 'accepted' : action === 'reject' ? 'cancelled' :
+      action === 'ship' ? 'shipped' : 'delivered';
+    const allowed =
+      (action === 'accept' || action === 'reject') ? row.status === 'pending' :
+      action === 'ship' ? row.status === 'accepted' :
+      row.status === 'shipped';
+    if (!allowed) return { error: 'INVALID_TRANSITION' as const };
+
+    if (action === 'reject' && (!reason || reason.trim().length < 5 || reason.trim().length > 500)) {
+      return { error: 'REJECTION_REASON_REQUIRED' as const };
+    }
+    const timestampColumn = action === 'accept' ? 'accepted_at' : action === 'ship' ? 'shipped_at' : action === 'deliver' ? 'delivered_at' : null;
+    const releaseClause = action === 'deliver' ? ", release_after = now() + interval '7 days'" : '';
+    const timestampClause = timestampColumn ? `, ${timestampColumn} = now()` : '';
+    await client.query(
+      `UPDATE order_fulfillments SET status = $2${timestampClause}${releaseClause}, updated_at = now() WHERE id = $1`,
+      [fulfillmentId, next]
+    );
+    await client.query(
+      `INSERT INTO order_events (order_id, fulfillment_id, actor_user_id, event_type, description, metadata)
+       VALUES ($1,$2,$3,$4,$5,$6::jsonb)`,
+      [orderId, fulfillmentId, sellerId, `seller_${action}`,
+        action === 'reject' ? `Seller rejected the order: ${reason!.trim()}` :
+        action === 'accept' ? 'Seller accepted the order' :
+        action === 'ship' ? 'Seller marked the order as shipped' : 'Seller marked the order as delivered',
+        JSON.stringify(action === 'reject' ? { reason: reason!.trim() } : {})]
+    );
+    const aggregate = await client.query<{ status: string }>(
+      `SELECT CASE
+        WHEN bool_and(status IN ('completed','cancelled')) THEN CASE WHEN bool_or(status = 'completed') THEN 'completed' ELSE 'cancelled' END
+        WHEN bool_or(status = 'disputed') THEN 'disputed'
+        WHEN bool_and(status IN ('delivered','completed','cancelled')) THEN 'delivered'
+        WHEN bool_or(status = 'shipped') THEN 'shipped'
+        WHEN bool_or(status = 'accepted') THEN 'accepted'
+        ELSE 'paid' END AS status
+       FROM order_fulfillments WHERE order_id = $1`,
+      [orderId]
+    );
+    await client.query('UPDATE orders SET status = $2, updated_at = now() WHERE id = $1', [orderId, aggregate.rows[0]!.status]);
+    await client.query(
+      `INSERT INTO notifications (user_id, actor_user_id, type, target_type, target_id, title, body, deep_link)
+       VALUES ($1,$2,'order','order',$3,$4,$5,$6)`,
+      [row.buyer_id, sellerId, orderId,
+        action === 'accept' ? 'Order accepted' : action === 'reject' ? 'Order rejected' : action === 'ship' ? 'Order shipped' : 'Order delivered',
+        action === 'reject' ? `The seller rejected your order: ${reason!.trim()}` :
+        action === 'accept' ? 'The seller accepted your order.' :
+        action === 'ship' ? 'Your order has been marked as shipped.' : 'Your order has been marked as delivered.',
+        `eazy://orders/${orderId}`]
+    );
+    return { error: null as null, status: next };
+  }
+
+  async confirmReceived(client: DbClient, buyerId: string, orderId: string, fulfillmentId: string) {
+    const selected = await client.query<{ id: string; seller_id: string; status: string; currency: string; buyer_id: string }>(
+      `SELECT f.id, f.seller_id, f.status, trim(o.currency) AS currency, o.buyer_id
+       FROM order_fulfillments f JOIN orders o ON o.id = f.order_id
+       WHERE f.id = $1 AND f.order_id = $2 AND o.buyer_id = $3
+       FOR UPDATE OF f, o`,
+      [fulfillmentId, orderId, buyerId]
+    );
+    const row = selected.rows[0];
+    if (!row) return { error: 'NOT_FOUND' as const };
+    if (row.status === 'completed') return { error: null as null, alreadyCompleted: true };
+    if (row.status === 'disputed') return { error: 'DISPUTED' as const };
+    if (row.status !== 'delivered') return { error: 'NOT_DELIVERED' as const };
+    const hold = await client.query<{ amount: string }>(
+      "SELECT amount::numeric(20,2)::text AS amount FROM seller_payable_ledger WHERE fulfillment_id = $1 AND entry_type = 'hold' FOR UPDATE",
+      [fulfillmentId]
+    );
+    if (!hold.rows[0]) return { error: 'ESCROW_HOLD_NOT_FOUND' as const };
+    await client.query(
+      `INSERT INTO seller_payable_ledger
+        (order_id, fulfillment_id, seller_id, entry_type, amount, currency, idempotency_key)
+       VALUES ($1,$2,$3,'release',$4::numeric,$5,'order-release:' || $2::text)
+       ON CONFLICT (fulfillment_id, entry_type) DO NOTHING`,
+      [orderId, fulfillmentId, row.seller_id, hold.rows[0].amount, row.currency]
+    );
+    await client.query(
+      "UPDATE order_fulfillments SET status = 'completed', release_after = NULL, updated_at = now() WHERE id = $1",
+      [fulfillmentId]
+    );
+    await client.query(
+      "INSERT INTO order_events (order_id, fulfillment_id, actor_user_id, event_type, description) VALUES ($1,$2,$3,'buyer_confirmed','Buyer confirmed receipt. Seller payable funds released.')",
+      [orderId, fulfillmentId, buyerId]
+    );
+    const aggregate = await client.query<{ status: string }>(
+      `SELECT CASE
+        WHEN bool_and(status IN ('completed','cancelled')) THEN CASE WHEN bool_or(status = 'completed') THEN 'completed' ELSE 'cancelled' END
+        WHEN bool_or(status = 'disputed') THEN 'disputed'
+        WHEN bool_and(status IN ('delivered','completed','cancelled')) THEN 'delivered'
+        WHEN bool_or(status = 'shipped') THEN 'shipped'
+        WHEN bool_or(status = 'accepted') THEN 'accepted'
+        ELSE 'paid' END AS status
+       FROM order_fulfillments WHERE order_id = $1`,
+      [orderId]
+    );
+    await client.query('UPDATE orders SET status = $2, updated_at = now() WHERE id = $1', [orderId, aggregate.rows[0]!.status]);
+    await client.query(
+      `INSERT INTO notifications (user_id, actor_user_id, type, target_type, target_id, title, body, deep_link)
+       VALUES ($1,$2,'order','order',$3,'Order completed','The buyer confirmed receipt. Your payable balance has been released.',$4)`,
+      [row.seller_id, buyerId, orderId, `eazy://orders/${orderId}`]
+    );
+    return { error: null as null, alreadyCompleted: false };
+  }
+
+  async createDispute(
+    client: DbClient,
+    buyerId: string,
+    orderId: string,
+    fulfillmentId: string,
+    input: { reason: string; description: string; photoStorageKeys: string[] }
+  ) {
+    const selected = await client.query<{ seller_id: string; status: string }>(
+      `SELECT f.seller_id, f.status FROM order_fulfillments f
+       JOIN orders o ON o.id = f.order_id
+       WHERE f.id = $1 AND f.order_id = $2 AND o.buyer_id = $3
+       FOR UPDATE OF f, o`,
+      [fulfillmentId, orderId, buyerId]
+    );
+    const row = selected.rows[0];
+    if (!row) return { error: 'NOT_FOUND' as const };
+    if (!['accepted','shipped','delivered'].includes(row.status)) return { error: 'INVALID_DISPUTE_STATE' as const };
+    const dispute = await client.query<{ id: string }>(
+      `INSERT INTO order_disputes (order_id, fulfillment_id, buyer_id, seller_id, reason, description, photo_storage_keys)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [orderId, fulfillmentId, buyerId, row.seller_id, input.reason, input.description.trim(), input.photoStorageKeys]
+    );
+    await client.query(
+      "UPDATE order_fulfillments SET status = 'disputed', release_after = NULL, updated_at = now() WHERE id = $1",
+      [fulfillmentId]
+    );
+    await client.query("UPDATE orders SET status = 'disputed', updated_at = now() WHERE id = $1", [orderId]);
+    await client.query(
+      "INSERT INTO order_events (order_id, fulfillment_id, actor_user_id, event_type, description) VALUES ($1,$2,$3,'dispute_opened','Buyer reported a problem. Seller payable funds remain on hold.')",
+      [orderId, fulfillmentId, buyerId]
+    );
+    await client.query(
+      `INSERT INTO notifications (user_id, actor_user_id, type, target_type, target_id, title, body, deep_link)
+       VALUES ($1,$2,'order','order',$3,'Order dispute opened','The buyer reported a problem with this order. Seller funds remain held.',$4)`,
+      [row.seller_id, buyerId, orderId, `eazy://orders/${orderId}`]
+    );
+    return { error: null as null, disputeId: dispute.rows[0]!.id };
+  }
+
 }
