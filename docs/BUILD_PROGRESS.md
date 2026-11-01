@@ -33,7 +33,7 @@ Scope: the owner-provided launch-readiness execution prompt only.
 
 | ID | Status | Candidate code to inspect / reproduce |
 |---|---|---|
-| D1 Photo messages | TODO | `lib/features/chat/chat_page.dart`, `lib/core/media/media_service.dart`, backend `modules/media` and `modules/chat`. Current media service uploads and returns a storage path, but does not expose progress/retry UI. |
+| D1 Photo messages | PARTIAL | `lib/features/chat/chat_page.dart`, `lib/core/media/media_service.dart`, backend `modules/media` and `modules/chat`. Current media service uploads and returns a storage path, but does not expose progress/retry UI. |
 | D2 Send money | TODO | `lib/features/wallet/wallet_page.dart`, backend `modules/wallet`, `modules/ledger`; inspect balance validation, PIN gating, transfer transaction and refresh. |
 | D3 Home feed | TODO | `lib/features/social/social_page.dart`; feed load has loading/error states, but no explicit cache or pull-to-refresh has yet been verified. |
 | D4 Discover | TODO | `lib/features/marketplace/marketplace_page.dart`; inspect empty-state/filter rendering and category selection. |
@@ -53,6 +53,14 @@ Scope: the owner-provided launch-readiness execution prompt only.
 ### Phase 2 partial implementation noted (not yet functionally verified)
 - Settings/account routes, account deletion preflight, notification preferences, wallet PIN routes/migration, cart, seller setup, product discovery, orders, Paystack payment and virtual-account modules, notifications, translation capabilities, QR and wallet ledger modules already exist in some form.
 - Presence of files/routes/migrations is not proof of complete or secure behavior. Each item remains subject to code-level inspection and tests in its phase.
+
+### D1 — Photo messages (partial)
+- Status: PARTIAL.
+- Cause confirmed: `_MessageBubble` rendered every attachment as a generic attachment chip; image URLs were only signed when the user tapped the chip. Composer also showed a generic file icon/name even when a local image path was available.
+- Files changed: `lib/features/chat/chat_page.dart`.
+- Changes: message image attachments now request a cached signed URL and render inline in the bubble; tapping the image still opens the existing full-screen interactive viewer. Composer shows a local photo thumbnail and the label “Photo”.
+- Verification: GitHub file updates succeeded in two commits (`ff016dd`, `01dc02a`); source was re-fetched for edits. A Flutter analyzer/build has not yet been run, so this is not DONE. Upload progress and retry-on-upload-failure are still missing because the current media service uploads synchronously before adding an attachment to the composer.
+- Remaining: implement observable upload progress and retryable failed uploads, then run Flutter analyze/tests/build.
 
 ### Phase 0 completion
 - Status: DONE (repository map and Phase 1/Phase 2 candidate locations recorded).
