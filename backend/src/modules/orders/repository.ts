@@ -336,7 +336,9 @@ export class OrderRepository {
     const timestampClause = timestampColumn ? `, ${timestampColumn} = now()` : '';
     await client.query(
       `UPDATE order_fulfillments SET status = $2${timestampClause}${releaseClause}, updated_at = now() WHERE id = $1`,
-      [fulfillmentId, next, ORDER_ESCROW_AUTO_RELEASE_DAYS]
+      action === 'deliver'
+        ? [fulfillmentId, next, ORDER_ESCROW_AUTO_RELEASE_DAYS]
+        : [fulfillmentId, next]
     );
     await client.query(
       `INSERT INTO order_events (order_id, fulfillment_id, actor_user_id, event_type, description, metadata)
@@ -385,7 +387,7 @@ export class OrderRepository {
     if (row.status === 'completed') return { error: null as null, alreadyCompleted: true };
     if (row.status === 'disputed') return { error: 'DISPUTED' as const };
     if (row.status !== 'delivered') return { error: 'NOT_DELIVERED' as const };
-    const hold = await client.query<{ amount: string }>(
+    const hold = await client.query<{ amountKobo: string }>(
       "SELECT amount_kobo::text AS amountKobo FROM seller_payable_ledger WHERE fulfillment_id = $1 AND entry_type = 'hold' FOR UPDATE",
       [fulfillmentId]
     );
@@ -393,7 +395,7 @@ export class OrderRepository {
     await client.query(
       `INSERT INTO seller_payable_ledger
         (order_id, fulfillment_id, seller_id, entry_type, amount_kobo, currency, idempotency_key)
-       VALUES ($1,$2,$3,'release',$4::numeric,$5,'order-release:' || $2::text)
+       VALUES ($1,$2,$3,'release',$4::bigint,$5,'order-release:' || $2::text)
        ON CONFLICT (fulfillment_id, entry_type) DO NOTHING`,
       [orderId, fulfillmentId, row.seller_id, hold.rows[0].amountKobo, row.currency]
     );
@@ -486,8 +488,8 @@ export class OrderRepository {
     for (const row of due.rows) {
       await client.query(
         `INSERT INTO seller_payable_ledger
-          (order_id, fulfillment_id, seller_id, entry_type, amount, currency, idempotency_key)
-         VALUES ($1,$2,$3,'release',$4::numeric,$5,'order-release:' || $2::text)
+          (order_id, fulfillment_id, seller_id, entry_type, amount_kobo, currency, idempotency_key)
+         VALUES ($1,$2,$3,'release',$4::bigint,$5,'order-release:' || $2::text)
          ON CONFLICT (fulfillment_id, entry_type) DO NOTHING`,
         [row.order_id, row.id, row.seller_id, row.amountKobo, row.currency]
       );
