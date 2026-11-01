@@ -32,3 +32,21 @@ export const orderCreateSchema = z.object({
 
   }
 });
+
+export const orderFulfillmentParamsSchema = z.object({
+  id: z.string().guid(),
+  fulfillmentId: z.string().guid()
+}).strict();
+
+export const disputeSchema = z.object({
+  reason: z.enum(['not_received', 'damaged', 'wrong_item', 'missing_items', 'other']),
+  description: z.string().trim().min(10).max(2000),
+  photoStorageKeys: z.array(z.string().trim().min(1).max(1024)).max(5).default([])
+}).strict();
+
+export const sellerFulfillmentActionSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('accept') }).strict(),
+  z.object({ action: z.literal('reject'), reason: z.string().trim().min(5).max(500) }).strict(),
+  z.object({ action: z.literal('ship') }).strict(),
+  z.object({ action: z.literal('deliver') }).strict()
+]);
