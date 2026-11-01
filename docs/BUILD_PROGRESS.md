@@ -60,7 +60,8 @@ Scope: the owner-provided launch-readiness execution prompt only.
 - Files changed: `lib/features/chat/chat_page.dart`.
 - Changes: message image attachments now request a cached signed URL and render inline in the bubble; tapping the image still opens the existing full-screen interactive viewer. Composer shows a local photo thumbnail and the label “Photo”.
 - Verification: GitHub file updates succeeded in two commits (`ff016dd`, `01dc02a`); source was re-fetched for edits. A Flutter analyzer/build has not yet been run, so this is not DONE. Upload progress and retry-on-upload-failure are still missing because the current media service uploads synchronously before adding an attachment to the composer.
-- Remaining: implement observable upload progress and retryable failed uploads, then run Flutter analyze/tests/build.
+- Additional changes: `ApiClient.uploadBytes` now streams 64 KiB chunks and reports progress; the chat composer shows percentage/progress and disables send while uploading. Failed uploads expose Retry, which reopens the same attachment picker category so the user can select the file again. This is not a same-file retry because the media service does not retain a failed file handle.
+- Remaining: verify upload streaming/progress and retry with real storage, then run Flutter analyze/tests/build. Same-file retry remains a limitation.
 
 ### D2 — Send money balance gate (partial)
 - Status: PARTIAL.
