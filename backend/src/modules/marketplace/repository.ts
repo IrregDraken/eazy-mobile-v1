@@ -142,16 +142,46 @@ export class MarketplaceRepository {
     return productId;
   }
 
-  async update(client: DbClient, productId: string, sellerId: string, input: { name?: string; description?: string | null; categoryId?: string | null; priceAmount?: string; currency?: string; status?: string }): Promise<boolean> {
+  async update(client: DbClient, productId: string, sellerId: string, input: {
+    name?: string; description?: string | null; categoryId?: string | null;
+    priceAmount?: string; currency?: string; status?: string; media?: ProductMediaInput[];
+  }): Promise<boolean> {
     const fields: string[] = [];
     const values: unknown[] = [];
-    for (const [column, value] of Object.entries({ name: input.name, description: input.description, category_id: input.categoryId, price_amount: input.priceAmount, currency: input.currency, status: input.status })) {
-      if (value !== undefined) { values.push(value); fields.push(`${column} = $${values.length}${column === 'price_amount' ? '::numeric' : ''}`); }
+    for (const [column, value] of Object.entries({
+      name: input.name,
+      description: input.description,
+      category_id: input.categoryId,
+      price_amount: input.priceAmount,
+      currency: input.currency,
+      status: input.status
+    })) {
+      if (value !== undefined) {
+        values.push(value);
+        fields.push(`${column} = $${values.length}${column === 'price_amount' ? '::numeric' : ''}`);
+      }
     }
-    if (!fields.length) return false;
-    values.push(productId, sellerId);
-    const result = await client.query(`UPDATE products SET ${fields.join(', ')}, updated_at = now() WHERE id = $${values.length - 1} AND seller_id = $${values.length} RETURNING id`, values);
-    return Boolean(result.rowCount);
+    let exists = false;
+    if (fields.length) {
+      values.push(productId, sellerId);
+      const updated = await client.query(
+        `UPDATE products SET ${fields.join(', ')}, updated_at = now()
+         WHERE id = $${values.length - 1} AND seller_id = $${values.length} RETURNING id`,
+        values
+      );
+      exists = Boolean(updated.rowCount);
+    } else {
+      const owned = await client.query('SELECT id FROM products WHERE id = $1 AND seller_id = $2 LIMIT 1', [productId, sellerId]);
+      exists = Boolean(owned.rowCount);
+    }
+    if (!exists) return false;
+    if (input.media !== undefined) {
+      await client.query('DELETE FROM product_media WHERE product_id = $1', [productId]);
+      for (const media of input.media) {
+        await client.query('INSERT INTO product_media (product_id, storage_key, position) VALUES ($1,$2,$3)', [productId, media.storageKey, media.position]);
+      }
+    }
+    return true;
   }
 
   async updateInventory(client: DbClient, productId: string, sellerId: string, availableQuantity: number): Promise<boolean> {
