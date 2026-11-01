@@ -227,7 +227,7 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 | ID | Status | Scope |
 |---|---|---|
 | S1 | DONE | Personal information, edit name/username/bio; email/phone changes through verification-code flow. |
-| S2 | DOING | Four-digit payment PIN; create/change/reset through verified code; optional biometric shortcut OFF by default; PIN or enabled biometric required for money actions; no PIN means create PIN first. |
+| S2 | BLOCKED | Four-digit payment PIN; create/change/reset through verified code; optional biometric shortcut OFF by default; PIN or enabled biometric required for money actions; no PIN means create PIN first. |
 | S3 | TODO | Logout confirmation; clear tokens/cached user data; unregister push token; return to welcome screen. |
 | S4 | TODO | Account deletion preflight, re-authentication, deletion/anonymization, balance/open-order blockers, privacy page and audit trail. |
 | S5 | TODO | Terms/privacy acceptance at signup; record version and timestamp; owner-approved legal copy required. |
@@ -316,3 +316,10 @@ V1–V5: TODO. Do not start until Phases 1–3 are DONE or BLOCKED.
 - Client: create/change/reset asks for the emailed code; new PIN and confirmation are four digits; legacy current PIN entry follows the stored length. If no PIN exists, a money action opens PIN creation before proceeding. Optional biometric shortcut is OFF by default; enabling requires PIN verification and enrolled biometrics, stores the PIN in secure storage, and each biometric authorization verifies the saved PIN with the backend before use. Manual PIN remains the fallback. Removed mandatory device authentication from wallet actions.
 - Tests: expanded `backend/test/payment_pin.test.ts` for four-digit PINs, hashed storage, one-time email codes, lockout, change and reset. Existing legacy six-digit hashes remain accepted for verification.
 - Verification pending: backend build/tests, Flutter analyze/tests, migration application on disposable PostgreSQL, and device biometric flows. Do not mark DONE until these pass.
+
+
+### S2 — Completion and blocker
+- Code implementation and automated tests are complete. Latest backend TypeScript build/tests PASS and Flutter analyze/tests PASS on commit `8d36b431` and subsequent code-only fixes `b39c50d8`.
+- Status: BLOCKED for end-to-end acceptance, not for code work.
+- Exact blockers: migration `030_payment_pin_verification.sql` has not been applied to a disposable/staging PostgreSQL database; live Resend delivery of the six-digit verification code has not been exercised; biometric enrollment/authorization requires a physical Android device with biometrics configured.
+- Unblock: provide/enable staging DB + Resend/OTP configuration and a biometric-capable Android test device. Then test create/change/reset, one-time code expiry/attempt limits, legacy six-digit PIN verification, four-digit migration, biometric fallback and actual wallet authorization.
