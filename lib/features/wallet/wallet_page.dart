@@ -398,6 +398,17 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     );
     if (amount == null || !mounted) return;
 
+    final requestedKobo = _toMinorUnits(amount);
+    final availableKobo = _toMinorUnits(_balance);
+    if (requestedKobo == null || requestedKobo <= BigInt.zero) {
+      _showError('Enter a valid amount greater than ₦0.00.');
+      return;
+    }
+    if (availableKobo == null || requestedKobo > availableKobo) {
+      _showError('Insufficient funds. Your available balance is $_currency $_balance.');
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -425,7 +436,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 _Info('Available balance', '$_currency $_balance'),
                 const SizedBox(height: 10),
                 const Text(
-                  'Your device will ask you to authenticate before this transfer is submitted.',
+                  'Confirm with your Eazy payment PIN. Eazy never asks you to share it.',
                   style: TextStyle(
                     color: EazyColors.muted,
                     fontSize: 12,
@@ -450,13 +461,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
 
     setState(() => busy = true);
     try {
-      final authenticated = await _authenticateTransfer(
-        'Authorize sending $_currency $amount to @$handle',
-      );
-      if (!authenticated) return;
       final paymentPin = await _requestPaymentPin();
       if (paymentPin == null || !mounted) return;
-      await api.post(
+      final transferResult = await api.post(
         'wallet/transfers',
         auth: true,
         headers: {
@@ -469,10 +476,13 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
           'currency': _currency,
         },
       );
+      final transaction = _map(transferResult['transaction']);
       await load();
-      _showMessage(
-        'Transfer submitted. Check wallet activity for its confirmed status.',
-      );
+      if (transaction['status']?.toString().toLowerCase() == 'succeeded') {
+        _showMessage('Transfer successful. $_currency $amount sent to @$handle.');
+      } else {
+        _showError('The transfer was not confirmed. Check wallet activity before trying again.');
+      }
     } on ApiException catch (e) {
       _showError(e.message);
     } catch (_) {
@@ -1158,6 +1168,1100 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   String get _username =>
       username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
+
+  BigInt? _toMinorUnits(String value) {
+    final match = RegExp(r'^(0|[1-9][0-9]*)(?:\\.([0-9]{1,2}))?
+  bool _validUsername(String value) =>
+      RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value);
+  Map<String, dynamic> _map(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+
+  Future<void> _showMoreOptions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const ListTile(
+                  title: Text(
+                    'Wallet tools',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text('Manage payments and account activity.'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.shopping_bag_outlined),
+                  title: const Text('Orders'),
+                  subtitle: const Text('View marketplace purchases'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showOrders();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.tune_rounded),
+                  title: const Text('Wallet settings'),
+                  subtitle: const Text('Privacy and payment security'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showWalletSettings();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.sync_rounded),
+                  title: const Text('Verify pending payment'),
+                  subtitle: const Text(
+                    'Re-check a deposit with the payment provider',
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    verifyPending();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: const Text('Transaction history'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showAllTransactions();
+                  },
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Future<void> _showWalletSettings() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => StatefulBuilder(
+            builder:
+                (sheetContext, setSheetState) => SafeArea(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      const ListTile(
+                        title: Text(
+                          'Wallet settings',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        subtitle: Text(
+                          'Your balance is always calculated by the server ledger.',
+                        ),
+                      ),
+                      SwitchListTile(
+                        value: balanceVisible,
+                        title: const Text('Show balance'),
+                        subtitle: const Text(
+                          'Hide amounts on this device when switched off.',
+                        ),
+                        onChanged: (value) async {
+                          setState(() => balanceVisible = value);
+                          setSheetState(() {});
+                          await storage.write(
+                            key: 'eazy.wallet.balanceVisible',
+                            value: value.toString(),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.password_rounded),
+                        title: Text(paymentPinConfigured ? 'Change payment PIN' : 'Create payment PIN'),
+                        subtitle: Text(
+                          paymentPinConfigured
+                              ? 'Update the 6-digit PIN used to authorize payments.'
+                              : 'Create a 6-digit PIN required before sending money.',
+                        ),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _managePaymentPin();
+                        },
+                      ),
+                      const ListTile(
+                        leading: Icon(Icons.fingerprint_rounded),
+                        title: Text('Transfer authentication'),
+                        subtitle: Text(
+                          'Device screen lock or biometrics are required before submitting a transfer.',
+                        ),
+                      ),
+                      const ListTile(
+                        leading: Icon(Icons.shield_outlined),
+                        title: Text('Payment confirmation'),
+                        subtitle: Text(
+                          'Wallet deposits are credited only after server-side provider verification.',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          ),
+    );
+  }
+
+  Future<void> _showOrders() async {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: FutureBuilder<Map<String, dynamic>>(
+              future: api.get('orders?page=1&limit=20', auth: true),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Padding(
+                    padding: EdgeInsets.all(36),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Could not load orders: ${snapshot.error}'),
+                  );
+                }
+                final orders =
+                    (snapshot.data?['items'] as List? ?? const [])
+                        .whereType<Map>()
+                        .map((item) => Map<String, dynamic>.from(item))
+                        .toList();
+                if (orders.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(28),
+                    child: Text(
+                      'No orders yet. Marketplace purchases will appear here.',
+                    ),
+                  );
+                }
+                return SizedBox(
+                  height: MediaQuery.sizeOf(context).height * .65,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      const Text(
+                        'Orders',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      for (final order in orders)
+                        Card(
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.shopping_bag_outlined),
+                            ),
+                            title: Text(
+                              'Order ${(order['id'] ?? '').toString().length > 8 ? (order['id'] as String).substring(0, 8) : order['id'] ?? 'Order'}',
+                            ),
+                            subtitle: Text(
+                              '${order['status'] ?? 'pending'} · ${order['createdAt'] ?? ''}',
+                            ),
+                            trailing: Text(
+                              '${order['currency'] ?? _currency} ${order['total'] ?? order['amount'] ?? '0.00'}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+    );
+  }
+
+  Future<void> _readWalletAlert(String id) async {
+    try {
+      await api.post('notifications/$id/read', auth: true);
+      await load();
+    } catch (_) {}
+  }
+
+  Future<void> _showAllTransactions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _TransactionHistorySheet(
+        api: api,
+        currency: _currency,
+        balanceVisible: balanceVisible,
+        onOpenTransaction: _showTransactionDetails,
+      ),
+    );
+  }
+
+  Future<void> _showTransactionDetails(Map<String, dynamic> entry) async {
+    final id = entry['id']?.toString();
+    Map<String, dynamic> detail = entry;
+    if (id != null && id.isNotEmpty) {
+      try {
+        final result = await api.get('wallet/transactions/$id', auth: true);
+        final fetched = _map(result['transaction']);
+        if (fetched.isNotEmpty) detail = fetched;
+      } on ApiException {
+        detail = entry;
+      }
+    }
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Transaction details'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Info('Type', detail['type']?.toString() ?? 'Transaction'),
+                _Info('Status', detail['status']?.toString() ?? 'unknown'),
+                _Info(
+                  'Amount',
+                  balanceVisible
+                      ? '${detail['currency'] ?? _currency} ${detail['amount'] ?? '0.00'}'
+                      : '••••••',
+                ),
+                _Info(
+                  'Reference',
+                  detail['reference']?.toString() ?? 'Not available',
+                ),
+                _Info(
+                  'Date',
+                  detail['createdAt']?.toString() ?? 'Not available',
+                ),
+              ],
+            ),
+            actions: [
+              if (id != null &&
+                  id.isNotEmpty &&
+                  detail['type']?.toString().toLowerCase() == 'deposit' &&
+                  detail['status']?.toString().toLowerCase() == 'pending')
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(dialogContext);
+                    await storage.write(key: 'eazy.pendingPayment', value: id);
+                    await _reconcilePendingPayment(silent: false);
+                  },
+                  child: const Text('Verify payment'),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Future<void> _showSendOptions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 12),
+              children: [
+                const ListTile(
+                  title: Text(
+                    'Send money',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text('Choose where the money should go.'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person_outline_rounded),
+                  title: const Text('Send to an Eazy user'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    sendToEazyUser();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.account_balance_outlined),
+                  title: const Text('Send to an external bank'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    sendToExternalBank();
+                  },
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Future<void> _showReceiveOptions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 12),
+              children: [
+                const ListTile(
+                  title: Text(
+                    'Receive money',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text('Receive from Eazy or an external bank.'),
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.add_card_rounded,
+                    color: EazyColors.green,
+                  ),
+                  title: const Text(
+                    'Add money online',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: const Text(
+                    'Fund your wallet through secure Paystack checkout',
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    deposit();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.qr_code_2_rounded),
+                  title: const Text('Receive from an Eazy user'),
+                  subtitle: Text('Show your QR code or username: @$_username'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    receiveFromEazyUser();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.account_balance_rounded),
+                  title: const Text('Receive from an external bank'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    receiveFromExternalBank();
+                  },
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: RefreshIndicator(
+      onRefresh: load,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Wallet',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: loading ? null : load,
+                icon: const Icon(Icons.history_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF168C58), Color(0xFF075B3A)],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: EazyColors.greenDeep.withValues(alpha: .28),
+                  blurRadius: 22,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Total Balance',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: balanceVisible ? 'Hide balance' : 'Show balance',
+                      onPressed: _toggleBalanceVisibility,
+                      icon: Icon(
+                        balanceVisible
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  loading || !balanceVisible
+                      ? '$_currency ••••••'
+                      : '$_currency $_balance',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Available for transfers and payments',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _WalletAction(
+                        icon: Icons.arrow_upward_rounded,
+                        label: 'Send',
+                        onTap: busy ? null : _showSendOptions,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _WalletAction(
+                        icon: Icons.arrow_downward_rounded,
+                        label: 'Receive',
+                        onTap: busy ? null : _showReceiveOptions,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _WalletAction(
+                        icon: Icons.qr_code_scanner_rounded,
+                        label: 'Scan QR',
+                        onTap: busy ? null : scanQr,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _WalletAction(
+                        icon: Icons.grid_view_rounded,
+                        label: 'More',
+                        onTap: busy ? null : _showMoreOptions,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(error!, style: const TextStyle(color: EazyColors.red)),
+          ],
+          if (pendingDeposit != null) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.hourglass_top_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Deposit awaiting confirmation',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        Text(
+                          (pendingDeposit?['currency']?.toString() == 'NGN'
+                                  ? '₦'
+                                  : (pendingDeposit?['currency']?.toString() ?? _currency) + ' ') +
+                              (pendingDeposit?['amount']?.toString() ?? '0.00'),
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This deposit has not been credited yet. Check its status before starting another funding attempt.',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: busy ? null : verifyPending,
+                        icon: const Icon(Icons.sync_rounded),
+                        label: const Text('Check payment status'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 22),
+          if (walletAlerts.isNotEmpty) ...[
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Wallet alerts',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                  ),
+                ),
+                Text('${walletAlerts.length}'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ...walletAlerts.take(5).map((alert) {
+              final id = alert['id']?.toString();
+              final isRead = alert['isRead'] == true;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: EazyColors.green.withValues(alpha: .12),
+                    child: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: EazyColors.green,
+                    ),
+                  ),
+                  title: Text(
+                    alert['title']?.toString() ?? 'Wallet update',
+                    style: TextStyle(
+                      fontWeight: isRead ? FontWeight.w600 : FontWeight.w900,
+                    ),
+                  ),
+                  subtitle: Text(alert['body']?.toString() ?? ''),
+                  trailing: isRead
+                      ? null
+                      : const Icon(Icons.circle, size: 9, color: EazyColors.green),
+                  onTap: id == null ? null : () => _readWalletAlert(id),
+                ),
+              );
+            }),
+            const SizedBox(height: 14),
+          ],
+                    const SizedBox(height: 22),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Transaction history',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _showAllTransactions,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 17),
+                label: const Text('See all'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (transactions.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(22),
+                child: Text(
+                  'No transactions yet.',
+                  style: TextStyle(color: EazyColors.muted),
+                ),
+              ),
+            )
+          else
+            ...transactions.map(
+              (entry) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: EazyColors.green.withValues(alpha: .12),
+                    child: const Icon(
+                      Icons.receipt_long_rounded,
+                      color: EazyColors.green,
+                    ),
+                  ),
+                  title: Text(
+                    entry['type']?.toString() ?? 'Transaction',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: Text(
+                    entry['status']?.toString() ?? '',
+                    style: const TextStyle(color: EazyColors.muted),
+                  ),
+                  trailing: Text(
+                    balanceVisible
+                        ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}'
+                        : '••••••',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  onTap: () => _showTransactionDetails(entry),
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _TransactionHistorySheet extends StatefulWidget {
+  const _TransactionHistorySheet({
+    required this.api,
+    required this.currency,
+    required this.balanceVisible,
+    required this.onOpenTransaction,
+  });
+
+  final ApiClient api;
+  final String currency;
+  final bool balanceVisible;
+  final Future<void> Function(Map<String, dynamic> entry) onOpenTransaction;
+
+  @override
+  State<_TransactionHistorySheet> createState() => _TransactionHistorySheetState();
+}
+
+class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
+  static const _pageSize = 20;
+  final _items = <Map<String, dynamic>>[];
+  int _page = 0;
+  bool _loading = false;
+  bool _hasMore = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPage();
+  }
+
+  Future<void> _loadPage({bool refresh = false}) async {
+    if (_loading || (!refresh && !_hasMore)) return;
+    final nextPage = refresh ? 1 : _page + 1;
+    setState(() {
+      _loading = true;
+      _error = null;
+      if (refresh) _hasMore = true;
+    });
+    try {
+      final result = await widget.api.get(
+        'wallet/transactions?page=$nextPage&limit=$_pageSize',
+        auth: true,
+      );
+      final entries = (result['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+      final meta = result['meta'] is Map
+          ? Map<String, dynamic>.from(result['meta'] as Map)
+          : <String, dynamic>{};
+      final totalPages = int.tryParse(meta['pages']?.toString() ?? '');
+      if (!mounted) return;
+      setState(() {
+        if (refresh) _items.clear();
+        final existingIds = _items.map((item) => item['id']?.toString()).toSet();
+        _items.addAll(entries.where(
+          (item) => !existingIds.contains(item['id']?.toString()),
+        ));
+        _page = nextPage;
+        _hasMore = totalPages != null
+            ? nextPage < totalPages
+            : entries.length == _pageSize;
+      });
+    } on ApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Could not load transaction history. Try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: SizedBox(
+      height: MediaQuery.sizeOf(context).height * .78,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+            child: Text(
+              'Transaction history',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => _loadPage(refresh: true),
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+                itemCount: _items.isEmpty ? 1 : _items.length + 1,
+                itemBuilder: (context, index) {
+                  if (_items.isEmpty && index == 0) {
+                    if (_loading) {
+                      return const Padding(
+                        padding: EdgeInsets.all(36),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (_error != null) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          children: [
+                            Text(_error!, textAlign: TextAlign.center),
+                            TextButton(
+                              onPressed: () => _loadPage(refresh: true),
+                              child: const Text('Try again'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const Padding(
+                      padding: EdgeInsets.all(28),
+                      child: Text('No transactions yet.'),
+                    );
+                  }
+                  if (index == _items.length) {
+                    if (_error != null) {
+                      return Center(
+                        child: TextButton(
+                          onPressed: _loadPage,
+                          child: const Text('Could not load more. Try again'),
+                        ),
+                      );
+                    }
+                    if (_hasMore) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: _loading
+                              ? const CircularProgressIndicator(strokeWidth: 2)
+                              : OutlinedButton(
+                                  onPressed: _loadPage,
+                                  child: const Text('Load more'),
+                                ),
+                        ),
+                      );
+                    }
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 18),
+                      child: Center(child: Text('You are all caught up.')),
+                    );
+                  }
+                  final entry = _items[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const Icon(Icons.receipt_long_rounded),
+                      title: Text(entry['type']?.toString() ?? 'Transaction'),
+                      subtitle: Text(
+                        '${entry['status'] ?? 'unknown'} · ${entry['createdAt'] ?? ''}',
+                      ),
+                      trailing: Text(
+                        widget.balanceVisible
+                            ? '${entry['currency'] ?? widget.currency} ${entry['amount'] ?? '0.00'}'
+                            : '••••••',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      onTap: () => widget.onOpenTransaction(entry),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _WalletAction extends StatelessWidget {
+  const _WalletAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(18),
+    child: Column(
+      children: [
+        Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .14),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Icon(icon, color: Colors.white, size: 29),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _Info extends StatelessWidget {
+  const _Info(this.label, this.value);
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 7),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 105,
+          child: Text(
+            label,
+            style: const TextStyle(color: EazyColors.muted, fontSize: 12),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ReceiveQrSheet extends StatelessWidget {
+  const _ReceiveQrSheet({required this.qr, required this.username});
+  final Map<String, dynamic> qr;
+  final String username;
+  @override
+  Widget build(BuildContext context) {
+    final content = qr['content']?.toString() ?? '';
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Receive from an Eazy user',
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Share this QR or your username: @$username',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: EazyColors.muted),
+            ),
+            const SizedBox(height: 18),
+            if (content.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: QrImageView(data: content, size: 220),
+              ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: content));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('QR token copied.')),
+                );
+              },
+              icon: const Icon(Icons.copy_rounded),
+              label: const Text('Copy QR token'),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Expires ${qr['expiresAt'] ?? 'soon'}',
+              style: const TextStyle(color: EazyColors.muted, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BankReceiveSheet extends StatelessWidget {
+  const _BankReceiveSheet({required this.account});
+  final Map<String, dynamic> account;
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Receive from an external bank',
+            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Give these details to the sender. Eazy will update the wallet only after the configured bank webhook confirms the deposit.',
+            style: TextStyle(color: EazyColors.muted, height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          _Info('Bank', account['bankName']?.toString() ?? 'Pending'),
+          _Info(
+            'Account number',
+            account['accountNumber']?.toString() ?? 'Pending',
+          ),
+          _Info(
+            'Account name',
+            account['accountName']?.toString() ?? 'Pending',
+          ),
+          _Info('Status', account['status']?.toString() ?? 'pending'),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Clipboard.setData(
+                  ClipboardData(
+                    text:
+                        '${account['bankName'] ?? ''}\n${account['accountNumber'] ?? ''}\n${account['accountName'] ?? ''}',
+                  ),
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Bank details copied.')),
+                );
+              },
+              icon: const Icon(Icons.copy_rounded),
+              label: const Text('Copy bank details'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _QrScannerPage extends StatefulWidget {
+  const _QrScannerPage();
+  @override
+  State<_QrScannerPage> createState() => _QrScannerPageState();
+}
+
+class _QrScannerPageState extends State<_QrScannerPage> {
+  bool handled = false;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text(
+        'Scan Eazy QR',
+        style: TextStyle(fontWeight: FontWeight.w900),
+      ),
+    ),
+    body: Stack(
+      children: [
+        MobileScanner(
+          onDetect: (capture) {
+            if (handled) return;
+            final value = capture.barcodes.firstOrNull?.rawValue;
+            if (value == null || value.isEmpty) return;
+            handled = true;
+            Navigator.pop(context, value);
+          },
+        ),
+        Center(
+          child: Container(
+            width: 250,
+            height: 250,
+            decoration: BoxDecoration(
+              border: Border.all(color: EazyColors.green, width: 3),
+              borderRadius: BorderRadius.circular(26),
+            ),
+          ),
+        ),
+        const Positioned(
+          left: 28,
+          right: 28,
+          bottom: 36,
+          child: Text(
+            'Point your camera at an Eazy receive QR code.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+)
+        .firstMatch(value.trim().replaceAll(',', ''));
+    if (match == null) return null;
+    final whole = BigInt.tryParse(match.group(1)!);
+    if (whole == null) return null;
+    final fraction = BigInt.tryParse((match.group(2) ?? '').padRight(2, '0'));
+    if (fraction == null) return null;
+    return whole * BigInt.from(100) + fraction;
+  }
   bool _validUsername(String value) =>
       RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value);
   Map<String, dynamic> _map(dynamic value) =>
