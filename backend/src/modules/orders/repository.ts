@@ -112,8 +112,15 @@ export class OrderRepository {
     if (currencies.size !== 1) throw new Error('MIXED_CURRENCIES');
     const currency = items.rows[0]!.currency;
 
+    const sellerIds = [...new Set(items.rows.map(item => item.seller_id))].sort();
+    const selected = new Map(fulfillments.map(choice => [choice.sellerId, choice]));
+    if (selected.size !== fulfillments.length || selected.size !== sellerIds.length ||
+        sellerIds.some(id => !selected.has(id))) {
+      throw new Error('FULFILLMENT_SELECTION_REQUIRED');
+    }
+
     const order = await client.query<{ id: string }>(
-      "INSERT INTO orders (buyer_id, status, currency, subtotal_amount, total_amount, idempotency_key) VALUES ($1, 'pending', $2, 0, 0, $3) RETURNING id",
+      "INSERT INTO orders (buyer_id, status, currency, subtotal_amount, delivery_total_amount, total_amount, idempotency_key) VALUES ($1, 'pending', $2, 0, 0, 0, $3) RETURNING id",
       [buyerId, currency, idempotencyKey]
     );
     const orderId = order.rows[0]!.id;
