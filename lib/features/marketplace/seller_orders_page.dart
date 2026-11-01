@@ -157,7 +157,6 @@ class _SellerOrdersPageState extends State<SellerOrdersPage> {
                                   FilledButton(onPressed: busy ? null : () => act(order, 'ship'), child: const Text('Mark shipped')),
                                 if (status == 'shipped')
                                   FilledButton(onPressed: busy ? null : () => act(order, 'deliver'), child: const Text('Mark delivered')),
-                                TextButton(onPressed: () => context.push('/orders/${order['orderId']}'), child: const Text('Order details')),
                               ]),
                             ]),
                           ),
