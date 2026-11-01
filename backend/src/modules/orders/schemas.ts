@@ -42,7 +42,6 @@ export const disputeSchema = z.object({
 
 export const sellerFulfillmentActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('accept') }).strict(),
-  z.object({ action: z.literal('reject'), reason: z.string().trim().min(5).max(500) }).strict(),
   z.object({ action: z.literal('ship') }).strict(),
   z.object({ action: z.literal('deliver') }).strict()
 ]);
