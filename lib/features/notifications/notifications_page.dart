@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:io';
 import '../../app/theme/eazy_theme.dart';
@@ -187,7 +188,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
   };
   @override
   Widget build(BuildContext context) => Scaffold(
-    floatingActionButton: const EazyAssistFab(),
+    floatingActionButton: assistVisible && MediaQuery.viewInsetsOf(context).bottom == 0
+        ? const EazyAssistFab()
+        : null,
     appBar: AppBar(
       title: Text(
         unread > 0 ? 'Notifications ($unread)' : 'Notifications',
@@ -204,7 +207,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
         ),
       ],
     ),
-    body: RefreshIndicator(
+    body: NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is UserScrollNotification &&
+            notification.direction != ScrollDirection.idle) {
+          final shouldShow = notification.direction == ScrollDirection.forward;
+          if (assistVisible != shouldShow) {
+            setState(() => assistVisible = shouldShow);
+          }
+        }
+        return false;
+      },
+      child: RefreshIndicator(
       onRefresh: load,
       child:
           loading
@@ -273,6 +287,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   );
                 },
               )
+      ),
     ),
   );
 }
