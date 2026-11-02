@@ -11,13 +11,12 @@ import '../social/social_page.dart';
 import '../wallet/wallet_page.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key, required this.auth, this.initialTab, this.initialAction, this.initialUsername, this.initialConversationId, this.initialUsername});
+  const HomeShell({super.key, required this.auth, this.initialTab, this.initialAction, this.initialUsername, this.initialConversationId});
   final AuthController auth;
   final String? initialTab;
   final String? initialAction;
   final String? initialUsername;
   final String? initialConversationId;
-  final String? initialUsername;
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
