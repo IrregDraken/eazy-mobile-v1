@@ -17,6 +17,8 @@ function repository(overrides: Partial<Record<keyof MarketplaceRepositoryContrac
     create: async () => 'product-id',
     update: async () => true,
     updateInventory: async () => true,
+    sellerStoreBySeller: async () => ({ sellerId: 'seller-id' }),
+    hasAcceptedSellerAgreement: async () => true,
     ...overrides
   } as unknown as MarketplaceRepositoryContract;
 }
