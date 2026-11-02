@@ -39,7 +39,7 @@ test('product update requires an explicit allowed field and cannot include selle
 });
 
 test('marketplace service rejects duplicate media positions and preserves seller ownership boundary', async () => {
-  const service = new MarketplaceService(fakePool(), repository());
+  const service = new MarketplaceService(fakePool(), repository(), undefined, { version: 'seller-v1', text: 'Owner-approved seller agreement text for automated validation only.' });
   await assert.rejects(() => service.create('seller-id', { name: 'Book', description: undefined, categoryId: undefined, priceAmount: '10.00', currency: 'USD', status: 'draft', availableQuantity: 1, media: [{ storageKey: 'a', position: 0 }, { storageKey: 'b', position: 0 }] }), (error: unknown) => error instanceof AppError && error.code === 'VALIDATION_ERROR');
   const updated = await service.update('product-id', 'seller-id', { priceAmount: '11.00' });
   assert.equal(updated.product.id, 'product-id');
