@@ -222,6 +222,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
+      - run: npm install --package-lock-only --ignore-scripts
       - run: npm ci
       - name: Apply every migration to a clean PostgreSQL database
         run: npm run db:migrate
