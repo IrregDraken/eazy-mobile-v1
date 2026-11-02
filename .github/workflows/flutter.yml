@@ -223,6 +223,13 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm install --package-lock-only --ignore-scripts
+      - name: Upload generated migration-test lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: eazy-migration-package-lock-${{ github.sha }}
+          path: backend/package-lock.json
+          if-no-files-found: error
+          retention-days: 7
       - run: npm ci
       - name: Apply every migration to a clean PostgreSQL database
         run: npm run db:migrate
@@ -251,6 +258,7 @@ jobs:
       - run: npm run build
       - run: npm test
       - name: Upload generated backend lockfile for review
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: eazy-backend-package-lock-${{ github.sha }}
