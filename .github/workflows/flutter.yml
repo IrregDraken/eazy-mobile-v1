@@ -231,6 +231,10 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - run: npm ci
+      - name: Create Supabase roles required by the production migrations
+        run: >-
+          node --input-type=module -e
+          "import pg from 'pg'; const client = new pg.Client({ connectionString: process.env.DATABASE_URL }); await client.connect(); await client.query(\`DO $ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon NOLOGIN; END IF; IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF; IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role NOLOGIN; END IF; END $\`); await client.end();"
       - name: Apply every migration to a clean PostgreSQL database
         run: npm run db:migrate
 
