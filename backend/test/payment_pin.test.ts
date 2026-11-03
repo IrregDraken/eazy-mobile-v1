@@ -74,39 +74,39 @@ class FakePool {
 test('payment PINs are stored as hashes and can be verified', async () => {
   const pool = new FakePool();
   const service = new PaymentPinService(pool as never);
-  await service.setup('user-1', '483920', '483920');
+  await service.setup('user-1', '4839', '4839');
   assert.equal((await service.status('user-1')).configured, true);
-  assert.equal(pool.record?.pin_hash.includes('483920'), false);
-  await service.verify('user-1', '483920');
-  await assert.rejects(() => service.verify('user-1', '111111'), /Incorrect payment PIN/);
+  assert.equal(pool.record?.pin_hash.includes('4839'), false);
+  await service.verify('user-1', '4839');
+  await assert.rejects(() => service.verify('user-1', '1111'), /Incorrect payment PIN/);
 });
 
 test('payment PIN locks after five incorrect attempts', async () => {
   const pool = new FakePool();
   const service = new PaymentPinService(pool as never);
-  await service.setup('user-1', '483920', '483920');
+  await service.setup('user-1', '4839', '4839');
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    await assert.rejects(() => service.verify('user-1', '111111'), /Incorrect payment PIN/);
+    await assert.rejects(() => service.verify('user-1', '1111'), /Incorrect payment PIN/);
   }
-  await assert.rejects(() => service.verify('user-1', '111111'), /locked after repeated incorrect attempts/);
-  await assert.rejects(() => service.verify('user-1', '483920'), /locked after repeated incorrect attempts/);
+  await assert.rejects(() => service.verify('user-1', '1111'), /locked after repeated incorrect attempts/);
+  await assert.rejects(() => service.verify('user-1', '4839'), /locked after repeated incorrect attempts/);
 });
 
 test('changing a payment PIN requires the current PIN', async () => {
   const pool = new FakePool();
   const service = new PaymentPinService(pool as never);
-  await service.setup('user-1', '483920', '483920');
-  await assert.rejects(() => service.change('user-1', '111111', '726194', '726194'), /Incorrect payment PIN/);
-  await service.change('user-1', '483920', '726194', '726194');
-  await service.verify('user-1', '726194');
-  await assert.rejects(() => service.verify('user-1', '483920'), /Incorrect payment PIN/);
+  await service.setup('user-1', '4839', '4839');
+  await assert.rejects(() => service.change('user-1', '1111', '7261', '7261'), /Incorrect payment PIN/);
+  await service.change('user-1', '4839', '7261', '7261');
+  await service.verify('user-1', '7261');
+  await assert.rejects(() => service.verify('user-1', '4839'), /Incorrect payment PIN/);
 });
 
 test('payment PIN reset replaces an existing PIN and clears lockout state', async () => {
   const pool = new FakePool();
   const service = new PaymentPinService(pool as never);
-  await service.setup('user-1', '483920', '483920');
-  await service.reset('user-1', '726194', '726194');
-  await service.verify('user-1', '726194');
-  await assert.rejects(() => service.verify('user-1', '483920'), /Incorrect payment PIN/);
+  await service.setup('user-1', '4839', '4839');
+  await service.reset('user-1', '7261', '7261');
+  await service.verify('user-1', '7261');
+  await assert.rejects(() => service.verify('user-1', '4839'), /Incorrect payment PIN/);
 });

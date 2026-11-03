@@ -6,7 +6,7 @@ import type { PaymentPinService } from './payment-pin-service.js';
 export function requirePaymentPin(service: PaymentPinService): RequestHandler {
   return async (request, _response, next) => {
     const pin = request.header('x-payment-pin');
-    if (!pin) return next(new AppError('UNAUTHORIZED', 'Enter your 6-digit payment PIN to continue'));
+    if (!pin) return next(new AppError('UNAUTHORIZED', 'Enter your 4-digit payment PIN to continue'));
     try {
       await service.verify(currentUserId(request), pin);
       next();

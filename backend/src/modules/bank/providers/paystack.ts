@@ -53,40 +53,27 @@ export class PaystackBankProvider implements BankProvider {
   }
 
 
-  async assignVirtualAccount(input: { email: string; firstName: string; lastName: string; phone: string; currency: string }) {
+  async assignVirtualAccount(input: { email: string; firstName: string; middleName?: string; lastName: string; phone: string; preferredBank: string; country: string; accountNumber?: string; bvn?: string; bankCode?: string; currency: string }) {
     this.assertEnabled();
     if (input.currency.toUpperCase() !== 'NGN') throw new Error('Dedicated virtual accounts currently require NGN');
 
-    let customer: any;
-    try {
-      customer = (await this.request(`/customer/${encodeURIComponent(input.email)}`)).data;
-    } catch {
-      customer = (await this.request('/customer', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: input.email,
-          first_name: input.firstName,
-          last_name: input.lastName,
-          phone: input.phone
-        })
-      })).data;
-    }
-
-    const customerCode = String(customer?.customer_code ?? '').trim();
-    if (!customerCode) throw new Error('Bank provider did not return a customer code');
-
-    const response = await this.request('/dedicated_account', {
+    const response = await this.request('/dedicated_account/assign', {
       method: 'POST',
       body: JSON.stringify({
-        customer: customerCode,
-        preferred_bank: this.config.PAYSTACK_MODE === 'test' ? 'test-bank' : undefined,
+        email: input.email,
         first_name: input.firstName,
+        middle_name: input.middleName || undefined,
         last_name: input.lastName,
-        phone: input.phone
+        phone: input.phone,
+        preferred_bank: this.config.PAYSTACK_MODE === 'test' ? 'test-bank' : input.preferredBank,
+        country: input.country,
+        account_number: input.accountNumber,
+        bvn: input.bvn,
+        bank_code: input.bankCode
       })
     });
 
-    return this.virtualAccountFromPayload(response.data, 'pending');
+    return this.virtualAccountFromPayload(response.data ?? {}, 'pending');
   }
 
   async getVirtualAccount(input: { customerCode?: string; accountNumber?: string }) {
