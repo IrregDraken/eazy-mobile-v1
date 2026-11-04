@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/ui/eazy_skeleton.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -82,12 +83,23 @@ class _CartPageState extends State<CartPage> {
     final currency = cart['currency']?.toString() ?? 'NGN';
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Your bag'),
+        title: const Text('Cart'),
         actions: [IconButton(tooltip: 'My orders', onPressed: () => context.push('/orders'), icon: const Icon(Icons.receipt_long_rounded))],
       ),
       body:
           loading
-              ? const Center(child: CircularProgressIndicator())
+              ? ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: const [
+                    EazySkeletonBox(width: 140, height: 22),
+                    SizedBox(height: 18),
+                    EazySkeletonBox(width: double.infinity, height: 116, radius: 18),
+                    SizedBox(height: 12),
+                    EazySkeletonBox(width: double.infinity, height: 116, radius: 18),
+                    SizedBox(height: 12),
+                    EazySkeletonBox(width: double.infinity, height: 116, radius: 18),
+                  ],
+                )
               : error != null
               ? Center(
                 child: Padding(
@@ -108,9 +120,43 @@ class _CartPageState extends State<CartPage> {
               )
               : items.isEmpty
               ? Center(
-                child: Text(
-                  'Your bag is empty.',
-                  style: TextStyle(color: context.eazyMuted),
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 112,
+                        height: 112,
+                        decoration: BoxDecoration(
+                          color: context.eazyAccent.withValues(alpha: .10),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.shopping_bag_outlined,
+                          size: 48,
+                          color: context.eazyAccent,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Your Cart is empty',
+                        style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Find physical goods and services worth adding to your Cart.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: context.eazyMuted, height: 1.4),
+                      ),
+                      const SizedBox(height: 18),
+                      FilledButton.icon(
+                        onPressed: () => context.go('/home?tab=shop'),
+                        icon: const Icon(Icons.storefront_outlined),
+                        label: const Text('Discover'),
+                      ),
+                    ],
+                  ),
                 ),
               )
               : Column(
