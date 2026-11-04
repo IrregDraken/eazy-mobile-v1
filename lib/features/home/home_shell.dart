@@ -88,7 +88,7 @@ class _HomeShellState extends State<HomeShell> {
         final left = (_assistLeft ?? defaultLeft).clamp(8.0, constraints.maxWidth - 80).toDouble();
         final top = (_assistTop ?? defaultTop).clamp(8.0, constraints.maxHeight - 160).toDouble();
         final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
-        final assistAllowed = index == 0 || index == 1 || index == 4;
+        final assistAllowed = index == 1 || index == 4;
         final showAssist = assistAllowed && _assistVisible && !keyboardOpen;
         final showMiniAssist =
             assistAllowed && _assistMinimized && !_assistVisible && !keyboardOpen;
