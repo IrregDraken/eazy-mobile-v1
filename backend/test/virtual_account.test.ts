@@ -42,3 +42,38 @@ test('DVA webhook rejects deposits in a currency different from the assigned wal
   );
   assert.equal(released, true);
 });
+
+
+test('money actions require a confirmed active dedicated account', async () => {
+  const activeAccount = {
+    userId: 'user-1',
+    walletId: 'wallet-1',
+    provider: 'paystack',
+    accountNumber: '0123456789',
+    currency: 'NGN',
+    status: 'active'
+  };
+  const activePool = {
+    query: async () => ({ rows: [activeAccount] })
+  };
+  const activeService = new VirtualAccountService(activePool as never, {} as never, {} as never);
+  await assert.doesNotReject(() => activeService.assertActive('user-1'));
+
+  const pendingPool = {
+    query: async () => ({ rows: [{ ...activeAccount, accountNumber: null, status: 'pending' }] })
+  };
+  const pendingService = new VirtualAccountService(pendingPool as never, {} as never, {} as never);
+  await assert.rejects(
+    () => pendingService.assertActive('user-1'),
+    /activation is still pending/
+  );
+
+  const missingPool = {
+    query: async () => ({ rows: [] })
+  };
+  const missingService = new VirtualAccountService(missingPool as never, {} as never, {} as never);
+  await assert.rejects(
+    () => missingService.assertActive('user-1'),
+    /Activate your Eazy Wallet/
+  );
+});
