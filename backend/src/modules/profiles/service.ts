@@ -79,6 +79,13 @@ export class ProfileService {
   }
 
   async update(userId: string, input: z.infer<typeof profilePatchSchema>): Promise<ProfileRecord> {
+    if (
+      input.coverUrl &&
+      !/^https:\/\//.test(input.coverUrl) &&
+      !input.coverUrl.startsWith(userId + '/cover/')
+    ) {
+      throw new AppError('FORBIDDEN', 'Cover media must belong to your account');
+    }
     const fields = Object.fromEntries(Object.entries(input).map(([key, value]) => [camelToSnake(key), value]));
     if (input.firstName !== undefined || input.middleName !== undefined || input.lastName !== undefined) {
       const current = await this.repository.getByUserId(userId);
