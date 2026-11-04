@@ -2282,16 +2282,20 @@ class _WalletAction extends StatelessWidget {
           width: 62,
           height: 62,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .14),
+            color: Colors.white.withValues(alpha: onTap == null ? .08 : .14),
             borderRadius: BorderRadius.circular(18),
           ),
-          child: Icon(icon, color: Colors.white, size: 29),
+          child: Icon(
+            icon,
+            color: onTap == null ? Colors.white70 : Colors.white,
+            size: 29,
+          ),
         ),
         const SizedBox(height: 7),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: onTap == null ? Colors.white70 : Colors.white,
             fontWeight: FontWeight.w800,
             fontSize: 12,
           ),
