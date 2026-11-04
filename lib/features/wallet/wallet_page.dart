@@ -1757,9 +1757,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       virtualAccount?['status']?.toString().toLowerCase() == 'pending'
                           ? 'Paystack is processing your dedicated NGN account. Your wallet will unlock after the provider confirms the assignment.'
                           : virtualAccount?['status']?.toString().toLowerCase() == 'failed'
-                              ? (virtualAccount?['failureReason']?.toString().isNotEmpty == true
-                                  ? virtualAccount!['failureReason'].toString()
-                                  : 'The provider could not complete the assignment. You can safely retry.')
+                              ? 'The provider could not complete the assignment. Check your Eazy profile details and retry.'
                               : 'Activate once to enable Eazy-to-Eazy transfers, QR payments and receiving money from external banks.',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -1769,11 +1767,14 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                     const SizedBox(height: 14),
                     Row(
                       children: [
-                        _ActivationStep(label: 'Details', complete: true),
+                        _ActivationStep(
+                          label: 'Profile',
+                          complete: virtualAccount != null,
+                        ),
                         const Expanded(child: Divider()),
                         _ActivationStep(
-                          label: 'Provider',
-                          complete: virtualAccount?['status']?.toString().toLowerCase() == 'pending',
+                          label: 'Paystack',
+                          complete: _walletActivated,
                         ),
                         const Expanded(child: Divider()),
                         const _ActivationStep(label: 'Active', complete: false),
