@@ -122,8 +122,8 @@ export class PaystackBankProvider implements BankProvider {
     const bankSlug = account?.bank?.slug ? String(account.bank.slug) : account?.provider_slug ? String(account.provider_slug) : undefined;
     const customerCodeValue = data?.customer_code ?? data?.customer?.customer_code ?? data?.customer?.code;
     const customerCode = customerCodeValue ? String(customerCodeValue) : undefined;
-    const assigned = account?.assigned !== false && account?.assigned !== 0;
-    const active = account?.active !== false && account?.active !== 0;
+    const assigned = account?.assigned === true || account?.assigned === 1;
+    const active = account?.active === true || account?.active === 1;
     return {
       customerCode,
       accountId,
