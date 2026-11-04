@@ -261,6 +261,32 @@ test('chat events reach active members only and message projections are rebuilt 
   assert.equal(await gateway.realtime.publishToConversation(conversationId, reaction), 1);
 });
 
+test('typing presence is authorized per conversation and never echoed to the sender', async t => {
+  const gateway = await makeGateway();
+  t.after(() => gateway.close());
+  const a = await connect(gateway.endpoint, 'token-a');
+  const b = await connect(gateway.endpoint, 'token-b');
+  const c = await connect(gateway.endpoint, 'token-c');
+  t.after(() => { a.socket.terminate(); b.socket.terminate(); c.socket.terminate(); });
+  await subscribe(a, 'conversation', conversationId);
+  await subscribe(b, 'conversation', conversationId);
+  send(a, { type: 'typing', channel: 'conversation', id: conversationId, active: true });
+  const event = await b.next(value => isRecord(value) && value.type === 'event' && value.event === 'conversation.typing');
+  assert.deepEqual(event, {
+    type: 'event',
+    event: 'conversation.typing',
+    data: { conversationId, userId: userA, active: true }
+  });
+  assert.equal(a.queue.some(value => isRecord(value) && value.event === 'conversation.typing'), false);
+  send(c, { type: 'typing', channel: 'conversation', id: conversationId, active: true });
+  assert.deepEqual(await c.next(value => isRecord(value) && value.type === 'error'), {
+    type: 'error',
+    code: 'not_found',
+    message: 'This subscription is unavailable'
+  });
+  assert.equal(b.queue.some(value => isRecord(value) && value.event === 'conversation.typing'), false);
+});
+
 test('notification events are scoped to recipient user channels and durable REST persistence does not depend on sockets', async () => {
   const gateway = await makeGateway();
   try {
