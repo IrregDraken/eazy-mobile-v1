@@ -115,29 +115,24 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 : null;
       }
       try {
-        final profileResult = await api.get('profiles/me', auth: true);
-        final profile = _map(profileResult['profile']);
+        final accountResult = await api.get('auth/me', auth: true);
+        final profile = _map(accountResult['profile']);
+        final account = _map(accountResult['user']);
         username = profile['username']?.toString();
         final firstName = (profile['firstName'] ?? profile['first_name'] ?? '').toString().trim();
         final lastName = (profile['lastName'] ?? profile['last_name'] ?? '').toString().trim();
         final displayName = (profile['displayName'] ??
                 profile['display_name'] ??
-                profile['fullName'] ??
-                profile['full_name'] ??
                 [firstName, lastName].where((part) => part.isNotEmpty).join(' '))
             .toString()
             .trim();
-        final email = (profile['email'] ?? '').toString().trim();
-        final phone = (profile['phone'] ??
-                profile['phoneNumber'] ??
-                profile['phone_number'] ??
-                '')
-            .toString()
-            .trim();
+        final email = (account['email'] ?? '').toString().trim();
+        final phone = (account['phone'] ?? '').toString().trim();
         activationDetailsComplete =
             displayName.isNotEmpty && email.contains('@') && phone.isNotEmpty;
       } on ApiException {
         username = null;
+        activationDetailsComplete = false;
       }
       final transactionResult = await api.get(
         'wallet/transactions?page=1&limit=20',
