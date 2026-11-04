@@ -109,7 +109,7 @@ export class ProfileService {
 
   private async resolveCover(userId: string, value: string | null): Promise<string | null> {
     if (!value) return null;
-    if (/^https?:\\/\\//.test(value)) return value;
+    if (/^https:\\/\\//.test(value)) return value;
     if (!this.storage || !value.startsWith(userId + '/cover/')) return null;
     try { return (await this.storage.createSignedUrl(value, 3600)).signedUrl; } catch { return null; }
   }
