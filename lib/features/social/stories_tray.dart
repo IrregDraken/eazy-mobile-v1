@@ -92,47 +92,10 @@ class _StoriesTrayState extends State<StoriesTray> {
             ),
       );
       if (!mounted || choice == null) return;
-      final captionController = TextEditingController();
-      String? caption;
-      var captionSubmitted = false;
-      try {
-        caption = await showDialog<String>(
-          context: context,
-          builder:
-              (ctx) => AlertDialog(
-                title: const Text('Add a story caption'),
-                content: TextField(
-                  controller: captionController,
-                  maxLength: 500,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: 'Write a little something (optional)',
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: captionSubmitted
-                        ? null
-                        : () {
-                            // Snapshot the text before navigation disposes the
-                            // dialog subtree or any later async work can begin.
-                            final submittedCaption =
-                                captionController.text.trim();
-                            captionSubmitted = true;
-                            Navigator.pop(ctx, submittedCaption);
-                          },
-                    child: const Text('Continue'),
-                  ),
-                ],
-              ),
-        );
-      } finally {
-        captionController.dispose();
-      }
+      final String? caption = await showDialog<String>(
+        context: context,
+        builder: (ctx) => const _StoryCaptionDialog(),
+      );
       if (!mounted || caption == null) return;
       final upload =
           choice == 'video'
@@ -745,3 +708,60 @@ class _StoryViewerState extends State<StoryViewer> {
     );
   }
 }
+
+class _StoryCaptionDialog extends StatefulWidget {
+  const _StoryCaptionDialog();
+
+  @override
+  State<_StoryCaptionDialog> createState() => _StoryCaptionDialogState();
+}
+
+class _StoryCaptionDialogState extends State<_StoryCaptionDialog> {
+  late final TextEditingController _controller;
+  bool _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_submitted) return;
+    final caption = _controller.text.trim();
+    setState(() => _submitted = true);
+    Navigator.of(context).pop(caption);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add a story caption'),
+      content: TextField(
+        controller: _controller,
+        maxLength: 500,
+        maxLines: 3,
+        decoration: const InputDecoration(
+          hintText: 'Write a little something (optional)',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitted ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submitted ? null : _submit,
+          child: const Text('Continue'),
+        ),
+      ],
+    );
+  }
+}
+
