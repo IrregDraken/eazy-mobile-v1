@@ -168,7 +168,7 @@ test('OpenAI-compatible provider forwards caller cancellation to the upstream fe
   const originalFetch = globalThis.fetch;
   const controller = new AbortController();
   try {
-    globalThis.fetch = async (_input, init) => new Promise((_resolve, reject) => {
+    globalThis.fetch = async (_input, init) => new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
     });
     const provider = new OpenAICompatibleProvider(config(requiredProviderConfig));
