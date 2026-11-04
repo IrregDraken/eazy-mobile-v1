@@ -11,6 +11,7 @@ export function createAssistRouter(service: AssistService): Router {
   const controller = createAssistController(service);
   const sessionLimit = createRateLimiter({ name: 'assist-session', windowMs: 60_000, max: 10 });
   const messageLimit = createRateLimiter({ name: 'assist-message', windowMs: 60_000, max: 10 });
+  const cancelLimit = createRateLimiter({ name: 'assist-cancel', windowMs: 60_000, max: 20 });
   router.use(requireAuth);
   router.get('/capabilities', controller.capabilities);
   router.post('/sessions', sessionLimit, validate('body', createSessionSchema), controller.createSession);
@@ -19,5 +20,6 @@ export function createAssistRouter(service: AssistService): Router {
   router.delete('/sessions/:id', sessionLimit, validate('params', assistSessionParamsSchema), controller.closeSession);
   router.get('/sessions/:id/messages', validate('params', assistSessionParamsSchema), validate('query', assistHistoryQuerySchema), controller.listMessages);
   router.post('/sessions/:id/messages', messageLimit, validate('params', assistSessionParamsSchema), validate('body', assistMessageSchema), controller.sendMessage);
+  router.post('/sessions/:id/cancel', cancelLimit, validate('params', assistSessionParamsSchema), controller.cancelGeneration);
   return router;
 }
