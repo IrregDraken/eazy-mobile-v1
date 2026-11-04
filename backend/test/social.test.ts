@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { AppError } from '../src/middleware/errors.js';
-import { searchQuerySchema, SocialService } from '../src/modules/social/service.js';
+import { searchQuerySchema, socialSuggestionsQuerySchema, SocialService } from '../src/modules/social/service.js';
 import type { SocialRepository } from '../src/modules/social/repository.js';
 
 function fakePool() {
@@ -56,4 +56,25 @@ test('search query validation bounds input and report rejects self-reporting', a
   assert.throws(() => searchQuerySchema.parse({ q: 'x', page: 1, limit: 20 }));
   const selfService = new SocialService(fakePool(), repository({ targetByUsername: async () => ({ id: 'me', username: 'self_user' }) }));
   await assert.rejects(() => selfService.report('me', 'self_user', 'spam'), (error: unknown) => error instanceof AppError && error.code === 'BAD_REQUEST');
+});
+
+test('people suggestions are bounded and return safe profile projections', async () => {
+  const suggestions = [
+    { username: 'popular_one', displayName: 'Popular One', avatarUrl: null, followerCount: 120 },
+    { username: 'popular_two', displayName: 'Popular Two', avatarUrl: null, followerCount: 95 }
+  ];
+  const service = new SocialService(
+    fakePool(),
+    repository({
+      suggestions: async (_pool: unknown, userId: string, limit: number) => {
+        assert.equal(userId, 'me');
+        assert.equal(limit, 5);
+        return suggestions;
+      }
+    })
+  );
+  const input = socialSuggestionsQuerySchema.parse({});
+  const result = await service.suggestions('me', input);
+  assert.deepEqual(result.items, suggestions);
+  assert.throws(() => socialSuggestionsQuerySchema.parse({ limit: 11 }));
 });
