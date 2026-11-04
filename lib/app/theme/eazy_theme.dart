@@ -16,6 +16,8 @@ abstract final class EazyColors {
   static const red = Color(0xFFB42318);
   static const amber = Color(0xFF946200);
   static const blue = Color(0xFF155EEF);
+  static const gold = Color(0xFFD7B56D);
+  static const goldBright = Color(0xFFF0D99A);
 }
 
 @immutable
