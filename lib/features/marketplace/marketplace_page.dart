@@ -26,6 +26,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
   String? selectedParentSlug;
   String sort = 'newest';
   List<Map<String, dynamic>> products = [];
+  List<Map<String, dynamic>> featuredProducts = [];
+  List<Map<String, dynamic>> justForYouProducts = [];
   List<Map<String, dynamic>> categories = [];
   bool categoriesLoaded = false;
   int cartItemCount = 0;
@@ -124,13 +126,47 @@ class _MarketplacePageState extends State<MarketplacePage> {
           )
           .join('&');
 
-      final r = await api.get('marketplace/products?$qs');
+      final showRecommendations = selectedParentSlug == null &&
+          search.text.trim().isEmpty &&
+          minPrice.text.trim().isEmpty &&
+          maxPrice.text.trim().isEmpty &&
+          availability == 'all';
+      final result = await api.get('marketplace/products?$qs');
       if (!mounted) return;
-      products =
-          (r['items'] as List? ?? const [])
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
+      products = (result['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+
+      if (showRecommendations) {
+        final recommendationResults = await Future.wait([
+          api.get('marketplace/products?status=active&sort=featured&page=1&limit=6')
+              .catchError((_) => <String, dynamic>{}),
+          api.get('marketplace/products?status=active&sort=newest&page=1&limit=8')
+              .catchError((_) => <String, dynamic>{}),
+        ]);
+        final featured = (recommendationResults[0]['items'] as List? ?? const [])
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+        featuredProducts = featured
+            .where((item) => item['ratingAverage'] != null)
+            .take(6)
+            .toList();
+        if (featuredProducts.isEmpty) {
+          featuredProducts = featured.take(6).toList();
+        }
+        final featuredIds = featuredProducts.map((item) => item['id']?.toString()).toSet();
+        justForYouProducts = (recommendationResults[1]['items'] as List? ?? const [])
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .where((item) => !featuredIds.contains(item['id']?.toString()))
+            .take(6)
+            .toList();
+      } else {
+        featuredProducts = [];
+        justForYouProducts = [];
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
@@ -357,6 +393,24 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       ),
                     ],
                   ),
+                ),
+              ),
+            if (featuredProducts.isNotEmpty)
+              SliverToBoxAdapter(
+                child: _ProductCarouselSection(
+                  title: 'Featured for You',
+                  subtitle: 'Top-rated picks from Eazy sellers',
+                  products: featuredProducts,
+                  onReturn: _loadCartCount,
+                ),
+              ),
+            if (justForYouProducts.isNotEmpty)
+              SliverToBoxAdapter(
+                child: _ProductCarouselSection(
+                  title: 'Just for You',
+                  subtitle: 'Fresh listings from the Eazy marketplace',
+                  products: justForYouProducts,
+                  onReturn: _loadCartCount,
                 ),
               ),
             SliverToBoxAdapter(
@@ -646,6 +700,65 @@ class _CategoryTile extends StatelessWidget {
       child: Icon(icon, color: EazyColors.mint, size: 38),
     ),
   );
+}
+
+class _ProductCarouselSection extends StatelessWidget {
+  const _ProductCarouselSection({
+    required this.title,
+    required this.subtitle,
+    required this.products,
+    required this.onReturn,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<Map<String, dynamic>> products;
+  final VoidCallback onReturn;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: context.eazyMuted, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 238,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: products.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (_, index) => SizedBox(
+                width: 166,
+                child: _Product(
+                  product: products[index],
+                  onReturn: onReturn,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Product extends StatelessWidget {
