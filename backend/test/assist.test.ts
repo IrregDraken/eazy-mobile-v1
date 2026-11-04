@@ -200,6 +200,38 @@ test('successful response is validated and persisted after the user message', as
   assert.equal(harness.providerCalls[0]?.messages.at(-1)?.content, 'Hello Assist');
 });
 
+test('Assist cancellation aborts provider work and persists a cancellation marker', async () => {
+  let providerSignal: AbortSignal | undefined;
+  let markStarted!: () => void;
+  const started = new Promise<void>(resolve => { markStarted = resolve; });
+  const provider: AIProvider = {
+    getCapabilities: () => ({ available: true, providerName: 'cancellable-test' }),
+    complete: async input => {
+      providerSignal = input.signal;
+      markStarted();
+      return new Promise<{ text: string }>((_resolve, reject) => {
+        if (input.signal?.aborted) {
+          reject(new Error('aborted'));
+          return;
+        }
+        input.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      });
+    }
+  };
+  const harness = createHarness({ provider });
+  const sending = harness.service.sendMessage('user-a', session.id, { content: 'Write a long answer' }).catch(error => error);
+  await started;
+  const cancellation = await harness.service.cancelGeneration('user-a', session.id);
+  const result = await sending;
+  assert.equal(cancellation.cancelled, true);
+  assert.ok(result instanceof AppError);
+  assert.equal(result.code, 'CONFLICT');
+  assert.equal(providerSignal?.aborted, true);
+  assert.deepEqual(harness.rows.map(row => row.role), ['user', 'assistant']);
+  assert.equal(harness.rows[1]?.content, 'Generation cancelled.');
+  assert.equal((await harness.service.cancelGeneration('user-a', session.id)).cancelled, false);
+});
+
 test('malformed or action-bearing provider output is rejected without an assistant message', async () => {
   const malformed = createHarness({ scripted: ['not JSON'] });
   await assert.rejects(() => malformed.service.sendMessage('user-a', session.id, { content: 'hello' }), (error: unknown) => error instanceof AppError && error.code === 'SERVICE_UNAVAILABLE');
