@@ -82,7 +82,7 @@ export class PaystackBankProvider implements BankProvider {
     // A previous attempt may have reached Paystack before Eazy lost its response.
     // Reuse an already assigned DVA instead of issuing a second assignment.
     if (customer?.dedicated_account?.account_number) {
-      return this.virtualAccountFromPayload(customer, 'active');
+      return this.virtualAccountFromPayload(customer, 'pending');
     }
 
     const customerCode = String(customer?.customer_code ?? '').trim();
@@ -109,7 +109,7 @@ export class PaystackBankProvider implements BankProvider {
     const response = await this.request(`/customer/${encodeURIComponent(key)}`);
     const data = response.data as any;
     if (!data) return null;
-    return this.virtualAccountFromPayload(data, data.dedicated_account ? 'active' : 'pending');
+    return this.virtualAccountFromPayload(data, 'pending');
   }
 
   private virtualAccountFromPayload(data: any, fallbackStatus: 'pending' | 'active' | 'failed') {
