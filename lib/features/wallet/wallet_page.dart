@@ -1057,6 +1057,32 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   Future<void> requestVirtualAccount() async {
     final activationStatus = virtualAccount?['status']?.toString().toLowerCase();
     if (_walletActivated || activationStatus == 'pending' || busy) return;
+    if (!activationDetailsComplete) {
+      final openSettings = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Complete your personal details'),
+          content: const Text(
+            'Add your full name, email address and phone number to your Eazy account before requesting a dedicated virtual account.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Account settings'),
+            ),
+          ],
+        ),
+      );
+      if (openSettings == true && mounted) {
+        await context.push('/account-settings');
+        await load();
+      }
+      return;
+    }
     final consent = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
