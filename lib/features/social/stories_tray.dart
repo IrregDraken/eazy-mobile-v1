@@ -93,33 +93,46 @@ class _StoriesTrayState extends State<StoriesTray> {
       );
       if (!mounted || choice == null) return;
       final captionController = TextEditingController();
-      final caption = await showDialog<String>(
-        context: context,
-        builder:
-            (ctx) => AlertDialog(
-              title: const Text('Add a story caption'),
-              content: TextField(
-                controller: captionController,
-                maxLength: 500,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'Write a little something (optional)',
+      String? caption;
+      var captionSubmitted = false;
+      try {
+        caption = await showDialog<String>(
+          context: context,
+          builder:
+              (ctx) => AlertDialog(
+                title: const Text('Add a story caption'),
+                content: TextField(
+                  controller: captionController,
+                  maxLength: 500,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: 'Write a little something (optional)',
+                  ),
                 ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: captionSubmitted
+                        ? null
+                        : () {
+                            // Snapshot the text before navigation disposes the
+                            // dialog subtree or any later async work can begin.
+                            final submittedCaption =
+                                captionController.text.trim();
+                            captionSubmitted = true;
+                            Navigator.pop(ctx, submittedCaption);
+                          },
+                    child: const Text('Continue'),
+                  ),
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed:
-                      () => Navigator.pop(ctx, captionController.text.trim()),
-                  child: const Text('Continue'),
-                ),
-              ],
-            ),
-      );
-      captionController.dispose();
+        );
+      } finally {
+        captionController.dispose();
+      }
       if (!mounted || caption == null) return;
       final upload =
           choice == 'video'
@@ -136,6 +149,7 @@ class _StoriesTrayState extends State<StoriesTray> {
           'caption': caption,
         },
       );
+      if (!mounted) return;
       await load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
