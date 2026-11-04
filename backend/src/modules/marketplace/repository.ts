@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import type { DbClient } from '../../database/client.js';
 
 export interface ProductMediaInput { storageKey: string; position: number; }
-export interface ProductFilters { q?: string; categoryId?: string; categoryIds?: string[]; sellerId?: string; minPrice?: string; maxPrice?: string; currency?: string; availability?: 'in_stock' | 'out_of_stock'; status?: 'active' | 'sold_out'; sort: 'newest' | 'price_asc' | 'price_desc'; page: number; limit: number; viewerId?: string; }
+export interface ProductFilters { q?: string; categoryId?: string; categoryIds?: string[]; sellerId?: string; minPrice?: string; maxPrice?: string; currency?: string; availability?: 'in_stock' | 'out_of_stock'; status?: 'active' | 'sold_out'; sort: 'newest' | 'featured' | 'price_asc' | 'price_desc'; page: number; limit: number; viewerId?: string; }
 export interface ProductProjection {
   id: string;
   name: string;
@@ -77,7 +77,13 @@ export class MarketplaceRepository {
     const count = await this.pool.query<{ count: string }>(`SELECT count(*)::text AS count FROM products p JOIN users seller_user ON seller_user.id = p.seller_id LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN inventory i ON i.product_id = p.id WHERE ${where}`, countValues);
     const limit = add(filters.limit);
     const offset = add((filters.page - 1) * filters.limit);
-    const order = filters.sort === 'price_asc' ? 'p.price_amount ASC, p.id ASC' : filters.sort === 'price_desc' ? 'p.price_amount DESC, p.id ASC' : 'p.created_at DESC, p.id DESC';
+    const order = filters.sort === 'featured'
+      ? '"ratingAverage" DESC NULLS LAST, "reviewCount" DESC, p.created_at DESC, p.id DESC'
+      : filters.sort === 'price_asc'
+      ? 'p.price_amount ASC, p.id ASC'
+      : filters.sort === 'price_desc'
+      ? 'p.price_amount DESC, p.id ASC'
+      : 'p.created_at DESC, p.id DESC';
     const result = await this.pool.query<ProductProjection>(`SELECT ${productSelect} FROM products p JOIN users seller_user ON seller_user.id = p.seller_id LEFT JOIN profiles seller ON seller.user_id = p.seller_id LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN inventory i ON i.product_id = p.id WHERE ${where} ORDER BY ${order} LIMIT ${limit} OFFSET ${offset}`, values);
     return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
   }
