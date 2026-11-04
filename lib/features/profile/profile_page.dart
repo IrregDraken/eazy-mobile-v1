@@ -32,7 +32,6 @@ class _ProfilePageState extends State<ProfilePage> {
   List<Map<String, dynamic>> sellerProducts = [];
   bool avatarBusy = false;
   String? error;
-  int contentTab = 0;
   bool isFollowing = false;
   bool followBusy = false;
   final ScrollController profileScrollController = ScrollController();
@@ -252,10 +251,9 @@ class _ProfilePageState extends State<ProfilePage> {
     if (username == null || username.isEmpty) return;
     setState(() => loadingMoreProfilePosts = true);
     try {
-      final requestedTab = contentTab;
       final nextPage = profilePage + 1;
       final result = await api.get(
-        'posts/profile/$username?type=${['grid', 'tagged'][requestedTab]}&page=$nextPage&limit=50',
+        'posts/profile/$username?type=grid&page=$nextPage&limit=50',
         auth: true,
       );
       final raw = result['items'] as List? ?? const [];
@@ -268,7 +266,7 @@ class _ProfilePageState extends State<ProfilePage> {
           result['meta'] is Map
               ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '')
               : null;
-      if (mounted && contentTab == requestedTab) {
+      if (mounted) {
         setState(() {
           profilePage = nextPage;
           ownPosts.addAll(items);
@@ -531,45 +529,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _selectContentTab(int tab) async {
-    setState(() {
-      contentTab = tab;
-      loading = true;
-      error = null;
-      profilePage = 1;
-      hasMoreProfilePosts = true;
-      ownPosts = [];
-    });
-    try {
-      final username = profile['username']?.toString() ?? '';
-      final type = ['grid', 'tagged'][tab];
-      final result = await api.get(
-        'posts/profile/$username?type=$type&page=1&limit=50',
-        auth: true,
-      );
-      final items =
-          (result['items'] as List? ?? const [])
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
-      final total =
-          result['meta'] is Map
-              ? int.tryParse((result['meta'] as Map)['total']?.toString() ?? '')
-              : null;
-      if (mounted && contentTab == tab) {
-        setState(() {
-          ownPosts = items;
-          profilePage = 1;
-          hasMoreProfilePosts =
-              total == null ? items.length >= 50 : items.length < total;
-        });
-      }
-    } on ApiException catch (e) {
-      if (mounted) setState(() => error = e.message);
-    } finally {
-      if (mounted) setState(() => loading = false);
-    }
-  }
 
   String _count(dynamic value) {
     final n = int.tryParse(value?.toString() ?? '') ?? 0;
@@ -1280,21 +1239,17 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Column(
                     children: [
                       Icon(
-                        contentTab == 0
-                            ? Icons.add_a_photo_outlined
-                            : Icons.person_pin_outlined,
+                        Icons.add_a_photo_outlined,
                         size: 42,
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        contentTab == 0
-                            ? ((int.tryParse(postsCount.toString()) ?? 0) > 0
-                                ? 'Posts are not available on this page yet'
-                                : isOwnProfile
+                        (int.tryParse(postsCount.toString()) ?? 0) > 0
+                            ? 'Posts are not available on this page yet'
+                            : isOwnProfile
                                 ? 'Share your first moment'
-                                : 'No posts yet')
-                            : 'No tagged posts yet',
+                                : 'No posts yet',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
@@ -1303,18 +1258,16 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        contentTab == 0
-                            ? (isOwnProfile
-                                ? 'Build your corner of Eazy, one post at a time.'
-                                : 'New posts will appear here when they are shared.')
-                            : 'Posts tagging this profile will appear here.',
+                        isOwnProfile
+                            ? 'Build your corner of Eazy, one post at a time.'
+                            : 'New posts will appear here when they are shared.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                           height: 1.45,
                         ),
                       ),
-                      if (contentTab == 0 && isOwnProfile)
+                      if (isOwnProfile)
                         Padding(
                           padding: const EdgeInsets.only(top: 14),
                           child: FilledButton.icon(
@@ -1763,126 +1716,4 @@ class _Stat extends StatelessWidget {
       ),
     ),
   );
-}
-
-class ProfileTab extends StatelessWidget {
-  const ProfileTab({
-    super.key,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: InkWell(
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: selected ? Theme.of(context).colorScheme.primary : Colors.transparent,
-              width: 2,
-            ),
-          ),
-        ),
-        child: Icon(
-          icon,
-          color:
-              selected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
-          size: 22,
-        ),
-      ),
-    ),
-  );
-}
-
-class ProfilePostTile extends StatelessWidget {
-  const ProfilePostTile({super.key, required this.post});
-  final Map<String, dynamic> post;
-  @override
-  Widget build(BuildContext context) {
-    final media = post['media'] is List ? post['media'] as List : const [];
-    String? url;
-    String? mediaType;
-    if (media.isNotEmpty && media.first is Map) {
-      final m = Map<String, dynamic>.from(media.first as Map);
-      url = m['url']?.toString();
-      mediaType = m['mediaType']?.toString();
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(3),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (url != null && url.startsWith('http'))
-            if (mediaType == 'video')
-              EazyVideoMedia(url: url, fit: BoxFit.cover, showControls: false)
-            else
-              Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _fallback(post, context),
-              )
-          else
-            _fallback(post, context),
-          if (media.length > 1)
-            const Positioned(
-              right: 6,
-              top: 6,
-              child: Icon(
-                Icons.collections_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-          if (mediaType == 'video')
-            const Positioned(
-              right: 6,
-              top: 6,
-              child: Icon(
-                Icons.play_arrow_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          if (post['isPinned'] == true)
-            const Positioned(
-              left: 6,
-              top: 6,
-              child: Icon(
-                Icons.push_pin_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _fallback(Map<String, dynamic> post, BuildContext context) =>
-      ColoredBox(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Text(
-              post['content']?.toString() ?? '',
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ),
-      );
 }
