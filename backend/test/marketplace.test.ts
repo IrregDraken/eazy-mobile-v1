@@ -54,6 +54,22 @@ test('product search validates bounded filters and deterministic sort options', 
   assert.throws(() => productSearchSchema.parse({ minPrice: '20.00', maxPrice: '1.00' }));
 });
 
+test('featured product ranking is an explicit bounded search mode backed by rating data', async () => {
+  const parsed = productSearchSchema.parse({ status: 'active', sort: 'featured', page: 1, limit: 6 });
+  assert.equal(parsed.sort, 'featured');
+  const calls: { sql: string; values: unknown[] }[] = [];
+  const pool = {
+    query: async (sql: string, values: unknown[] = []) => {
+      calls.push({ sql, values });
+      return { rows: sql.startsWith('SELECT count(*)') ? [{ count: '0' }] : [], rowCount: 0 };
+    }
+  };
+  const marketplace = new MarketplaceRepository(pool as never);
+  await marketplace.products({ sort: 'featured', page: 1, limit: 6 });
+  assert.equal(calls.length, 2);
+  assert.match(calls[1]!.sql, /ORDER BY "ratingAverage" DESC NULLS LAST, "reviewCount" DESC/);
+});
+
 test('product search parses bounded comma-separated category UUIDs and keeps the legacy singular filter', () => {
   const ids = [
     '00000000-0000-0000-0000-000000000001',
