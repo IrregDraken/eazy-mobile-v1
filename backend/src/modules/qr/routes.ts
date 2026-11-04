@@ -10,17 +10,19 @@ import { createQrController } from './controller.js';
 import type { QrService } from './service.js';
 import type { PaymentPinService } from '../wallet/payment-pin-service.js';
 import { requirePaymentPin } from '../wallet/payment-pin-middleware.js';
+import type { VirtualAccountService } from '../bank/virtual-account-service.js';
+import { requireActiveVirtualAccount } from '../bank/virtual-account-middleware.js';
 
-export function createQrRouter(qrService: QrService, walletService: WalletService, paymentPin?: PaymentPinService): Router {
+export function createQrRouter(qrService: QrService, walletService: WalletService, paymentPin?: PaymentPinService, virtualAccounts?: VirtualAccountService): Router {
   const router = Router();
   const controller = createQrController(qrService, walletService);
   const payLimit = createRateLimiter({ name: 'qr-payment', windowMs: 60_000, max: 10 });
   router.use(requireAuth);
-  router.post('/', validate('body', qrCreateSchema), controller.create);
-  router.post('/resolve', validate('body', qrResolveSchema), controller.resolve);
+  router.post('/', requireActiveVirtualAccount(virtualAccounts), validate('body', qrCreateSchema), controller.create);
+  router.post('/resolve', requireActiveVirtualAccount(virtualAccounts), validate('body', qrResolveSchema), controller.resolve);
   router.delete('/:id', validate('params', qrIdSchema), controller.revoke);
   if (paymentPin) {
-    router.post('/pay', payLimit, validate('body', qrPaymentSchema), requireIdempotencyKey, requirePaymentPin(paymentPin), controller.pay);
+    router.post('/pay', payLimit, validate('body', qrPaymentSchema), requireIdempotencyKey, requireActiveVirtualAccount(virtualAccounts), requirePaymentPin(paymentPin), controller.pay);
   } else {
     router.post('/pay', payLimit, validate('body', qrPaymentSchema), requireIdempotencyKey, (_request, _response, next) => {
       next(new AppError('SERVICE_UNAVAILABLE', 'Payment PIN authorization is unavailable'));
