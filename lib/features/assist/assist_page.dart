@@ -180,13 +180,26 @@ class _AssistPageState extends State<AssistPage> {
   String _friendlyError(ApiException error) {
     return switch (error.kind) {
       ApiErrorKind.network || ApiErrorKind.timeout =>
-        'Connection problem. Check your internet and try again.',
+        "I'm having trouble right now. Check your connection, then retry.",
       ApiErrorKind.rateLimited =>
-        'You are sending messages too quickly. Wait a moment and try again.',
+        'You are sending messages too quickly. Wait a moment, then retry.',
       ApiErrorKind.provider || ApiErrorKind.server =>
-        'Eazy Assist is temporarily unavailable. Please try again shortly.',
-      _ => 'We could not complete that request. Please try again.',
+        'Eazy Assist temporarily unavailable.',
+      _ => "I'm having trouble right now. Please retry.",
     };
+  }
+
+  Future<void> _retry() async {
+    if (sending) return;
+    if (sessionId != null && composer.text.trim().isNotEmpty) {
+      await _send();
+      return;
+    }
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    await _bootstrap();
   }
 
   void _scrollToEnd() {
@@ -238,6 +251,7 @@ class _AssistPageState extends State<AssistPage> {
                       icon: Icons.error_outline_rounded,
                       message: error!,
                       isError: true,
+                      onRetry: _retry,
                     ),
                   Expanded(
                     child:
@@ -434,10 +448,12 @@ class _StatusBanner extends StatelessWidget {
     required this.icon,
     required this.message,
     this.isError = false,
+    this.onRetry,
   });
   final IconData icon;
   final String message;
   final bool isError;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -469,6 +485,11 @@ class _StatusBanner extends StatelessWidget {
             style: TextStyle(color: context.eazyMuted, height: 1.35),
           ),
         ),
+        if (onRetry != null)
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
+          ),
       ],
     ),
   );
