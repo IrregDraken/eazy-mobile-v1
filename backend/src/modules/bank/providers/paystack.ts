@@ -106,7 +106,10 @@ export class PaystackBankProvider implements BankProvider {
     const accountName = account?.account_name ? String(account.account_name) : undefined;
     const bankName = account?.bank?.name ? String(account.bank.name) : account?.bank_name ? String(account.bank_name) : undefined;
     const bankSlug = account?.bank?.slug ? String(account.bank.slug) : account?.provider_slug ? String(account.provider_slug) : undefined;
-    const customerCode = data?.customer_code ? String(data.customer_code) : undefined;
+    const customerCodeValue = data?.customer_code ?? data?.customer?.customer_code ?? data?.customer?.code;
+    const customerCode = customerCodeValue ? String(customerCodeValue) : undefined;
+    const assigned = account?.assigned !== false && account?.assigned !== 0;
+    const active = account?.active !== false && account?.active !== 0;
     return {
       customerCode,
       accountId,
@@ -114,7 +117,7 @@ export class PaystackBankProvider implements BankProvider {
       accountName,
       bankName,
       bankSlug,
-      status: accountNumber ? 'active' as const : fallbackStatus,
+      status: accountNumber && assigned && active ? 'active' as const : fallbackStatus,
       failureReason: data?.reason ? String(data.reason) : undefined
     };
   }
