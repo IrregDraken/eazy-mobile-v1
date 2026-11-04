@@ -422,3 +422,59 @@ Latest verified workflow at time of this update: run 41358004335 built the backe
 - Latest successful backend build evidence: run 41358004335. Its test suite had one stale recent-auth fixture failure, now corrected. Latest full CI rerun is pending.
 - No database migration has been applied to Railway production. No signed release APK/AAB has been generated or verified. Android signing still depends on GitHub Actions secrets ANDROID_KEYSTORE_BASE64, ANDROID_STORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD; the keystore currently held by Manus is not available to this GitHub workflow unless those secrets are configured.
 - No merge to main and no production deployment.
+
+
+---
+
+## Master implementation execution — 2026-11-04
+
+### Branch and baseline
+- Implementation branch: `codex/eazy-production-batch-1-8`.
+- Base branch: `work/eazy-launch-readiness`.
+- Base commit: `ca5921c2b31aedfdb71e95393dcdbed8ee3c3dce`.
+- The base already contains the existing launch-readiness work documented above. PRs #39 and #40 remain untouched and unmerged.
+- No changes were made to `main`; no merge or production deployment was performed.
+
+### P0 — Story creation lifecycle
+- Code status: IMPLEMENTED; automated verification pending.
+- `StoriesTray.createStory` now snapshots the trimmed caption into a local immutable value before closing the dialog, prevents a second Continue submission, and disposes the caption controller in a `finally` block.
+- The story submission path checks `mounted` after the API mutation before starting feed refresh/UI work.
+- Added `test/story_creation_test.dart` to exercise Add Story → caption → Continue → media upload stub → story API submission and assert no Flutter exception.
+- Pending: Flutter analyzer/widget test result and Android device reproduction check.
+
+### P0 — Authentication and startup state
+- Code status: IMPLEMENTED; automated verification pending.
+- Added explicit `EazyAuthState` states: booting, restoringSession, unauthenticated, authenticated, profileIncomplete, sessionExpired, and fatalStartupError.
+- A cached profile snapshot is no longer accepted as proof of an authenticated session. Cold-start restoration obtains the Firebase token and requires a successful backend `auth/me` response before exposing an authenticated profile.
+- Backend unauthorized/forbidden responses clear the local token and profile snapshot; transient verification failures remain on a dedicated startup-error surface rather than routing into Home or Login.
+- Firebase initialization, Firebase user reload, and backend session verification have bounded timeouts. The startup-error surface offers a retry path.
+- Router holds the branded splash while restoration is pending, then routes to Home/onboarding/welcome/auth based on the resolved state.
+- Pending: analyzer/tests, cold-start device tests, offline/timeout/revocation tests, and Firebase initialization retry verification.
+
+### Batch 5 — Wallet activation and provider reconciliation
+- Code status: PARTIAL; automated verification pending.
+- Added wallet activation/provisioning UI with Pending/Failed/retry states and a three-step progress indicator. Send, Receive, and Scan QR actions are disabled until the virtual account is confirmed active.
+- The activation request uses the user's existing Eazy profile identity and explicit consent. It does not unconditionally collect BVN or an external bank account number.
+- Added server-side activation enforcement to Eazy-to-Eazy transfers, external bank transfers, and QR create/resolve/pay routes. Missing, pending, and failed activation states return explicit conflict errors.
+- Paystack DVA payload parsing now reads nested customer codes and requires an assigned/active provider account before treating an account as active.
+- Paystack customer lookup now only falls back to customer creation after a confirmed HTTP 404. Existing dedicated accounts are reused after interrupted activation attempts to avoid duplicate assignment.
+- Added backend tests for DVA customer-code parsing, active/assigned state, reuse of an existing account, and server-side activation checks.
+- Pending: backend build/tests, clean migration job, Flutter analyze/tests, staging Paystack test-mode activation/webhook reconciliation, and physical-device flow.
+
+### CI
+- Updated CI push filters to run on `codex/**` implementation branches as well as `main`.
+- Workflow run `41797371155` was started for commit `b29c44b2c64513d624d83729bb034da8f7af38c8`; result pending at the time of this update.
+- No local checkout, Flutter SDK, Android SDK, or database is exposed through the connected GitHub interface. No local test/build result is claimed.
+- Approved UI reference images referenced under `/home/ubuntu/eazy-ui-concepts/` are not available through the connected GitHub repository interface. Their visual inspection remains blocked until those assets are attached to the repository or supplied in the conversation.
+
+### Batch status
+- Batch 1: PARTIAL — P0 and session/startup changes implemented; theme and keyboard matrix still require audit and CI/device verification.
+- Batch 2: TODO — unified design-system consolidation and state audit not yet completed.
+- Batch 3: PARTIAL — existing chat work is present in the base; approved reference comparison, long-press/reply/media/wallpaper regression and responsive tests remain.
+- Batch 4: TODO — Eazy Assist floating control, ordered streaming timeline and failure/retry behavior remain to be audited against the master specification.
+- Batch 5: PARTIAL — activation UI, provider reconciliation and server-side transfer gating implemented; full Paystack lifecycle, PIN integration, ledger/reconciliation and sandbox acceptance remain.
+- Batch 6: PARTIAL — existing Discover/Cart/checkout/seller work is present; physical-goods taxonomy, seller completeness and end-to-end regression remain.
+- Batch 7: PARTIAL — existing auth, rate-limit, payment PIN, media and request-ID controls are present; route coverage, cache policy, observability and security audit remain.
+- Batch 8: TODO — final premium visual pass and full verification matrix remain.
+
+Do not mark this branch production-ready until CI passes, all remaining batches are completed or explicitly blocked, and the external/device/provider acceptance gates are recorded.
