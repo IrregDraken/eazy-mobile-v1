@@ -30,12 +30,20 @@ export class FixedWindowRateLimiter {
 export function createRateLimiter(policy: RateLimitPolicy): RequestHandler {
   const limiter = new FixedWindowRateLimiter();
   return (request, response, next) => {
-    const key = `${policy.name}:${request.ip}`;
-    const result = limiter.consume(key, policy.max, policy.windowMs);
+    const keys = [`${policy.name}:ip:${request.ip}`];
+    const userId = request.auth?.userId;
+    if (userId) keys.push(`${policy.name}:user:${userId}`);
+
+    // Enforce both network and authenticated-user budgets. An attacker cannot
+    // evade a user limit by changing IPs or exhaust every account on one IP.
+    const results = keys.map(key => limiter.consume(key, policy.max, policy.windowMs));
+    const remaining = Math.min(...results.map(result => result.remaining));
+    const blocked = results.filter(result => !result.allowed);
     response.setHeader('x-rate-limit-limit', policy.max);
-    response.setHeader('x-rate-limit-remaining', result.remaining);
-    if (!result.allowed) {
-      response.setHeader('retry-after', Math.ceil(result.retryAfterMs / 1000));
+    response.setHeader('x-rate-limit-remaining', remaining);
+    if (blocked.length > 0) {
+      const retryAfterMs = Math.max(...blocked.map(result => result.retryAfterMs));
+      response.setHeader('retry-after', Math.ceil(retryAfterMs / 1000));
       return next(new AppError('RATE_LIMITED', 'Too many requests'));
     }
     next();
