@@ -70,8 +70,27 @@ export class AssistService {
     if (this.activeGenerations.has(generationKey)) throw new AppError('CONFLICT', 'An Assist response is already being generated');
     if (session.status !== 'active') throw new AppError('CONFLICT', 'Assist session is closed');
 
-    const userRow = await withTransaction(this.pool, client => this.repository.insertMessage(client, userId, sessionId, 'user', input.content));
-    if (!userRow) throw new AppError('NOT_FOUND', 'Assist session not found');
+    const generationController = isWalletBalanceIntent(input.content)
+      ? null
+      : new AbortController();
+    if (generationController) this.activeGenerations.set(generationKey, generationController);
+    let userRow;
+    try {
+      userRow = await withTransaction(this.pool, client =>
+        this.repository.insertMessage(client, userId, sessionId, 'user', input.content)
+      );
+    } catch (error) {
+      if (generationController && this.activeGenerations.get(generationKey) === generationController) {
+        this.activeGenerations.delete(generationKey);
+      }
+      throw error;
+    }
+    if (!userRow) {
+      if (generationController && this.activeGenerations.get(generationKey) === generationController) {
+        this.activeGenerations.delete(generationKey);
+      }
+      throw new AppError('NOT_FOUND', 'Assist session not found');
+    }
 
     if (isWalletBalanceIntent(input.content)) {
       const toolResult = await this.tools.execute('get_wallet_balance', {}, userId);
@@ -86,8 +105,7 @@ export class AssistService {
       return { userMessage: toAssistMessage(userRow), assistantMessage: toAssistMessage(assistantRow) };
     }
 
-    const abortController = new AbortController();
-    this.activeGenerations.set(generationKey, abortController);
+    const abortController = generationController!;
     try {
       const history = await this.repository.recentMessages(userId, sessionId, MAX_ASSIST_HISTORY_MESSAGES);
       const orderedHistory = [...history].reverse().filter(row => row.id !== userRow.id);
