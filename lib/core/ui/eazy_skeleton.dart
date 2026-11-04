@@ -96,18 +96,18 @@ class _EazyShimmerState extends State<_EazyShimmer>
           end: Alignment(start + .7, 0),
           colors: isDark
               ? const [
-                  Color(0xFF102119),
-                  Color(0xFF1C3B2B),
-                  Color(0xFF48F59A),
-                  Color(0xFF1C3B2B),
-                  Color(0xFF102119),
+                  Color(0xFF102D21),
+                  Color(0xFF1B3C2B),
+                  Color(0xFF36F28A),
+                  Color(0xFF1B3C2B),
+                  Color(0xFF102D21),
                 ]
               : const [
-                  Color(0xFFF0F5F1),
-                  Color(0xFFE3EEE7),
-                  Color(0xFFD1E6D8),
-                  Color(0xFFE3EEE7),
-                  Color(0xFFF0F5F1),
+                  Color(0xFFF7FBF8),
+                  Color(0xFFEAF3ED),
+                  Color(0xFFD9E7DE),
+                  Color(0xFFEAF3ED),
+                  Color(0xFFF7FBF8),
                 ],
           stops: const [0, .32, .5, .68, 1],
         ).createShader(bounds);
