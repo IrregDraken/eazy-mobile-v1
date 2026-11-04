@@ -69,3 +69,24 @@ This specification records the selected elements from the owner's Notion image l
 - Run formatter, analyzer, tests, backend checks, and CI where available.
 - Record device/provider checks that cannot be performed from the repository environment as blocked, not done.
 - Do not merge to `main` or deploy production as part of this implementation pass.
+
+## Implementation notes and verification boundaries
+
+Implemented on the isolated branch so far:
+- Chat header search and hamburger menu, username-initial avatar fallback, and server-authorized realtime typing presence.
+- Eazy Assist retry UI plus a cancellation endpoint that aborts the active provider request and records a cancellation marker.
+- Wallet activation preflight, four progress stages, pending/failed retry messaging, and a more compact balance card.
+- Profile cover upload and display, public location field/editing, owner-only actions, and Posts-only content navigation.
+- Discover cart count, rating-backed Featured for You products, and a separate fresh-listings Just for You section.
+- Home people search, menu, Create action, dismissible empty-feed prompt, and server-backed follow suggestions.
+
+Important boundaries:
+- Assist generation cancellation currently uses an in-process controller map. It is real cancellation on the instance handling the generation, but multi-instance deployments need shared cancellation coordination before horizontal scaling.
+- Chat search searches the 50 messages already loaded in the conversation, not the entire server-side history.
+- Home search currently searches people, not every content type.
+- "Featured for You" is ranked from actual product ratings/review counts. "Just for You" currently uses fresh listings; it is not yet behaviour-personalized.
+- People suggestions are based on active accounts and follower counts, with already-followed and blocked accounts excluded. They are not yet a behavioural recommendation model.
+- New database migrations 035, 036 and 037 are committed to this branch only. They have not been applied to production.
+- Provider-backed activation, two-account chat typing, cover upload on a physical device, and the final Android release still require environment/device verification.
+
+Do not mark the implementation ready until formatting, Flutter analysis/tests, backend build/tests, clean-database migration tests, CI, and physical-device smoke tests have been checked. No merge to main or production deployment is authorized by this specification.
