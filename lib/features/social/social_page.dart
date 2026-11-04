@@ -82,14 +82,16 @@ class _SocialPageState extends State<SocialPage> {
       });
     }
     try {
-      // The current people-discovery endpoint requires a search query, so
-      // requesting an empty recommendation feed only adds a failed round trip.
-      // Keep the feed as the critical home-screen request.
-      final result = await api.get(
-        'home/feed?page=1&limit=20&mode=$mode',
-        auth: true,
-      );
-      suggestions = [];
+      final results = await Future.wait([
+        api.get('home/feed?page=1&limit=20&mode=$mode', auth: true),
+        api.get('social/suggestions?limit=5', auth: true)
+            .catchError((_) => <String, dynamic>{}),
+      ]);
+      final result = results[0];
+      suggestions = (results[1]['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((person) => Map<String, dynamic>.from(person))
+          .toList();
       final raw = result['items'] as List? ?? const [];
       final loaded = raw
           .whereType<Map>()
@@ -187,7 +189,7 @@ class _SocialPageState extends State<SocialPage> {
     setState(() => searchingPeople = true);
     try {
       final result = await api.get(
-        'profiles/search?q=${Uri.encodeQueryComponent(query.trim())}',
+        'social/users/search?q=${Uri.encodeQueryComponent(query.trim())}',
         auth: true,
       );
       final people = (result['items'] as List? ?? const [])
@@ -560,6 +562,24 @@ class _SocialPageState extends State<SocialPage> {
             ),
           ),
           SliverToBoxAdapter(child: StoriesTray(api: api, media: media)),
+          if (suggestions.isNotEmpty && !dismissAllSuggestions)
+            SliverToBoxAdapter(
+              child: _SuggestedAccounts(
+                people: suggestions.where((person) {
+                  final username = person['username']?.toString().toLowerCase() ?? '';
+                  final id = person['id']?.toString() ?? username;
+                  return !dismissedSuggestions.contains(id);
+                }).toList(),
+                followed: followedSuggestions,
+                onFollow: followSuggestion,
+                onDismissAll: () => setState(() => dismissAllSuggestions = true),
+                onDismiss: (person) => setState(() {
+                  dismissedSuggestions.add(
+                    person['id']?.toString() ?? person['username']?.toString() ?? '',
+                  );
+                }),
+              ),
+            ),
           SliverToBoxAdapter(
             child: Divider(height: 1, color: context.eazyBorder),
           ),
@@ -671,44 +691,14 @@ class _SocialPageState extends State<SocialPage> {
               ),
             ),
           SliverList.builder(
-            itemCount:
-                posts.length +
-                (suggestions.isNotEmpty && !dismissAllSuggestions ? posts.length ~/ 10 : 0),
-            itemBuilder: (c, i) {
-              if ((i + 1) % 11 == 0 && suggestions.isNotEmpty && !dismissAllSuggestions) {
-                return _SuggestedAccounts(
-                  people:
-                      suggestions.where((person) {
-                        final username =
-                            person['username']?.toString().toLowerCase() ?? '';
-                        final id = person['id']?.toString() ?? username;
-                        return !dismissedSuggestions.contains(id);
-                      }).toList(),
-                  followed: followedSuggestions,
-                  onFollow: followSuggestion,
-                  onDismissAll: () => setState(() => dismissAllSuggestions = true),
-                  onDismiss:
-                      (person) => setState(() {
-                        dismissedSuggestions.add(
-                          person['id']?.toString() ??
-                              person['username']?.toString() ??
-                              '',
-                        );
-                      }),
-                );
-              }
-              final postIndex = i - ((i + 1) ~/ 11);
-              if (postIndex < 0 || postIndex >= posts.length) {
-                return const SizedBox.shrink();
-              }
-              return _Post(
-                post: posts[postIndex],
-                api: api,
-                onChanged: load,
-                currentUsername:
-                    widget.auth.profile?['username']?.toString() ?? '',
-              );
-            },
+            itemCount: posts.length,
+            itemBuilder: (c, i) => _Post(
+              post: posts[i],
+              api: api,
+              onChanged: load,
+              currentUsername:
+                  widget.auth.profile?['username']?.toString() ?? '',
+            ),
           ),
         ],
       ),
@@ -1780,7 +1770,7 @@ class _SuggestedAccounts extends StatelessWidget {
               children: [
                 const Expanded(
                   child: Text(
-                    'People to know on Eazy',
+                    'People to follow',
                     style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
                   ),
                 ),
