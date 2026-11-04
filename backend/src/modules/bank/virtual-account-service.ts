@@ -24,6 +24,27 @@ export class VirtualAccountService {
     };
   }
 
+  async assertActive(userId: string): Promise<void> {
+    const account = await this.repository.findByUser(userId);
+    if (account?.status === 'active' && account.accountNumber) return;
+    if (account?.status === 'pending') {
+      throw new AppError(
+        'CONFLICT',
+        'Your wallet activation is still pending. Money transfers unlock after Paystack confirms your dedicated account.'
+      );
+    }
+    if (account?.status === 'failed') {
+      throw new AppError(
+        'CONFLICT',
+        'Your wallet activation failed. Retry activation before sending or receiving money.'
+      );
+    }
+    throw new AppError(
+      'CONFLICT',
+      'Activate your Eazy Wallet before sending or receiving money.'
+    );
+  }
+
   async get(userId: string) {
     let account = await this.repository.findByUser(userId);
     if (account?.status === 'pending' && account.customerCode) {
