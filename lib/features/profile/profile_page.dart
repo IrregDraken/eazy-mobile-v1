@@ -1147,7 +1147,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           const SizedBox(width: 8),
                           IconButton.filledTonal(
                             tooltip: 'Discover people',
-                            onPressed: () => context.push('/discovery'),
+                            onPressed: () => context.go('/home?tab=shop'),
                             icon: const Icon(Icons.person_add_alt_1_rounded),
                           ),
                         ],
