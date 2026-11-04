@@ -1063,7 +1063,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         builder: (dialogContext) => AlertDialog(
           title: const Text('Complete your personal details'),
           content: const Text(
-            'Add your full name, email address and phone number to your Eazy account before requesting a dedicated virtual account.',
+            'Your profile must include your full name, and your account must have an email address and phone number. Update your name on your profile and your email or phone in Account settings before requesting a dedicated virtual account.',
           ),
           actions: [
             TextButton(
