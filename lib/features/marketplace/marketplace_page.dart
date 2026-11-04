@@ -56,7 +56,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
         final quantity = raw is num
             ? raw.toInt()
             : int.tryParse(raw?.toString() ?? '') ?? 1;
-        return total + quantity.clamp(0, 999);
+        return total + (quantity < 0 ? 0 : quantity > 999 ? 999 : quantity);
       });
       if (mounted) setState(() => cartItemCount = count);
     } on ApiException {
