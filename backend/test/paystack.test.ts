@@ -124,3 +124,34 @@ test('Paystack does not mark an unassigned or inactive DVA as active', async () 
   const account = await provider.getVirtualAccount({ customerCode: 'CUS_pending' });
   assert.equal(account?.status, 'pending');
 });
+
+
+test('Paystack reuses an existing dedicated account after an interrupted activation attempt', async () => {
+  const urls: string[] = [];
+  globalThis.fetch = async input => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    urls.push(url);
+    return new Response(JSON.stringify({ status: true, data: {
+      customer_code: 'CUS_existing',
+      dedicated_account: {
+        account_number: '0123456789',
+        account_name: 'EAZY USER',
+        bank: { name: 'Wema Bank', slug: 'wema-bank' },
+        active: true,
+        assigned: true
+      }
+    } }), { status: 200 });
+  };
+  const provider = new PaystackBankProvider({ ...config, PAYSTACK_MODE: 'live' });
+  const account = await provider.assignVirtualAccount({
+    email: 'user@example.com',
+    firstName: 'Eazy',
+    lastName: 'User',
+    phone: '+2348012345678',
+    currency: 'NGN'
+  });
+  assert.equal(account.customerCode, 'CUS_existing');
+  assert.equal(account.status, 'active');
+  assert.equal(urls.length, 1);
+  assert.ok(urls[0]?.endsWith('/customer/user%40example.com'));
+});
