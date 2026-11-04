@@ -132,7 +132,7 @@ class _ProfilePageState extends State<ProfilePage> {
       }
       final results = await Future.wait([
         api.get(
-          'posts/profile/$actualUsername?type=${['grid', 'tagged'][contentTab]}&page=1&limit=50',
+          'posts/profile/$actualUsername?type=grid&page=1&limit=50',
           auth: true,
         ),
         if (own) api.get('profiles/me/stats', auth: true),
@@ -1242,23 +1242,16 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
             SliverToBoxAdapter(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
-                ),
-                child: Row(
-                  children: [
-                    ProfileTab(
-                      icon: Icons.grid_on_rounded,
-                      selected: contentTab == 0,
-                      onTap: () => _selectContentTab(0),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Posts',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
                     ),
-                    ProfileTab(
-                      icon: Icons.person_pin_outlined,
-                      selected: contentTab == 1,
-                      onTap: () => _selectContentTab(1),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
