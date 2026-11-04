@@ -4,28 +4,140 @@ import 'package:flutter/material.dart';
 /// context-aware ColorScheme tokens yet. These values are optimized for the
 /// default light interface so fixed-color labels remain legible on white.
 abstract final class EazyColors {
-  static const ink = Color(0xFF153B27);
-  static const muted = Color(0xFF587365);
-  static const canvas = Color(0xFFFFFFFF);
+  static const ink = Color(0xFF102019);
+  static const muted = Color(0xFF4F6258);
+  static const canvas = Color(0xFFF7FBF8);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceRaised = Color(0xFFF0F8F2);
-  static const border = Color(0xFFD7E8DC);
-  static const green = Color(0xFF16864C);
-  static const greenDeep = Color(0xFF147A43);
-  static const mint = Color(0xFFD9F5E3);
+  static const surfaceRaised = Color(0xFFFFFFFF);
+  static const border = Color(0xFFD9E7DE);
+  static const green = Color(0xFF087A45);
+  static const greenDeep = Color(0xFF087A45);
+  static const mint = Color(0xFFDDF5E6);
   static const red = Color(0xFFB42318);
-  static const amber = Color(0xFF8A5200);
+  static const amber = Color(0xFF946200);
   static const blue = Color(0xFF155EEF);
 }
 
+@immutable
+class EazySemanticColors extends ThemeExtension<EazySemanticColors> {
+  const EazySemanticColors({
+    required this.background,
+    required this.surface,
+    required this.surfaceElevated,
+    required this.border,
+    required this.primary,
+    required this.primaryPressed,
+    required this.onPrimary,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textDisabled,
+    required this.error,
+    required this.warning,
+  });
+
+  final Color background;
+  final Color surface;
+  final Color surfaceElevated;
+  final Color border;
+  final Color primary;
+  final Color primaryPressed;
+  final Color onPrimary;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textDisabled;
+  final Color error;
+  final Color warning;
+
+  static const light = EazySemanticColors(
+    background: Color(0xFFF7FBF8),
+    surface: Color(0xFFFFFFFF),
+    surfaceElevated: Color(0xFFFFFFFF),
+    border: Color(0xFFD9E7DE),
+    primary: Color(0xFF087A45),
+    primaryPressed: Color(0xFF055A33),
+    onPrimary: Color(0xFFFFFFFF),
+    textPrimary: Color(0xFF102019),
+    textSecondary: Color(0xFF4F6258),
+    textDisabled: Color(0xFF7A8B82),
+    error: Color(0xFFB42318),
+    warning: Color(0xFF946200),
+  );
+
+  static const dark = EazySemanticColors(
+    background: Color(0xFF06150F),
+    surface: Color(0xFF0B2118),
+    surfaceElevated: Color(0xFF102D21),
+    border: Color(0x2E87FFBE),
+    primary: Color(0xFF36F28A),
+    primaryPressed: Color(0xFF19C970),
+    onPrimary: Color(0xFF06150F),
+    textPrimary: Color(0xFFF4FFF8),
+    textSecondary: Color(0xFFA8BDB1),
+    textDisabled: Color(0xFF6E8377),
+    error: Color(0xFFFF7A7A),
+    warning: Color(0xFFF2C66D),
+  );
+
+  @override
+  EazySemanticColors copyWith({
+    Color? background,
+    Color? surface,
+    Color? surfaceElevated,
+    Color? border,
+    Color? primary,
+    Color? primaryPressed,
+    Color? onPrimary,
+    Color? textPrimary,
+    Color? textSecondary,
+    Color? textDisabled,
+    Color? error,
+    Color? warning,
+  }) => EazySemanticColors(
+    background: background ?? this.background,
+    surface: surface ?? this.surface,
+    surfaceElevated: surfaceElevated ?? this.surfaceElevated,
+    border: border ?? this.border,
+    primary: primary ?? this.primary,
+    primaryPressed: primaryPressed ?? this.primaryPressed,
+    onPrimary: onPrimary ?? this.onPrimary,
+    textPrimary: textPrimary ?? this.textPrimary,
+    textSecondary: textSecondary ?? this.textSecondary,
+    textDisabled: textDisabled ?? this.textDisabled,
+    error: error ?? this.error,
+    warning: warning ?? this.warning,
+  );
+
+  @override
+  EazySemanticColors lerp(
+    covariant ThemeExtension<EazySemanticColors>? other,
+    double t,
+  ) {
+    if (other is! EazySemanticColors) return this;
+    return EazySemanticColors(
+      background: Color.lerp(background, other.background, t)!,
+      surface: Color.lerp(surface, other.surface, t)!,
+      surfaceElevated: Color.lerp(surfaceElevated, other.surfaceElevated, t)!,
+      border: Color.lerp(border, other.border, t)!,
+      primary: Color.lerp(primary, other.primary, t)!,
+      primaryPressed: Color.lerp(primaryPressed, other.primaryPressed, t)!,
+      onPrimary: Color.lerp(onPrimary, other.onPrimary, t)!,
+      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
+      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textDisabled: Color.lerp(textDisabled, other.textDisabled, t)!,
+      error: Color.lerp(error, other.error, t)!,
+      warning: Color.lerp(warning, other.warning, t)!,
+    );
+  }
+}
+
 abstract final class _DarkColors {
-  static const ink = Color(0xFFF4F8F5);
-  static const canvas = Color(0xFF06100B);
-  static const surface = Color(0xFF0C1711);
-  static const surfaceRaised = Color(0xFF122119);
-  static const border = Color(0xFF20352A);
-  static const green = Color(0xFF48F59A);
-  static const red = Color(0xFFFF746E);
+  static const ink = Color(0xFFF4FFF8);
+  static const canvas = Color(0xFF06150F);
+  static const surface = Color(0xFF0B2118);
+  static const surfaceRaised = Color(0xFF102D21);
+  static const border = Color(0x2E87FFBE);
+  static const green = Color(0xFF36F28A);
+  static const red = Color(0xFFFF7A7A);
 }
 
 abstract final class EazyRadius {
@@ -47,10 +159,16 @@ abstract final class EazyTheme {
         surface: _DarkColors.surface,
         onSurface: _DarkColors.ink,
         surfaceContainerHighest: _DarkColors.surfaceRaised,
+        onSurfaceVariant: EazySemanticColors.dark.textSecondary,
+        outlineVariant: EazySemanticColors.dark.border,
+        error: EazySemanticColors.dark.error,
+        primaryContainer: EazySemanticColors.dark.primaryPressed,
+        onPrimaryContainer: EazySemanticColors.dark.onPrimary,
       ),
+      extensions: const [EazySemanticColors.dark],
     );
     return base.copyWith(
-      scaffoldBackgroundColor: _DarkColors.canvas,
+      scaffoldBackgroundColor: EazySemanticColors.dark.background,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -184,12 +302,18 @@ abstract final class EazyTheme {
         primary: EazyColors.greenDeep,
         onPrimary: Colors.white,
         surface: Colors.white,
-        onSurface: const Color(0xFF176B42),
+        onSurface: EazySemanticColors.light.textPrimary,
+        onSurfaceVariant: EazySemanticColors.light.textSecondary,
+        outlineVariant: EazySemanticColors.light.border,
+        error: EazySemanticColors.light.error,
         surfaceContainerHighest: const Color(0xFFEAF6EE),
+        primaryContainer: EazySemanticColors.light.primaryPressed,
+        onPrimaryContainer: EazySemanticColors.light.onPrimary,
       ),
+      extensions: const [EazySemanticColors.light],
     );
     return base.copyWith(
-      scaffoldBackgroundColor: Colors.white,
+      scaffoldBackgroundColor: EazySemanticColors.light.background,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -198,8 +322,8 @@ abstract final class EazyTheme {
       ),
       textTheme: base.textTheme
           .apply(
-            bodyColor: const Color(0xFF176B42),
-            displayColor: const Color(0xFF176B42),
+            bodyColor: EazySemanticColors.light.textPrimary,
+            displayColor: EazySemanticColors.light.textPrimary,
           )
           .copyWith(
             headlineLarge: const TextStyle(
@@ -218,7 +342,7 @@ abstract final class EazyTheme {
           ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: EazySemanticColors.light.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(EazyRadius.md),
           borderSide: const BorderSide(color: Color(0xFFCFE5D7)),
@@ -322,4 +446,13 @@ extension EazyThemeTokens on BuildContext {
   Color get eazySurfaceRaised =>
       Theme.of(this).colorScheme.surfaceContainerHighest;
   Color get eazyOnAccent => Theme.of(this).colorScheme.onPrimary;
+  Color get eazyDisabled =>
+      Theme.of(this).extension<EazySemanticColors>()?.textDisabled ??
+      EazyColors.muted;
+  Color get eazyError =>
+      Theme.of(this).extension<EazySemanticColors>()?.error ??
+      EazyColors.red;
+  Color get eazyWarning =>
+      Theme.of(this).extension<EazySemanticColors>()?.warning ??
+      EazyColors.amber;
 }
