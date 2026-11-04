@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { profilePatchSchema, ProfileService } from '../src/modules/profiles/service.js';
 import { mediaUploadSchema } from '../src/modules/media/schemas.js';
+import { MediaService } from '../src/modules/media/service.js';
+import { AppError } from '../src/middleware/errors.js';
 import type { ProfileRepository } from '../src/modules/profiles/repository.js';
 
 test('profile patch accepts partial fields and normalizes username', () => {
@@ -46,4 +48,26 @@ test('profile patch accepts an Eazy cover storage path and a public location', (
     mediaUploadSchema.parse({ contentType: 'image/webp', kind: 'cover' }).kind,
     'cover',
   );
+});
+
+test('cover upload creates a private cover path and rejects non-image media', async () => {
+  const paths: string[] = [];
+  const storage = {
+    createSignedUploadUrl: async (path: string) => {
+      paths.push(path);
+      return { path, signedUrl: 'https://storage.example/upload', token: 'upload-token' };
+    },
+    getCapabilities: () => ({ available: true })
+  };
+  const media = new MediaService(storage as never);
+  const upload = await media.createUpload('user-id', {
+    contentType: 'image/webp',
+    kind: 'cover',
+  });
+  assert.match(upload.path, /^user-id\/cover\//);
+  await assert.rejects(
+    () => media.createUpload('user-id', { contentType: 'video/mp4', kind: 'cover' }),
+    (error: unknown) => error instanceof AppError && error.code === 'BAD_REQUEST',
+  );
+  assert.equal(paths.length, 1);
 });
