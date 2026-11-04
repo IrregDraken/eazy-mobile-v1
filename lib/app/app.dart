@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/auth/auth_controller.dart';
@@ -103,6 +104,28 @@ class _EazyAppState extends State<EazyApp> {
             themeMode: mode,
             routerConfig: _router,
             scaffoldMessengerKey: _messengerKey,
+            builder: (context, child) {
+              final brightness = Theme.of(context).brightness;
+              final dark = brightness == Brightness.dark;
+              final semantic = Theme.of(context).extension<EazySemanticColors>()!;
+              final overlayStyle = SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness:
+                    dark ? Brightness.light : Brightness.dark,
+                statusBarBrightness:
+                    dark ? Brightness.dark : Brightness.light,
+                systemNavigationBarColor: semantic.background,
+                systemNavigationBarIconBrightness:
+                    dark ? Brightness.light : Brightness.dark,
+                systemNavigationBarDividerColor: semantic.border,
+                systemStatusBarContrastEnforced: false,
+                systemNavigationBarContrastEnforced: false,
+              );
+              return AnnotatedRegion<SystemUiOverlayStyle>(
+                value: overlayStyle,
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
           ),
     );
   }
