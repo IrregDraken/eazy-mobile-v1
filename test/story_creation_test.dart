@@ -72,7 +72,11 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'A caption from the test');
       await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle();
+      // The tray contains ongoing visual animations; pump the completed async
+      // submission without waiting for every animation/timer to become idle.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
 
       expect(api.submittedStory?['caption'], 'A caption from the test');
       expect(api.submittedStory?['storageKey'], 'stories/test-image.jpg');
