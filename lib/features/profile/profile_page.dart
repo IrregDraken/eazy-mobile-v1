@@ -927,133 +927,144 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      height: 118,
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        image: cover != null && cover.startsWith('http')
-                            ? DecorationImage(
-                                image: NetworkImage(cover),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                        gradient: cover == null || !cover.startsWith('http')
-                            ? const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF168C58), Color(0xFF073F2B)],
-                              )
-                            : null,
-                      ),
+                    SizedBox(
+                      height: 160,
                       child: Stack(
+                        clipBehavior: Clip.none,
                         children: [
-                          if (cover == null || !cover.startsWith('http'))
-                            Positioned(
-                              left: 16,
-                              bottom: 14,
-                              child: Text(
-                                'Your Eazy space',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: .92),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
-                                ),
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 130,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+                                image: cover != null && cover.startsWith('http')
+                                    ? DecorationImage(
+                                        image: NetworkImage(cover),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                                gradient: cover == null || !cover.startsWith('http')
+                                    ? const LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [Color(0xFF168C58), Color(0xFF073F2B)],
+                                      )
+                                    : null,
                               ),
-                            ),
-                          if (isOwnProfile)
-                            Positioned(
-                              right: 10,
-                              bottom: 10,
-                              child: FilledButton.tonalIcon(
-                                onPressed: saving ? null : _changeCover,
-                                icon: const Icon(Icons.camera_alt_outlined, size: 16),
-                                label: const Text('Edit cover'),
+                              child: Stack(
+                                children: [
+                                  if (cover == null || !cover.startsWith('http'))
+                                    Positioned(
+                                      left: 16,
+                                      top: 14,
+                                      child: Text(
+                                        'Your Eazy space',
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: .92),
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ),
+                                  if (isOwnProfile)
+                                    Positioned(
+                                      right: 10,
+                                      bottom: 10,
+                                      child: FilledButton.tonalIcon(
+                                        onPressed: saving ? null : _changeCover,
+                                        icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                                        label: const Text('Edit cover'),
+                                      ),
+                                    ),
+                                ],
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.primary.withValues(alpha: .75),
-                              width: 2,
                             ),
                           ),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              CircleAvatar(
-                                radius: 43,
-                                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                backgroundImage:
-                                    avatar != null && avatar.startsWith('http')
+                          Positioned(
+                            left: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Theme.of(context).colorScheme.surface,
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: .75),
+                                  width: 2,
+                                ),
+                              ),
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 43,
+                                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                    backgroundImage: avatar != null && avatar.startsWith('http')
                                         ? NetworkImage(avatar)
                                         : null,
-                                child:
-                                    avatar == null || !avatar.startsWith('http')
+                                    child: avatar == null || !avatar.startsWith('http')
                                         ? Icon(
                                             Icons.person_rounded,
                                             size: 42,
                                             color: Theme.of(context).colorScheme.primary,
                                           )
                                         : null,
-                              ),
-                              if (isOwnProfile)
-                                Positioned(
-                                  right: -3,
-                                  bottom: -3,
-                                  child: Material(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    shape: const CircleBorder(),
-                                    child: InkWell(
-                                      customBorder: const CircleBorder(),
-                                      onTap: avatarBusy ? null : _changeAvatar,
-                                      child: SizedBox(
-                                        width: 30,
-                                        height: 30,
-                                        child: Center(
-                                          child: avatarBusy
-                                              ? SizedBox(
-                                                  width: 14,
-                                                  height: 14,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    color: Theme.of(context).colorScheme.onPrimary,
-                                                  ),
-                                                )
-                                              : Icon(
-                                                  Icons.camera_alt_rounded,
-                                                  size: 15,
-                                                  color: Theme.of(context).colorScheme.onPrimary,
-                                                ),
+                                  ),
+                                  if (isOwnProfile)
+                                    Positioned(
+                                      right: -3,
+                                      bottom: -3,
+                                      child: Material(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        shape: const CircleBorder(),
+                                        child: InkWell(
+                                          customBorder: const CircleBorder(),
+                                          onTap: avatarBusy ? null : _changeAvatar,
+                                          child: SizedBox(
+                                            width: 30,
+                                            height: 30,
+                                            child: Center(
+                                              child: avatarBusy
+                                                  ? SizedBox(
+                                                      width: 14,
+                                                      height: 14,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: Theme.of(context).colorScheme.onPrimary,
+                                                      ),
+                                                    )
+                                                  : Icon(
+                                                      Icons.camera_alt_rounded,
+                                                      size: 15,
+                                                      color: Theme.of(context).colorScheme.onPrimary,
+                                                    ),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                            ],
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 22),
-                        Expanded(
-                          child: StatsRow(
-                            posts: _count(postsCount),
-                            followers: _count(followers),
-                            following: _count(following),
-                            loading: loading,
-                            onFollowers: () => _showSocialList('Followers'),
-                            onFollowing: () => _showSocialList('Following'),
+                          Positioned(
+                            left: 108,
+                            right: 0,
+                            bottom: 10,
+                            child: StatsRow(
+                              posts: _count(postsCount),
+                              followers: _count(followers),
+                              following: _count(following),
+                              loading: loading,
+                              onFollowers: () => _showSocialList('Followers'),
+                              onFollowing: () => _showSocialList('Following'),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
