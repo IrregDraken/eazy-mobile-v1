@@ -2,14 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { AppError } from '../src/middleware/errors.js';
 import { searchQuerySchema, socialSuggestionsQuerySchema, SocialService } from '../src/modules/social/service.js';
-import type { SocialRepository } from '../src/modules/social/repository.js';
+import { SocialRepository } from '../src/modules/social/repository.js';
+import type { SocialRepository as SocialRepositoryContract } from '../src/modules/social/repository.js';
 
 function fakePool() {
   const client = { query: async () => undefined, release: () => undefined };
   return { connect: async () => client } as never;
 }
 
-function repository(overrides: Partial<Record<keyof SocialRepository, unknown>> = {}) {
+function repository(overrides: Partial<Record<keyof SocialRepositoryContract, unknown>> = {}) {
   return {
     targetByUsername: async (_client: unknown, username: string) => ({ id: username === 'other_user' ? 'other' : 'target', username }),
     isBlocked: async () => false,
@@ -77,4 +78,24 @@ test('people suggestions are bounded and return safe profile projections', async
   const result = await service.suggestions('me', input);
   assert.deepEqual(result.items, suggestions);
   assert.throws(() => socialSuggestionsQuerySchema.parse({ limit: 11 }));
+});
+
+test('people suggestion query excludes followed and blocked accounts', async () => {
+  const calls: { sql: string; values: unknown[] }[] = [];
+  const pool = {
+    query: async (sql: string, values: unknown[] = []) => {
+      calls.push({ sql, values });
+      return {
+        rows: [{ username: 'suggested_user', displayName: 'Suggested User', avatarUrl: null, followerCount: 42 }],
+        rowCount: 1,
+      };
+    }
+  };
+  const repository = new SocialRepository(pool as never);
+  const result = await repository.suggestions(pool as never, 'viewer-id', 5);
+  assert.equal(result[0]?.username, 'suggested_user');
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0]?.values, ['viewer-id', 5]);
+  assert.match(calls[0]!.sql, /f\.follower_id = \$1 AND f\.followee_id = p\.user_id/);
+  assert.match(calls[0]!.sql, /b\.blocker_id = \$1 AND b\.blocked_id = p\.user_id/);
 });
