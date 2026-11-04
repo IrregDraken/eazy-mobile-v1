@@ -28,11 +28,13 @@ class _MarketplacePageState extends State<MarketplacePage> {
   List<Map<String, dynamic>> products = [];
   List<Map<String, dynamic>> categories = [];
   bool categoriesLoaded = false;
+  int cartItemCount = 0;
 
   @override
   void initState() {
     super.initState();
     load();
+    _loadCartCount();
   }
 
   @override
@@ -42,6 +44,29 @@ class _MarketplacePageState extends State<MarketplacePage> {
     minPrice.dispose();
     maxPrice.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCartCount() async {
+    try {
+      final result = await api.get('cart', auth: true);
+      final items = result['items'] as List? ?? const [];
+      final count = items.fold<int>(0, (total, value) {
+        if (value is! Map) return total;
+        final raw = value['quantity'];
+        final quantity = raw is num
+            ? raw.toInt()
+            : int.tryParse(raw?.toString() ?? '') ?? 1;
+        return total + quantity.clamp(0, 999);
+      });
+      if (mounted) setState(() => cartItemCount = count);
+    } on ApiException {
+      // Cart is optional to the Discover feed. Keep the last known count.
+    }
+  }
+
+  Future<void> _openCart() async {
+    await context.push('/cart');
+    if (mounted) await _loadCartCount();
   }
 
   Future<void> load() async {
@@ -180,9 +205,48 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         border: Border.all(color: context.eazyBorder),
                       ),
                       child: IconButton(
-                        tooltip: 'Cart',
-                        onPressed: () => context.push('/cart'),
-                        icon: const Icon(Icons.shopping_bag_outlined),
+                        tooltip: cartItemCount > 0
+                            ? 'Cart, $cartItemCount items'
+                            : 'Cart',
+                        onPressed: _openCart,
+                        icon: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.shopping_bag_outlined),
+                            if (cartItemCount > 0)
+                              Positioned(
+                                right: -9,
+                                top: -8,
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    minWidth: 17,
+                                    minHeight: 17,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.error,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Theme.of(context).colorScheme.surface,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    cartItemCount > 99 ? '99+' : '$cartItemCount',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onError,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
