@@ -106,6 +106,7 @@ class _ConversationPageState extends State<ConversationPage> {
   final draftStorage = const FlutterSecureStorage();
   Timer? draftSaveTimer;
   Timer? typingTimer;
+  Timer? typingRefreshTimer;
   Timer? otherTypingTimer;
   bool typingAnnounced = false;
   bool userTyping = false;
@@ -352,6 +353,16 @@ class _ConversationPageState extends State<ConversationPage> {
       typingAnnounced = true;
       _sendTypingPresence(true);
     }
+    typingRefreshTimer ??= Timer.periodic(
+      const Duration(seconds: 1),
+      (_) {
+        if (userTyping && draft.text.trim().isNotEmpty) {
+          _sendTypingPresence(true);
+        } else {
+          _stopTypingPresence();
+        }
+      },
+    );
     typingTimer?.cancel();
     typingTimer = Timer(const Duration(milliseconds: 1800), _stopTypingPresence);
   }
@@ -359,6 +370,8 @@ class _ConversationPageState extends State<ConversationPage> {
   void _stopTypingPresence() {
     typingTimer?.cancel();
     typingTimer = null;
+    typingRefreshTimer?.cancel();
+    typingRefreshTimer = null;
     if (!typingAnnounced) {
       userTyping = false;
       return;
@@ -468,6 +481,7 @@ class _ConversationPageState extends State<ConversationPage> {
   void dispose() {
     draftSaveTimer?.cancel();
     typingTimer?.cancel();
+    typingRefreshTimer?.cancel();
     otherTypingTimer?.cancel();
     _stopTypingPresence();
     draft.removeListener(_scheduleDraftSave);
@@ -551,8 +565,8 @@ class _ConversationPageState extends State<ConversationPage> {
         jsonEncode({'type': 'subscribe', 'channel': 'conversation', 'id': id}),
       );
       if (userTyping && draft.text.trim().isNotEmpty) {
-        typingAnnounced = true;
-        _sendTypingPresence(true);
+        typingAnnounced = false;
+        _scheduleTypingPresence();
       }
       if (recoveringConnection) unawaited(loadMessages());
       subscription = ws.listen(
