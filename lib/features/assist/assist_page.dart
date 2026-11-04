@@ -445,12 +445,12 @@ class _StatusBanner extends StatelessWidget {
     margin: const EdgeInsets.fromLTRB(14, 10, 14, 0),
     padding: const EdgeInsets.all(13),
     decoration: BoxDecoration(
-      color: (isError ? Theme.of(context).colorScheme.error : EazyColors.amber).withValues(
+      color: (isError ? Theme.of(context).colorScheme.error : context.eazyWarning).withValues(
         alpha: .10,
       ),
       borderRadius: BorderRadius.circular(14),
       border: Border.all(
-        color: (isError ? Theme.of(context).colorScheme.error : EazyColors.amber).withValues(
+        color: (isError ? Theme.of(context).colorScheme.error : context.eazyWarning).withValues(
           alpha: .30,
         ),
       ),
@@ -460,7 +460,7 @@ class _StatusBanner extends StatelessWidget {
         Icon(
           icon,
           size: 19,
-          color: isError ? Theme.of(context).colorScheme.error : EazyColors.amber,
+          color: isError ? Theme.of(context).colorScheme.error : context.eazyWarning,
         ),
         const SizedBox(width: 10),
         Expanded(
