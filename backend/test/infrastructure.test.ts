@@ -7,6 +7,7 @@ import { createRateLimiter } from '../src/middleware/rate-limit.js';
 import { requireAuth, createAuthenticationMiddleware } from '../src/middleware/auth.js';
 import { createDbPool } from '../src/database/client.js';
 import { loadConfig } from '../src/config/env.js';
+import { fetchWithTimeout } from '../src/utils/fetch.js';
 
 function request(headers: Record<string, string> = {}) {
   return { header: (key: string) => headers[key.toLowerCase()] } as never;
@@ -79,4 +80,22 @@ test('rate limiter enforces both authenticated-user and network budgets', () => 
     error => { ipError = error; },
   );
   assert.ok(ipError instanceof AppError && ipError.code === 'RATE_LIMITED');
+});
+
+
+test('upstream fetch helper aborts and rejects when the provider exceeds its timeout', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_input, init) => new Promise<Response>((resolve) => {
+    init?.signal?.addEventListener('abort', () => {
+      resolve(new Response('aborted', { status: 200 }));
+    }, { once: true });
+  });
+  try {
+    await assert.rejects(
+      () => fetchWithTimeout('https://provider.example.test', {}, 10),
+      /Upstream request timed out/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
