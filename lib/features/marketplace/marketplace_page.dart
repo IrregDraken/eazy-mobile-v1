@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
@@ -18,6 +19,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
   final search = TextEditingController();
   final minPrice = TextEditingController();
   final maxPrice = TextEditingController();
+  Timer? _searchDebounce;
   String availability = 'all';
   bool loading = true;
   String? error;
@@ -35,6 +37,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     search.dispose();
     minPrice.dispose();
     maxPrice.dispose();
@@ -122,8 +125,11 @@ class _MarketplacePageState extends State<MarketplacePage> {
 
   @override
   Widget build(BuildContext context) {
-    final hasActiveFilters =
-        search.text.trim().length >= 2 || selectedParentSlug != null;
+    final hasActiveFilters = search.text.trim().length >= 2 ||
+        selectedParentSlug != null ||
+        minPrice.text.trim().isNotEmpty ||
+        maxPrice.text.trim().isNotEmpty ||
+        availability != 'all';
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: load,
@@ -188,6 +194,15 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                 child: TextField(
                   controller: search,
+                  onChanged: (value) {
+                    _searchDebounce?.cancel();
+                    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+                      if (!mounted) return;
+                      if (value.trim().isEmpty || value.trim().length >= 2) {
+                        load();
+                      }
+                    });
+                  },
                   onSubmitted: (_) {
                     final query = search.text.trim();
                     if (query.length >= 2) context.push('/marketplace/search?q=${Uri.encodeQueryComponent(query)}');
@@ -213,29 +228,20 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: discoverParentCategories.length + 1,
+                  itemCount: discoverParentCategories.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 9),
                   itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return _CategoryTile(
-                        name: 'All categories',
-                        icon: Icons.grid_view_rounded,
-                        assetPath: null,
-                        selected: selectedParentSlug == null,
-                        onTap: () {
-                          setState(() => selectedParentSlug = null);
-                          load();
-                        },
-                      );
-                    }
-                    final parent = discoverParentCategories[index - 1];
+                    final parent = discoverParentCategories[index];
                     return _CategoryTile(
                       name: parent.name,
                       icon: parent.icon,
                       assetPath: parent.assetPath,
                       selected: selectedParentSlug == parent.slug,
                       onTap: () {
-                        setState(() => selectedParentSlug = parent.slug);
+                        setState(() {
+                          selectedParentSlug =
+                              selectedParentSlug == parent.slug ? null : parent.slug;
+                        });
                         load();
                       },
                     );
