@@ -92,6 +92,28 @@ export function attachRealtimeGateway(server: HttpServer, config: AppConfig, pro
         malformed(connection, socket, clientFrameError(raw));
         return;
       }
+      if (message.type === 'typing') {
+        void (async () => {
+          const allowed = await realtime.authorizeChannel(
+            connection.userId,
+            'conversation',
+            message.id,
+          );
+          if (!allowed) {
+            safeSend(socket, safeError('not_found'));
+            return;
+          }
+          await realtime.publishToConversation(message.id, {
+            event: 'conversation.typing',
+            data: {
+              conversationId: message.id,
+              userId: connection.userId,
+              active: message.active,
+            },
+          });
+        })().catch(() => safeSend(socket, safeError('internal_error')));
+        return;
+      }
       const subRate = consumeConnectionWindow(connection, 'subscriptions');
       if (!subRate.allowed) {
         safeSend(socket, safeError('rate_limited'));
