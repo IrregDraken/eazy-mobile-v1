@@ -18,7 +18,7 @@ Future<void> main() async {
 Future<void> _bootstrap(AuthController auth) async {
   var firebaseReady = false;
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp().timeout(const Duration(seconds: 10));
     firebaseReady = true;
   } catch (_) {
     // Keep the onboarding UI available and surface a useful auth error if needed.
