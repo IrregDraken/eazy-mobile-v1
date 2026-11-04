@@ -11,6 +11,8 @@ import { toAssistMessage, toAssistSession } from './types.js';
 import { parseDecision, providerFailure, MAX_ASSIST_RESPONSE_CHARS } from './validation.js';
 
 export class AssistService {
+  private readonly activeGenerations = new Map<string, AbortController>();
+
   constructor(
     private readonly pool: Pool,
     private readonly repository: AssistRepositoryContract,
@@ -54,8 +56,18 @@ export class AssistService {
     };
   }
 
+  async cancelGeneration(userId: string, sessionId: string) {
+    await this.requireSession(userId, sessionId);
+    const controller = this.activeGenerations.get(this.generationKey(userId, sessionId));
+    if (!controller || controller.signal.aborted) return { cancelled: false };
+    controller.abort();
+    return { cancelled: true };
+  }
+
   async sendMessage(userId: string, sessionId: string, input: AssistMessageInput) {
     const session = await this.requireSession(userId, sessionId);
+    const generationKey = this.generationKey(userId, sessionId);
+    if (this.activeGenerations.has(generationKey)) throw new AppError('CONFLICT', 'An Assist response is already being generated');
     if (session.status !== 'active') throw new AppError('CONFLICT', 'Assist session is closed');
 
     const userRow = await withTransaction(this.pool, client => this.repository.insertMessage(client, userId, sessionId, 'user', input.content));
@@ -78,39 +90,69 @@ export class AssistService {
     const orderedHistory = [...history].reverse().filter(row => row.id !== userRow.id);
     const messages = await buildAssistMessages(orderedHistory, input.content, this.tools);
 
-    const first = await this.complete(messages);
-    if (Array.from(first.text).length > MAX_ASSIST_TOOL_CALL_CHARS) throw providerFailure();
-    const allowedTools = (await this.tools.list()).map(tool => tool.name);
-    const decision = parseDecision(first.text, allowedTools);
-    let generated: string;
-    if (decision.type === 'answer') {
-      generated = decision.text;
-    } else {
-      let toolResult;
-      try { toolResult = await this.tools.execute(decision.name, decision.arguments, userId); }
-      catch (error) {
-        if (error instanceof AppError && (error.code === 'VALIDATION_ERROR' || error.code === 'BAD_REQUEST')) throw providerFailure();
-        if (error instanceof AppError) throw error;
-        throw new AppError('INTERNAL_ERROR', 'Assist capability failed');
+    const abortController = new AbortController();
+    this.activeGenerations.set(generationKey, abortController);
+    try {
+      const first = await this.complete(messages, abortController.signal);
+      if (abortController.signal.aborted) throw new AppError('CONFLICT', 'Assist generation cancelled');
+      if (Array.from(first.text).length > MAX_ASSIST_TOOL_CALL_CHARS) throw providerFailure();
+      const allowedTools = (await this.tools.list()).map(tool => tool.name);
+      const decision = parseDecision(first.text, allowedTools);
+      let generated: string;
+      if (decision.type === 'answer') {
+        generated = decision.text;
+      } else {
+        let toolResult;
+        try { toolResult = await this.tools.execute(decision.name, decision.arguments, userId); }
+        catch (error) {
+          if (error instanceof AppError && (error.code === 'VALIDATION_ERROR' || error.code === 'BAD_REQUEST')) throw providerFailure();
+          if (error instanceof AppError) throw error;
+          throw new AppError('INTERNAL_ERROR', 'Assist capability failed');
+        }
+        if (abortController.signal.aborted) throw new AppError('CONFLICT', 'Assist generation cancelled');
+        let toolMessages;
+        try { toolMessages = buildAssistFollowupMessages(messages, first.text, toolResult); }
+        catch { throw providerFailure(); }
+        const second = await this.complete(toolMessages, abortController.signal);
+        if (abortController.signal.aborted) throw new AppError('CONFLICT', 'Assist generation cancelled');
+        const finalDecision = parseDecision(second.text, allowedTools);
+        if (finalDecision.type !== 'answer') throw providerFailure();
+        generated = finalDecision.text;
       }
-      let toolMessages;
-      try { toolMessages = buildAssistFollowupMessages(messages, first.text, toolResult); }
-      catch { throw providerFailure(); }
-      const second = await this.complete(toolMessages);
-      const finalDecision = parseDecision(second.text, allowedTools);
-      if (finalDecision.type !== 'answer') throw providerFailure();
-      generated = finalDecision.text;
+      if (!generated.trim() || Array.from(generated).length > MAX_ASSIST_RESPONSE_CHARS) throw providerFailure();
+      if (abortController.signal.aborted) throw new AppError('CONFLICT', 'Assist generation cancelled');
+      const assistantRow = await withTransaction(this.pool, client => this.repository.insertMessage(client, userId, sessionId, 'assistant', generated));
+      if (!assistantRow) throw new AppError('NOT_FOUND', 'Assist session not found');
+      return { userMessage: toAssistMessage(userRow), assistantMessage: toAssistMessage(assistantRow) };
+    } catch (error) {
+      if (!abortController.signal.aborted) throw error;
+      const cancelledRow = await withTransaction(this.pool, client => this.repository.insertMessage(client, userId, sessionId, 'assistant', 'Generation cancelled.'));
+      if (!cancelledRow) throw new AppError('NOT_FOUND', 'Assist session not found');
+      throw new AppError('CONFLICT', 'Assist generation cancelled');
+    } finally {
+      if (this.activeGenerations.get(generationKey) === abortController) this.activeGenerations.delete(generationKey);
     }
-
-    if (!generated.trim() || Array.from(generated).length > MAX_ASSIST_RESPONSE_CHARS) throw providerFailure();
-    const assistantRow = await withTransaction(this.pool, client => this.repository.insertMessage(client, userId, sessionId, 'assistant', generated));
-    if (!assistantRow) throw new AppError('NOT_FOUND', 'Assist session not found');
-    return { userMessage: toAssistMessage(userRow), assistantMessage: toAssistMessage(assistantRow) };
   }
 
-  private async complete(messages: Parameters<AIProvider['complete']>[0]['messages']) {
-    try { return await this.provider.complete({ messages, jsonMode: true, maxOutputTokens: MAX_ASSIST_OUTPUT_TOKENS }); }
-    catch { throw providerFailure(); }
+  private generationKey(userId: string, sessionId: string) {
+    return userId + ':' + sessionId;
+  }
+
+  private async complete(
+    messages: Parameters<AIProvider['complete']>[0]['messages'],
+    signal?: AbortSignal,
+  ) {
+    try {
+      return await this.provider.complete({
+        messages,
+        jsonMode: true,
+        maxOutputTokens: MAX_ASSIST_OUTPUT_TOKENS,
+        signal,
+      });
+    } catch {
+      if (signal?.aborted) throw new AppError('CONFLICT', 'Assist generation cancelled');
+      throw providerFailure();
+    }
   }
 
   private async requireSession(userId: string, sessionId: string) {
