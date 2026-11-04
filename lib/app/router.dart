@@ -52,13 +52,16 @@ GoRouter buildRouter(
               ? (onboarding ? '/onboarding' : '/home')
               : '/auth';
     }
-    if (auth.isRestoring) return null;
+    // While session restoration is pending, keep the branded splash visible.
+    // Never allow a welcome/login route to flash before backend validation.
+    if (auth.isRestoring) {
+      return path == '/splash' ? null : '/splash';
+    }
 
     if (!signedIn) {
-      if (path == '/splash' || path == '/welcome' || path == '/auth') {
-        return null;
-      }
-      return '/auth';
+      if (path == '/splash') return '/welcome';
+      if (path == '/welcome' || path == '/auth') return null;
+      return '/welcome';
     }
 
     if (onboarding) {
