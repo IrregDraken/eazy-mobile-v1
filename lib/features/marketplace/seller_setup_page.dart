@@ -204,10 +204,11 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
 
   Future<void> _publish() async {
     final title = name.text.trim();
+    final details = description.text.trim();
     final amount = price.text.trim();
     final stock = int.tryParse(quantity.text.trim());
-    if (title.isEmpty || amount.isEmpty || stock == null || stock < 0) {
-      setState(() => error = 'Enter a product name, valid price and stock quantity.');
+    if (title.isEmpty || details.isEmpty || amount.isEmpty || stock == null || stock < 0) {
+      setState(() => error = 'Enter a product name, description, valid price and stock quantity.');
       return;
     }
     if (!RegExp(r'^\d{1,18}(\.\d{1,2})?$').hasMatch(amount) ||
@@ -251,7 +252,7 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
       });
       final result = await api.post('marketplace/products', auth: true, body: {
         'name': title,
-        'description': description.text.trim(),
+        'description': details,
         if (categoryId != null) 'categoryId': categoryId,
         'priceAmount': amount,
         'currency': 'NGN',
@@ -358,10 +359,11 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
                     ])),
             ),
           ),
+          if (uploading) const LinearProgressIndicator(minHeight: 3),
           const SizedBox(height: 18),
           TextField(controller: name, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(labelText: 'Product name', hintText: 'What are you selling?')),
           const SizedBox(height: 12),
-          TextField(controller: description, minLines: 3, maxLines: 5, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(labelText: 'Description', hintText: 'Describe the product, condition and details')),
+          TextField(controller: description, minLines: 3, maxLines: 5, maxLength: 1500, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(labelText: 'Description', hintText: 'Describe the product, condition and details')),
           const SizedBox(height: 12),
           if (loadingCategories) const LinearProgressIndicator()
           else DropdownButtonFormField<String>(
@@ -377,6 +379,98 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
           TextField(controller: price, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Price', prefixText: '₦ ', hintText: '12500')),
           const SizedBox(height: 12),
           TextField(controller: quantity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Available quantity')),
+          const SizedBox(height: 14),
+          AnimatedBuilder(
+            animation: Listenable.merge([name, description, price]),
+            builder: (context, _) {
+              final previewName = name.text.trim().isEmpty
+                  ? 'Your product name'
+                  : name.text.trim();
+              final previewDescription = description.text.trim().isEmpty
+                  ? 'Your product description will appear here.'
+                  : description.text.trim();
+              final previewPrice = price.text.trim().isEmpty
+                  ? '₦0.00'
+                  : '₦${price.text.trim()}';
+              return Card(
+                clipBehavior: Clip.antiAlias,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Buyer preview',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 88,
+                            height: 88,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: image?.localPath != null
+                                ? Image.file(
+                                    File(image!.localPath!),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Icon(
+                                      Icons.inventory_2_outlined,
+                                      color: context.eazyAccent,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.inventory_2_outlined,
+                                    color: context.eazyAccent,
+                                    size: 30,
+                                  ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  previewName,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontWeight: FontWeight.w800),
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  previewDescription,
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: context.eazyMuted,
+                                    fontSize: 12,
+                                    height: 1.35,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  previewPrice,
+                                  style: TextStyle(
+                                    color: context.eazyAccent,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 18),
           Card(child: Padding(
             padding: const EdgeInsets.all(14),
