@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth, currentUserId } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { sendSuccess } from '../../utils/http.js';
-import { reportSchema, searchQuerySchema, socialPaginationSchema, socialUsernameSchema, SocialService } from './service.js';
+import { reportSchema, searchQuerySchema, socialPaginationSchema, socialSuggestionsQuerySchema, socialUsernameSchema, SocialService } from './service.js';
 import { z } from 'zod';
 
 export function createSocialRouter(service: SocialService): Router {
@@ -19,6 +19,7 @@ export function createSocialRouter(service: SocialService): Router {
   router.delete('/block/:username', requireAuth, validate('params', usernameParams), async (request, response) => sendSuccess(response, await service.unblock(currentUserId(request), param(request.params.username))));
   router.get('/blocks', requireAuth, validate('query', socialPaginationSchema), async (request, response) => sendSuccess(response, await service.listBlocks(currentUserId(request), request.query as never)));
 
+  router.get('/suggestions', requireAuth, validate('query', socialSuggestionsQuerySchema), async (request, response) => sendSuccess(response, await service.suggestions(currentUserId(request), request.query as never)));
   router.get('/users/search', requireAuth, validate('query', searchQuerySchema), async (request, response) => sendSuccess(response, await service.search(currentUserId(request), request.query as never)));
   router.post('/report/:username', requireAuth, validate('params', usernameParams), validate('body', reportSchema), async (request, response) => sendSuccess(response, await service.report(currentUserId(request), param(request.params.username), request.body.reason)));
   return router;
