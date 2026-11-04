@@ -60,7 +60,14 @@ export class PaystackBankProvider implements BankProvider {
     let customer: any;
     try {
       customer = (await this.request(`/customer/${encodeURIComponent(input.email)}`)).data;
-    } catch {
+    } catch (error) {
+      const statusCode =
+        typeof error === 'object' && error !== null && 'statusCode' in error
+          ? Number((error as { statusCode?: unknown }).statusCode)
+          : undefined;
+      // Only a confirmed not-found response permits customer creation. A timeout,
+      // provider outage, or authorization error must not create a duplicate.
+      if (statusCode !== 404) throw error;
       customer = (await this.request('/customer', {
         method: 'POST',
         body: JSON.stringify({
@@ -70,6 +77,12 @@ export class PaystackBankProvider implements BankProvider {
           phone: input.phone
         })
       })).data;
+    }
+
+    // A previous attempt may have reached Paystack before Eazy lost its response.
+    // Reuse an already assigned DVA instead of issuing a second assignment.
+    if (customer?.dedicated_account?.account_number) {
+      return this.virtualAccountFromPayload(customer, 'active');
     }
 
     const customerCode = String(customer?.customer_code ?? '').trim();
@@ -132,7 +145,13 @@ export class PaystackBankProvider implements BankProvider {
   private async request(path: string, init: RequestInit = {}): Promise<{ status?: boolean; message?: string; data?: any }> {
     const response = await fetch(`https://api.paystack.co${path}`, { ...init, headers: { authorization: `Bearer ${this.secretKey}`, 'content-type': 'application/json', ...(init.headers ?? {}) } });
     const payload = await response.json() as { status?: boolean; message?: string; data?: any };
-    if (!response.ok || payload.status !== true) throw new Error(payload.message ?? 'Bank provider request failed');
+    if (!response.ok || payload.status !== true) {
+      const error = new Error(payload.message ?? 'Bank provider request failed') as Error & {
+        statusCode?: number;
+      };
+      error.statusCode = response.status;
+      throw error;
+    }
     return payload;
   }
   private assertEnabled() { if (!this.enabled) throw new Error('Paystack bank provider is not configured'); }
