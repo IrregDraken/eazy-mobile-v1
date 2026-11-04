@@ -54,3 +54,29 @@ test('database configuration failure is explicit and does not expose secrets', (
   const config = loadConfig({ NODE_ENV: 'test', PORT: '3000', LOG_LEVEL: 'silent' });
   assert.throws(() => createDbPool(config), (error: unknown) => error instanceof AppError && error.code === 'SERVICE_UNAVAILABLE');
 });
+
+
+test('rate limiter enforces both authenticated-user and network budgets', () => {
+  const response = { setHeader: () => undefined } as never;
+  const perUser = createRateLimiter({ name: 'per-user', windowMs: 60_000, max: 1 });
+  const firstUserRequest = { ip: '10.0.0.1', auth: { userId: 'user-1' } } as never;
+  let userError: unknown;
+  perUser(firstUserRequest, response, () => undefined);
+  perUser(
+    { ip: '10.0.0.2', auth: { userId: 'user-1' } } as never,
+    response,
+    error => { userError = error; },
+  );
+  assert.ok(userError instanceof AppError && userError.code === 'RATE_LIMITED');
+
+  const perIp = createRateLimiter({ name: 'per-ip', windowMs: 60_000, max: 1 });
+  const firstIpRequest = { ip: '10.0.0.3', auth: { userId: 'user-1' } } as never;
+  let ipError: unknown;
+  perIp(firstIpRequest, response, () => undefined);
+  perIp(
+    { ip: '10.0.0.3', auth: { userId: 'user-2' } } as never,
+    response,
+    error => { ipError = error; },
+  );
+  assert.ok(ipError instanceof AppError && ipError.code === 'RATE_LIMITED');
+});
