@@ -42,6 +42,16 @@ GoRouter buildRouter(
     final signedIn = auth.isSignedIn;
     final onboarding = auth.needsOnboarding;
 
+    if (auth.state == EazyAuthState.fatalStartupError) {
+      return path == '/startup-error' ? null : '/startup-error';
+    }
+    if (path == '/startup-error') {
+      return auth.isRestoring
+          ? '/splash'
+          : signedIn
+              ? (onboarding ? '/onboarding' : '/home')
+              : '/auth';
+    }
     if (auth.isRestoring) return null;
 
     if (!signedIn) {
@@ -66,6 +76,10 @@ GoRouter buildRouter(
   },
   routes: [
     GoRoute(path: '/splash', builder: (_, _) => const SplashPage()),
+    GoRoute(
+      path: '/startup-error',
+      builder: (_, _) => _StartupErrorPage(auth: auth),
+    ),
     GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
     GoRoute(
       path: '/auth',
@@ -144,3 +158,58 @@ GoRouter buildRouter(
         ),
       ),
 );
+
+
+class _StartupErrorPage extends StatelessWidget {
+  const _StartupErrorPage({required this.auth});
+
+  final AuthController auth;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.lock_clock_outlined,
+                    size: 48,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    "Eazy couldn't finish starting",
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    auth.startupError ??
+                        'Your session could not be verified. Please try again.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: auth.isRestoring ? null : auth.retryStartup,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
