@@ -1070,6 +1070,13 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
               onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Not now'),
             ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+                context.go('/home?tab=profile');
+              },
+              child: const Text('Edit profile'),
+            ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
               child: const Text('Account settings'),
