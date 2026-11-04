@@ -70,7 +70,7 @@ test('Paystack DVA assignment uses profile identity and resolves nested customer
     const method = init?.method ?? 'GET';
     const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
     requests.push({ url, method, body });
-    if (url.endsWith('/customer/user@example.com')) {
+    if (url.endsWith('/customer/user%40example.com')) {
       return new Response(JSON.stringify({ status: false, message: 'Customer not found' }), { status: 404 });
     }
     if (url.endsWith('/customer') && method === 'POST') {
