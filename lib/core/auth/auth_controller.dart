@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -13,6 +14,16 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../network/api_client.dart';
 import '../notifications/push_registration_service.dart';
 import '../network/api_exception.dart';
+
+enum EazyAuthState {
+  booting,
+  restoringSession,
+  unauthenticated,
+  authenticated,
+  profileIncomplete,
+  sessionExpired,
+  fatalStartupError,
+}
 
 class EmailVerificationChallenge {
   const EmailVerificationChallenge({
@@ -32,10 +43,14 @@ class AuthController extends ChangeNotifier {
 
   bool _restoring = true;
   bool _busy = false;
+  EazyAuthState _state = EazyAuthState.booting;
+  String? _startupError;
   User? _firebaseUser;
   Map<String, dynamic>? _profile;
   Future<void>? _googleInitialization;
 
+  EazyAuthState get state => _state;
+  String? get startupError => _startupError;
   bool get isRestoring => _restoring;
   bool get isBusy => _busy;
   bool get isSignedIn => _firebaseUser != null && _profile != null;
@@ -47,72 +62,98 @@ class AuthController extends ChangeNotifier {
 
   void setFirebaseReady(bool value) {
     firebaseReady = value;
+    if (!value) {
+      _restoring = false;
+      _state = EazyAuthState.fatalStartupError;
+      _startupError = 'Eazy could not initialize secure sign-in services.';
+    } else if (_state == EazyAuthState.fatalStartupError) {
+      _state = EazyAuthState.booting;
+      _restoring = true;
+      _startupError = null;
+    }
     notifyListeners();
+  }
+
+  Future<void> retryStartup() async {
+    try {
+      if (!firebaseReady) {
+        if (Firebase.apps.isEmpty) {
+          await Firebase.initializeApp().timeout(
+            const Duration(seconds: 10),
+          );
+        }
+        setFirebaseReady(true);
+      }
+      await restore();
+    } catch (_) {
+      _restoring = false;
+      _state = EazyAuthState.fatalStartupError;
+      _startupError = 'Secure sign-in could not be initialized. Please try again.';
+      notifyListeners();
+    }
   }
 
   Future<void> restore() async {
     _restoring = true;
+    _state = EazyAuthState.restoringSession;
+    _startupError = null;
     notifyListeners();
     try {
-      if (!firebaseReady) return;
+      if (!firebaseReady) {
+        throw const ApiException(
+          'Secure sign-in is unavailable. Retry startup to continue.',
+        );
+      }
+
       var user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        _firebaseUser = null;
+        _profile = null;
+        await api.clearToken();
+        await api.clearProfileSnapshot();
+        _state = EazyAuthState.unauthenticated;
+        return;
+      }
 
       if (_requiresEmailVerification(user)) {
-        await user.reload();
+        await user.reload().timeout(const Duration(seconds: 10));
         user = FirebaseAuth.instance.currentUser ?? user;
         if (!user.emailVerified) {
           await api.clearToken();
           await api.clearProfileSnapshot();
           _firebaseUser = null;
           _profile = null;
+          _state = EazyAuthState.sessionExpired;
           return;
         }
       }
 
-      final cachedProfile = await api.readProfileSnapshot();
-      if (cachedProfile != null) {
-        final token = await user.getIdToken(false);
-        if (token == null || token.isEmpty) {
-          throw const ApiException('Firebase did not return a session token.');
-        }
-        await api.saveToken(token);
-        _firebaseUser = user;
-        _profile = cachedProfile;
-        _restoring = false;
-        notifyListeners();
-        unawaited(_refreshRestoredProfile(user));
-        return;
-      }
-
-      await _syncFirebaseUser(user, forceRefresh: false);
-    } catch (_) {
-      if (_profile == null) {
-        await api.clearToken();
-        _firebaseUser = null;
-      }
-    } finally {
-      if (_restoring) {
-        _restoring = false;
-        notifyListeners();
-      }
-    }
-  }
-
-  Future<void> _refreshRestoredProfile(User user) async {
-    try {
-      await _syncFirebaseUser(user, forceRefresh: false);
-      notifyListeners();
+      // A cached profile is only a display snapshot. It is never sufficient
+      // evidence to route into the authenticated application.
+      await _syncFirebaseUser(user, forceRefresh: false).timeout(
+        const Duration(seconds: 15),
+      );
+      _state = needsOnboarding
+          ? EazyAuthState.profileIncomplete
+          : EazyAuthState.authenticated;
     } on ApiException catch (error) {
       if (error.statusCode == 401 || error.statusCode == 403) {
         await api.clearToken();
         await api.clearProfileSnapshot();
         _firebaseUser = null;
         _profile = null;
-        notifyListeners();
+        _state = EazyAuthState.sessionExpired;
+      } else {
+        _state = EazyAuthState.fatalStartupError;
+        _startupError = error.message;
       }
     } catch (_) {
-      // Keep the cached session usable when the backend is temporarily unreachable.
+      _state = EazyAuthState.fatalStartupError;
+      _startupError =
+          'We could not verify your session. Check your connection and retry.';
+    } finally {
+      _restoring = false;
+      notifyListeners();
     }
   }
 
@@ -662,12 +703,16 @@ class AuthController extends ChangeNotifier {
       _profile = _normalizeProfile(
         completed['profile'] as Map? ?? _profile ?? {},
       );
+      _state = EazyAuthState.authenticated;
     });
   }
 
   Future<void> refreshProfile() async {
     final result = await api.get('profiles/me', auth: true);
     _profile = _normalizeProfile(result['profile'] as Map? ?? {});
+    _state = needsOnboarding
+        ? EazyAuthState.profileIncomplete
+        : EazyAuthState.authenticated;
     notifyListeners();
   }
 
@@ -715,6 +760,8 @@ class AuthController extends ChangeNotifier {
     } catch (_) {}
     _firebaseUser = null;
     _profile = null;
+    _state = EazyAuthState.unauthenticated;
+    _startupError = null;
     notifyListeners();
   }
 
@@ -724,12 +771,16 @@ class AuthController extends ChangeNotifier {
       throw const ApiException('Firebase did not return a session token.');
     }
     await api.saveToken(token);
-    unawaited(PushRegistrationService.instance.start(api));
     try {
       final result = await api.get('auth/me', auth: true);
       _profile = _normalizeProfile(result['profile'] as Map? ?? {});
       _firebaseUser = user;
+      _state = needsOnboarding
+          ? EazyAuthState.profileIncomplete
+          : EazyAuthState.authenticated;
+      _startupError = null;
       await api.saveProfileSnapshot(_profile!);
+      unawaited(PushRegistrationService.instance.start(api));
     } catch (error) {
       if (error is ApiException &&
           (error.statusCode == 401 || error.statusCode == 403)) {
