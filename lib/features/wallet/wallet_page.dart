@@ -118,7 +118,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         auth: true,
       );
       try {
-        final pinStatus = await api.get('wallet/payment-pin/status', auth: true);
+        final pinStatus = await api.get(
+          'wallet/payment-pin/status',
+          auth: true,
+        );
         paymentPinConfigured = pinStatus['configured'] == true;
       } on ApiException {
         paymentPinConfigured = false;
@@ -136,7 +139,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       pendingDeposit = pendingEntries.isEmpty ? null : pendingEntries.first;
       final pendingDepositId = pendingDeposit?['id']?.toString();
       if (pendingDepositId != null && pendingDepositId.isNotEmpty) {
-        await storage.write(key: 'eazy.pendingPayment', value: pendingDepositId);
+        await storage.write(
+          key: 'eazy.pendingPayment',
+          value: pendingDepositId,
+        );
       } else {
         await storage.delete(key: 'eazy.pendingPayment');
       }
@@ -145,14 +151,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
           'notifications?page=1&limit=50',
           auth: true,
         );
-        walletAlerts = (alertResult['items'] as List? ?? const [])
-            .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
-            .where((entry) {
-              final type = entry['type']?.toString().toLowerCase();
-              return type == 'payment' || type == 'order';
-            })
-            .toList();
+        walletAlerts =
+            (alertResult['items'] as List? ?? const [])
+                .whereType<Map>()
+                .map((entry) => Map<String, dynamic>.from(entry))
+                .where((entry) {
+                  final type = entry['type']?.toString().toLowerCase();
+                  return type == 'payment' || type == 'order';
+                })
+                .toList();
       } catch (_) {
         walletAlerts = [];
       }
@@ -179,7 +186,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
 
   Future<void> deposit() async {
     if (pendingDeposit != null) {
-      _showError('You already have a deposit awaiting confirmation. Check its status before starting another one.');
+      _showError(
+        'You already have a deposit awaiting confirmation. Check its status before starting another one.',
+      );
       return;
     }
     final amount = await _amountDialog(title: 'Add money', action: 'Continue');
@@ -258,10 +267,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       }
     } on ApiException catch (e) {
       if (!silent) {
-        if (e.statusCode == 409 && e.message.toLowerCase().contains('not confirmed')) {
-          _showMessage('This deposit is still awaiting provider confirmation. No wallet credit has been posted. Do not start another deposit yet.');
+        if (e.statusCode == 409 &&
+            e.message.toLowerCase().contains('not confirmed')) {
+          _showMessage(
+            'This deposit is still awaiting provider confirmation. No wallet credit has been posted. Do not start another deposit yet.',
+          );
         } else if (e.statusCode == 503) {
-          _showMessage('We could not check this deposit right now. It remains pending. Do not start another deposit yet.');
+          _showMessage(
+            'We could not check this deposit right now. It remains pending. Do not start another deposit yet.',
+          );
         } else {
           _showError(e.message);
         }
@@ -985,10 +999,17 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> receiveFromExternalBank() async {
-    if (virtualAccount == null) {
+    if (!_walletActivated) {
       await requestVirtualAccount();
     }
-    if (!mounted || virtualAccount == null) return;
+    if (!mounted || !_walletActivated) {
+      if (virtualAccount?['status']?.toString().toLowerCase() == 'pending') {
+        _showMessage(
+          'Your dedicated bank account is still being assigned. Refresh later.',
+        );
+      }
+      return;
+    }
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -997,37 +1018,215 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> requestVirtualAccount() async {
-    if (virtualAccount != null || busy) return;
-    final consent = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Create your dedicated bank account?'),
-        content: const Text(
-          'Eazy will ask its bank provider to assign a dedicated NGN account '
-          'for receiving transfers. Your account name, email address and phone '
-          'number from your Eazy profile will be shared with the provider for '
-          'this purpose. Account assignment depends on provider approval. '
-          'You can cancel without creating an account.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Not now'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('I agree, continue'),
-          ),
-        ],
-      ),
+    if (virtualAccount?['status'] == 'active' || busy) return;
+    Map<String, dynamic> profile = const {};
+    Map<String, dynamic> user = const {};
+    List<Map<String, dynamic>> banks = const [];
+    try {
+      final results = await Future.wait([
+        api.get('profiles/me', auth: true),
+        api.get('auth/me', auth: true),
+        api.get('banks?currency=NGN', auth: true),
+      ]);
+      profile = _map(results[0]['profile']);
+      user = _map(results[1]['user']);
+      banks =
+          (results[2]['banks'] as List? ?? const [])
+              .whereType<Map>()
+              .map((entry) => Map<String, dynamic>.from(entry))
+              .where((entry) => entry['code'] != null && entry['name'] != null)
+              .toList();
+    } on ApiException catch (e) {
+      _showError(e.message);
+      return;
+    }
+    if (!mounted) return;
+    final displayName = profile['displayName']?.toString() ?? '';
+    final nameParts = displayName.trim().split(RegExp(r'\s+'));
+    final first = TextEditingController(
+      text:
+          profile['firstName']?.toString() ??
+          (nameParts.isEmpty ? '' : nameParts.first),
     );
-    if (consent != true || !mounted) return;
+    final middle = TextEditingController(
+      text: profile['middleName']?.toString() ?? '',
+    );
+    final last = TextEditingController(
+      text:
+          profile['lastName']?.toString() ??
+          (nameParts.length > 1 ? nameParts.sublist(1).join(' ') : ''),
+    );
+    final phone = TextEditingController(text: user['phone']?.toString() ?? '');
+    final account = TextEditingController();
+    final bvn = TextEditingController();
+    String? bankCode;
+    String? bankName;
+    final form = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (dialogContext, setDialogState) => AlertDialog(
+                  title: const Text('Activate your wallet'),
+                  content: SizedBox(
+                    width: 460,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'To receive money from external banks, Eazy needs to assign a dedicated NGN account. Your BVN and bank details are sent securely to Paystack for identity validation.',
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: first,
+                            decoration: const InputDecoration(
+                              labelText: 'First name',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: middle,
+                            decoration: const InputDecoration(
+                              labelText: 'Middle name (optional)',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: last,
+                            decoration: const InputDecoration(
+                              labelText: 'Last name',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: phone,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                              labelText: 'Verified phone number',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          DropdownMenu<String>(
+                            width: min(
+                              420,
+                              MediaQuery.sizeOf(context).width - 80,
+                            ),
+                            enableFilter: true,
+                            enableSearch: true,
+                            label: const Text('Preferred bank'),
+                            initialSelection: bankCode,
+                            dropdownMenuEntries: [
+                              for (final bank in banks)
+                                DropdownMenuEntry<String>(
+                                  value: bank['code'].toString(),
+                                  label: bank['name'].toString(),
+                                ),
+                            ],
+                            onSelected: (value) {
+                              bankCode = value;
+                              bankName =
+                                  banks
+                                      .firstWhere(
+                                        (entry) =>
+                                            entry['code'].toString() == value,
+                                        orElse: () => const {},
+                                      )['name']
+                                      ?.toString();
+                              setDialogState(() {});
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: account,
+                            keyboardType: TextInputType.number,
+                            maxLength: 10,
+                            decoration: const InputDecoration(
+                              labelText: 'Bank account number',
+                              counterText: '',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: bvn,
+                            keyboardType: TextInputType.number,
+                            obscureText: true,
+                            maxLength: 11,
+                            decoration: const InputDecoration(
+                              labelText: 'BVN',
+                              counterText: '',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'By continuing, you consent to Eazy sharing these details with its regulated payment provider for wallet activation.',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () {
+                        if (first.text.trim().isEmpty ||
+                            last.text.trim().isEmpty ||
+                            phone.text.trim().isEmpty ||
+                            bankCode == null ||
+                            account.text.trim().length != 10 ||
+                            bvn.text.trim().length != 11) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Complete every activation field with valid details.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.pop(dialogContext, {
+                          'consent': true,
+                          'firstName': first.text.trim(),
+                          'middleName':
+                              middle.text.trim().isEmpty
+                                  ? null
+                                  : middle.text.trim(),
+                          'lastName': last.text.trim(),
+                          'phone': phone.text.trim(),
+                          'preferredBank': bankCode,
+                          'bankName': bankName,
+                          'country': 'NG',
+                          'accountNumber': account.text.trim(),
+                          'bvn': bvn.text.trim(),
+                          'bankCode': bankCode,
+                        });
+                      },
+                      child: const Text('Activate wallet'),
+                    ),
+                  ],
+                ),
+          ),
+    );
+    first.dispose();
+    middle.dispose();
+    last.dispose();
+    phone.dispose();
+    account.dispose();
+    bvn.dispose();
+    if (form == null || !mounted) return;
     setState(() => busy = true);
     try {
       final result = await api.post(
         'wallet/virtual-account',
         auth: true,
-        body: {'consent': true},
+        body: form,
       );
       virtualAccount = _map(result['virtualAccount']);
     } on ApiException catch (e) {
@@ -1108,9 +1307,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                           decimal: true,
                         ),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'[0-9,.]'),
-                          ),
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
                         ],
                         decoration: InputDecoration(
                           labelText: 'Amount',
@@ -1135,10 +1332,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                                 onPressed: () {
                                   setDialogState(() {
                                     controller.text = suggestion.value;
-                                    controller.selection =
-                                        TextSelection.collapsed(
-                                          offset: controller.text.length,
-                                        );
+                                    controller
+                                        .selection = TextSelection.collapsed(
+                                      offset: controller.text.length,
+                                    );
                                   });
                                 },
                               ),
@@ -1208,7 +1405,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     } on ApiException catch (e) {
       _showError(e.message);
     } catch (_) {
-      _showError('Payment authorization could not be completed. No payment was submitted.');
+      _showError(
+        'Payment authorization could not be completed. No payment was submitted.',
+      );
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -1235,6 +1434,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
   String get _maskedBalance => '${_currency == 'NGN' ? '₦' : '$_currency '}••••••';
+  bool get _walletActivated =>
+      virtualAccount?['status']?.toString().toLowerCase() == 'active';
 
   bool _validUsername(String value) =>
       RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value);
@@ -1337,11 +1538,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       ),
                       ListTile(
                         leading: const Icon(Icons.password_rounded),
-                        title: Text(paymentPinConfigured ? 'Change payment PIN' : 'Create payment PIN'),
+                        title: Text(
+                          paymentPinConfigured
+                              ? 'Change payment PIN'
+                              : 'Create payment PIN',
+                        ),
                         subtitle: Text(
                           paymentPinConfigured
-                              ? 'Update the 6-digit PIN used to authorize payments.'
-                              : 'Create a 6-digit PIN required before sending money.',
+                              ? 'Update the 4-digit PIN used to authorize payments.'
+                              : 'Create a 4-digit PIN required before sending money.',
                         ),
                         onTap: () {
                           Navigator.pop(sheetContext);
@@ -1477,12 +1682,13 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _TransactionHistorySheet(
-        api: api,
-        currency: _currency,
-        balanceVisible: balanceVisible,
-        onOpenTransaction: _showTransactionDetails,
-      ),
+      builder:
+          (_) => _TransactionHistorySheet(
+            api: api,
+            currency: _currency,
+            balanceVisible: balanceVisible,
+            onOpenTransaction: _showTransactionDetails,
+          ),
     );
   }
 
@@ -1742,7 +1948,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       child: _WalletAction(
                         icon: Icons.arrow_upward_rounded,
                         label: 'Send',
-                        onTap: busy ? null : _showSendOptions,
+                        onTap:
+                            busy || !_walletActivated ? null : _showSendOptions,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1750,7 +1957,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       child: _WalletAction(
                         icon: Icons.arrow_downward_rounded,
                         label: 'Receive',
-                        onTap: busy ? null : _showReceiveOptions,
+                        onTap:
+                            busy || !_walletActivated
+                                ? null
+                                : _showReceiveOptions,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1758,7 +1968,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       child: _WalletAction(
                         icon: Icons.qr_code_scanner_rounded,
                         label: 'Scan QR',
-                        onTap: busy ? null : scanQr,
+                        onTap: busy || !_walletActivated ? null : scanQr,
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -1778,6 +1988,68 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             const SizedBox(height: 12),
             Text(error!, style: const TextStyle(color: EazyColors.red)),
           ],
+          if (!_walletActivated) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.lock_outline_rounded),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Activate your wallet',
+                            style: TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      virtualAccount?['status']?.toString().toLowerCase() ==
+                              'pending'
+                          ? 'Your activation is being reviewed. Refresh this page after Paystack confirms your dedicated account.'
+                          : 'Complete identity and bank validation before sending or receiving wallet money.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed:
+                            busy ||
+                                    virtualAccount?['status']
+                                            ?.toString()
+                                            .toLowerCase() ==
+                                        'pending'
+                                ? load
+                                : requestVirtualAccount,
+                        icon: Icon(
+                          virtualAccount?['status']?.toString().toLowerCase() ==
+                                  'pending'
+                              ? Icons.sync_rounded
+                              : Icons.verified_user_outlined,
+                        ),
+                        label: Text(
+                          virtualAccount?['status']?.toString().toLowerCase() ==
+                                  'pending'
+                              ? 'Refresh activation status'
+                              : 'Activate wallet',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           if (pendingDeposit != null) ...[
             const SizedBox(height: 12),
             Card(
@@ -1788,7 +2060,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.hourglass_top_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        Icon(
+                          Icons.hourglass_top_rounded,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
@@ -1808,7 +2083,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                     const SizedBox(height: 8),
                     Text(
                       'This deposit has not been credited yet. Check its status before starting another funding attempt.',
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -1867,7 +2145,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             }),
             const SizedBox(height: 14),
           ],
-                    const SizedBox(height: 22),
+          const SizedBox(height: 22),
           Row(
             children: [
               const Expanded(
@@ -1944,7 +2222,8 @@ class _TransactionHistorySheet extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> entry) onOpenTransaction;
 
   @override
-  State<_TransactionHistorySheet> createState() => _TransactionHistorySheetState();
+  State<_TransactionHistorySheet> createState() =>
+      _TransactionHistorySheetState();
 }
 
 class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
@@ -1974,31 +2253,39 @@ class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
         'wallet/transactions?page=$nextPage&limit=$_pageSize',
         auth: true,
       );
-      final entries = (result['items'] as List? ?? const [])
-          .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
-      final meta = result['meta'] is Map
-          ? Map<String, dynamic>.from(result['meta'] as Map)
-          : <String, dynamic>{};
+      final entries =
+          (result['items'] as List? ?? const [])
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList();
+      final meta =
+          result['meta'] is Map
+              ? Map<String, dynamic>.from(result['meta'] as Map)
+              : <String, dynamic>{};
       final totalPages = int.tryParse(meta['pages']?.toString() ?? '');
       if (!mounted) return;
       setState(() {
         if (refresh) _items.clear();
-        final existingIds = _items.map((item) => item['id']?.toString()).toSet();
-        _items.addAll(entries.where(
-          (item) => !existingIds.contains(item['id']?.toString()),
-        ));
+        final existingIds =
+            _items.map((item) => item['id']?.toString()).toSet();
+        _items.addAll(
+          entries.where(
+            (item) => !existingIds.contains(item['id']?.toString()),
+          ),
+        );
         _page = nextPage;
-        _hasMore = totalPages != null
-            ? nextPage < totalPages
-            : entries.length == _pageSize;
+        _hasMore =
+            totalPages != null
+                ? nextPage < totalPages
+                : entries.length == _pageSize;
       });
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Could not load transaction history. Try again.');
+        setState(
+          () => _error = 'Could not load transaction history. Try again.',
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -2066,12 +2353,15 @@ class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Center(
-                          child: _loading
-                              ? const CircularProgressIndicator(strokeWidth: 2)
-                              : OutlinedButton(
-                                  onPressed: _loadPage,
-                                  child: const Text('Load more'),
-                                ),
+                          child:
+                              _loading
+                                  ? const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  )
+                                  : OutlinedButton(
+                                    onPressed: _loadPage,
+                                    child: const Text('Load more'),
+                                  ),
                         ),
                       );
                     }

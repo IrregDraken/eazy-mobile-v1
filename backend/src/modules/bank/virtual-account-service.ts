@@ -6,7 +6,7 @@ import type { BankProvider } from '../../providers/interfaces.js';
 import type { LedgerService } from '../ledger/service.js';
 import { amountToMinorUnits, minorUnitsToAmount } from '../wallet/schemas.js';
 import { VirtualAccountRepository } from './virtual-account-repository.js';
-import type { VirtualAccountRecord } from './virtual-account-types.js';
+import type { VirtualAccountAssignmentInput, VirtualAccountRecord } from './virtual-account-types.js';
 
 export class VirtualAccountService {
   private readonly repository: VirtualAccountRepository;
@@ -40,8 +40,13 @@ export class VirtualAccountService {
     return { virtualAccount: account ? this.safeProjection(account) : null };
   }
 
-  async assign(userId: string, consent: boolean) {
-    if (!consent) throw new AppError('BAD_REQUEST', 'Explicit consent is required before creating a dedicated bank account');
+  async assign(userId: string, input: VirtualAccountAssignmentInput | boolean) {
+    if (input === false || (typeof input === 'object' && input.consent !== true)) {
+      throw new AppError('BAD_REQUEST', 'Explicit consent is required before creating a dedicated bank account');
+    }
+    if (typeof input === 'boolean') {
+      throw new AppError('VALIDATION_ERROR', 'Activation details are required before creating a dedicated bank account');
+    }
 
     const capabilities = this.capabilities();
     if (!capabilities.virtualAccountsAvailable) {
@@ -52,6 +57,7 @@ export class VirtualAccountService {
     if (!user.email || !user.phone || !user.displayName) {
       throw new AppError('CONFLICT', 'Complete your name, email, and phone number before creating a bank receiving account');
     }
+    if (user.phone !== input.phone) throw new AppError('CONFLICT', 'The activation phone number must match your verified Eazy phone number');
 
     const wallet = await withTransaction(this.pool, async client => {
       const result = await client.query<{ id: string; status: string; currency: string }>(
@@ -69,7 +75,7 @@ export class VirtualAccountService {
 
     if (!account) {
       account = await withTransaction(this.pool, client =>
-        this.repository.createPending(client, { userId, walletId: wallet.id, provider: capabilities.providerName!, currency: 'NGN' })
+        this.repository.createPending(client, { userId, walletId: wallet.id, provider: capabilities.providerName!, currency: 'NGN', providerEmail: user.email! })
       );
     }
 
@@ -88,17 +94,22 @@ export class VirtualAccountService {
       }
     }
 
-    if (account.status === 'pending' && account.customerCode) {
+    if (account.status === 'pending') {
       return { virtualAccount: this.safeProjection(account) };
     }
 
     try {
-      const [firstName, ...rest] = user.displayName.trim().split(/\s+/);
       const state = await this.provider.assignVirtualAccount({
         email: user.email,
-        firstName: firstName || 'Eazy',
-        lastName: rest.join(' ') || 'User',
-        phone: user.phone,
+        firstName: input.firstName,
+        middleName: input.middleName,
+        lastName: input.lastName,
+        phone: input.phone,
+        preferredBank: input.preferredBank,
+        country: input.country,
+        accountNumber: input.accountNumber,
+        bvn: input.bvn,
+        bankCode: input.bankCode,
         currency: 'NGN'
       });
       const saved = await withTransaction(this.pool, client =>
@@ -119,22 +130,20 @@ export class VirtualAccountService {
   async handleWebhook(event: string, data: Record<string, any>) {
     if (event === 'dedicatedaccount.assign.success') {
       const customerCode = this.customerCodeFrom(data);
-      if (!customerCode) return { handled: false };
-      const account = await this.readByCustomerCode(customerCode);
+      const account = customerCode ? await this.readByCustomerCode(customerCode) : await this.readByEmail(this.emailFrom(data));
       if (!account) return { handled: false };
-      const state = this.providerPayloadFromWebhook(data, customerCode);
+      const state = this.providerPayloadFromWebhook(data, customerCode ?? undefined);
       await withTransaction(this.pool, client => this.repository.saveProviderState(client, account.userId, state));
       return { handled: true, type: 'assignment', userId: account.userId };
     }
 
     if (event === 'dedicatedaccount.assign.failed' || event === 'assigndedicatedaccount.failed') {
       const customerCode = this.customerCodeFrom(data);
-      if (!customerCode) return { handled: false };
-      const account = await this.readByCustomerCode(customerCode);
+      const account = customerCode ? await this.readByCustomerCode(customerCode) : await this.readByEmail(this.emailFrom(data));
       if (!account) return { handled: false };
       await withTransaction(this.pool, client => this.repository.saveProviderState(client, account.userId, {
         status: 'failed',
-        customerCode,
+        customerCode: customerCode ?? undefined,
         failureReason: typeof data.reason === 'string' ? data.reason.slice(0, 500) : 'Virtual account assignment failed'
       }));
       return { handled: true, type: 'assignment_failed', userId: account.userId };
@@ -214,6 +223,13 @@ export class VirtualAccountService {
     finally { client.release(); }
   }
 
+  private async readByEmail(email: string | null) {
+    if (!email) return null;
+    const client = await this.pool.connect();
+    try { return await this.repository.findByEmail(client, 'paystack', email); }
+    finally { client.release(); }
+  }
+
   private customerCodeFrom(data: Record<string, any>) {
     return String(data.customer_code ?? data.customer?.customer_code ?? data.customer?.code ?? '').trim() || null;
   }
@@ -222,7 +238,11 @@ export class VirtualAccountService {
     return String(data.dedicated_account?.account_number ?? data.receiver?.account_number ?? data.account_number ?? '').trim() || null;
   }
 
-  private providerPayloadFromWebhook(data: Record<string, any>, customerCode: string) {
+  private emailFrom(data: Record<string, any>) {
+    return String(data.email ?? data.customer?.email ?? '').trim().toLowerCase() || null;
+  }
+
+  private providerPayloadFromWebhook(data: Record<string, any>, customerCode?: string) {
     const account = data.dedicated_account ?? data.account ?? data;
     const accountNumber = this.accountNumberFrom(data);
     return {

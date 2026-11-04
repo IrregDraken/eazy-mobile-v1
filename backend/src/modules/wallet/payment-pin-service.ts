@@ -8,7 +8,7 @@ import type { AppConfig } from '../../config/env.js';
 const NEW_PIN_PATTERN = /^\d{4}$/;
 const EXISTING_PIN_PATTERN = /^(?:\d{4}|\d{6})$/;
 const MAX_ATTEMPTS = 5;
-const LOCK_MINUTES = 15;
+const LOCK_MINUTES = 30;
 const SCRYPT_COST = 16_384;
 
 type PinRecord = {
@@ -174,7 +174,7 @@ export class PaymentPinService {
       throw new AppError('CONFLICT', 'Create a payment PIN in Wallet settings before making this payment');
     }
     if (result.reason === 'locked') {
-      throw new AppError('RATE_LIMITED', 'Payment PIN is locked after repeated incorrect attempts. Try again in 15 minutes.');
+      throw new AppError('RATE_LIMITED', 'Payment PIN is locked after repeated incorrect attempts. Try again in 30 minutes.');
     }
     throw new AppError('UNAUTHORIZED', 'Incorrect payment PIN');
   }
