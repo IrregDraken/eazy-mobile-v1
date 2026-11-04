@@ -892,16 +892,18 @@ class _ProfilePageState extends State<ProfilePage> {
                       onPressed: username.isEmpty ? null : _copyProfileLink,
                       icon: const Icon(Icons.ios_share_rounded),
                     ),
-                    IconButton(
-                      tooltip: 'Create a post',
-                      onPressed: () => context.go('/home?action=create'),
-                      icon: const Icon(Icons.add_box_outlined),
-                    ),
-                    IconButton(
-                      tooltip: 'Settings',
-                      onPressed: () => context.push('/settings'),
-                      icon: const Icon(Icons.settings_outlined),
-                    ),
+                    if (isOwnProfile)
+                      IconButton(
+                        tooltip: 'Create a post',
+                        onPressed: () => context.go('/home?action=create'),
+                        icon: const Icon(Icons.add_box_outlined),
+                      ),
+                    if (isOwnProfile)
+                      IconButton(
+                        tooltip: 'Settings',
+                        onPressed: () => context.push('/settings'),
+                        icon: const Icon(Icons.settings_outlined),
+                      ),
                   ],
                 ),
               ),
