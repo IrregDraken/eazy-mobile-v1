@@ -34,6 +34,7 @@ class _SocialPageState extends State<SocialPage> {
   final dismissedSuggestions = <String>{};
   bool dismissAllSuggestions = false;
   bool dismissCreatePostPrompt = false;
+  bool searchingPeople = false;
   final followedSuggestions = <String>{};
 
   @override
@@ -183,7 +184,7 @@ class _SocialPageState extends State<SocialPage> {
     );
     controller.dispose();
     if (query == null || query.trim().length < 2 || !mounted) return;
-    setState(() => loadingMore = true);
+    setState(() => searchingPeople = true);
     try {
       final result = await api.get(
         'profiles/search?q=${Uri.encodeQueryComponent(query.trim())}',
@@ -245,7 +246,7 @@ class _SocialPageState extends State<SocialPage> {
         );
       }
     } finally {
-      if (mounted) setState(() => loadingMore = false);
+      if (mounted) setState(() => searchingPeople = false);
     }
   }
 
