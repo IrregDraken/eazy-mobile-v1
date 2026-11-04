@@ -62,18 +62,24 @@ void main() {
       final api = _FakeApiClient();
       final media = _FakeMediaService(api);
 
+      Future<void> pumpTransition() async {
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pump();
+      }
+
       await tester.pumpWidget(
         MaterialApp(
           theme: EazyTheme.light(),
           home: Scaffold(body: StoriesTray(api: api, media: media)),
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpTransition();
 
       await tester.tap(find.text('Your story'));
-      await tester.pumpAndSettle();
+      await pumpTransition();
       await tester.tap(find.text('Photo story'));
-      await tester.pumpAndSettle();
+      await pumpTransition();
 
       await tester.enterText(find.byType(TextField), 'A caption from the test');
       await tester.tap(find.text('Continue'));
