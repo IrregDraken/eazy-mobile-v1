@@ -98,4 +98,5 @@ test('people suggestion query excludes followed and blocked accounts', async () 
   assert.deepEqual(calls[0]?.values, ['viewer-id', 5]);
   assert.match(calls[0]!.sql, /f\.follower_id = \$1 AND f\.followee_id = p\.user_id/);
   assert.match(calls[0]!.sql, /b\.blocker_id = \$1 AND b\.blocked_id = p\.user_id/);
+  assert.match(calls[0]!.sql, /p\.onboarding_status = 'onboarding_complete'/);
 });
