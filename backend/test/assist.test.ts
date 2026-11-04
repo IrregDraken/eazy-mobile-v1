@@ -164,6 +164,31 @@ test('OpenAI-compatible provider sends fixed server configuration and validates 
   }
 });
 
+test('OpenAI-compatible provider forwards caller cancellation to the upstream fetch', async () => {
+  const originalFetch = globalThis.fetch;
+  const controller = new AbortController();
+  try {
+    globalThis.fetch = async (_input, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+    });
+    const provider = new OpenAICompatibleProvider(config(requiredProviderConfig));
+    const pending = provider.complete({
+      messages: [],
+      jsonMode: true,
+      maxOutputTokens: 512,
+      signal: controller.signal
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    controller.abort();
+    await assert.rejects(
+      () => pending,
+      (error: unknown) => error instanceof AppError && error.code === 'CONFLICT'
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('provider timeout and malformed/non-success responses become safe unavailable errors', async () => {
   const originalFetch = globalThis.fetch;
   try {
