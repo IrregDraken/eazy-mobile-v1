@@ -554,6 +554,7 @@ class _ProfilePageState extends State<ProfilePage> {
       text: profile['username']?.toString() ?? '',
     );
     final bio = TextEditingController(text: profile['bio']?.toString() ?? '');
+    final location = TextEditingController(text: profile['location']?.toString() ?? '');
     final formKey = GlobalKey<FormState>();
     final values = await showModalBottomSheet<Map<String, String>>(
       context: context,
@@ -628,6 +629,16 @@ class _ProfilePageState extends State<ProfilePage> {
                         alignLabelWithHint: true,
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: location,
+                      maxLength: 120,
+                      decoration: const InputDecoration(
+                        labelText: 'Location',
+                        hintText: 'City or area',
+                        prefixIcon: Icon(Icons.location_on_outlined),
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -641,6 +652,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             'lastName': last.text.trim(),
                             'username': username.text.trim().toLowerCase(),
                             'bio': bio.text.trim(),
+                            'location': location.text.trim(),
                           });
                         },
                         child: const Text('Save changes'),
@@ -656,6 +668,7 @@ class _ProfilePageState extends State<ProfilePage> {
     last.dispose();
     username.dispose();
     bio.dispose();
+    location.dispose();
     if (values == null) return;
     setState(() {
       saving = true;
