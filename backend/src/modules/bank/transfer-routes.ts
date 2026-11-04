@@ -10,6 +10,7 @@ import type { BankTransferService } from './transfer-service.js';
 import type { VirtualAccountService } from './virtual-account-service.js';
 import type { PaymentPinService } from '../wallet/payment-pin-service.js';
 import { requirePaymentPin } from '../wallet/payment-pin-middleware.js';
+import { requireActiveVirtualAccount } from './virtual-account-middleware.js';
 
 export function createBankTransferRouter(service: BankTransferService, virtualAccounts?: VirtualAccountService, paymentPin?: PaymentPinService): Router {
   const router = Router();
@@ -28,7 +29,7 @@ export function createBankTransferRouter(service: BankTransferService, virtualAc
   router.use(requireAuth);
   router.get('/capabilities', controller.capabilities);
   if (paymentPin) {
-    router.post('/', mutationLimit, requireIdempotencyKey, validate('body', bankTransferSchema), requirePaymentPin(paymentPin), controller.initiate);
+    router.post('/', mutationLimit, requireIdempotencyKey, validate('body', bankTransferSchema), requireActiveVirtualAccount(virtualAccounts), requirePaymentPin(paymentPin), controller.initiate);
   } else {
     router.post('/', mutationLimit, requireIdempotencyKey, validate('body', bankTransferSchema), (_request, _response, next) => {
       next(new AppError('SERVICE_UNAVAILABLE', 'Payment PIN authorization is unavailable'));
