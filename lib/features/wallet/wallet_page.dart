@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -39,6 +40,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   List<Map<String, dynamic>> transactions = [];
   Map<String, dynamic>? pendingDeposit;
   List<Map<String, dynamic>> walletAlerts = [];
+  Timer? _activationPollTimer;
+  int _activationPollAttempts = 0;
 
   @override
   void initState() {
@@ -50,6 +53,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _activationPollTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -173,8 +177,32 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+        _scheduleActivationPoll();
+      }
     }
+  }
+
+  void _scheduleActivationPoll() {
+    _activationPollTimer?.cancel();
+    final status = virtualAccount?['status']?.toString().toLowerCase();
+    if (status != 'pending') {
+      _activationPollAttempts = 0;
+      return;
+    }
+    const delaysSeconds = [10, 20, 40, 60, 60];
+    if (_activationPollAttempts >= delaysSeconds.length) return;
+    final delay = Duration(seconds: delaysSeconds[_activationPollAttempts]);
+    _activationPollAttempts += 1;
+    _activationPollTimer = Timer(delay, () {
+      if (mounted) load();
+    });
+  }
+
+  Future<void> refreshActivationStatus() async {
+    _activationPollAttempts = 0;
+    await load();
   }
 
   Future<void> deposit() async {
@@ -1035,6 +1063,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       ),
     );
     if (consent != true || !mounted) return;
+    _activationPollAttempts = 0;
     setState(() => busy = true);
     try {
       final result = await api.post(
@@ -1046,7 +1075,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     } on ApiException catch (e) {
       _showError(e.message);
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+        _scheduleActivationPoll();
+      }
     }
   }
 
@@ -1754,7 +1786,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                         onPressed: busy || loading
                             ? null
                             : virtualAccount?['status']?.toString().toLowerCase() == 'pending'
-                                ? load
+                                ? refreshActivationStatus
                                 : requestVirtualAccount,
                         icon: Icon(
                           virtualAccount?['status']?.toString().toLowerCase() == 'pending'
