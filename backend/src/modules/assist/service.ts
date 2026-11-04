@@ -86,13 +86,12 @@ export class AssistService {
       return { userMessage: toAssistMessage(userRow), assistantMessage: toAssistMessage(assistantRow) };
     }
 
-    const history = await this.repository.recentMessages(userId, sessionId, MAX_ASSIST_HISTORY_MESSAGES);
-    const orderedHistory = [...history].reverse().filter(row => row.id !== userRow.id);
-    const messages = await buildAssistMessages(orderedHistory, input.content, this.tools);
-
     const abortController = new AbortController();
     this.activeGenerations.set(generationKey, abortController);
     try {
+      const history = await this.repository.recentMessages(userId, sessionId, MAX_ASSIST_HISTORY_MESSAGES);
+      const orderedHistory = [...history].reverse().filter(row => row.id !== userRow.id);
+      const messages = await buildAssistMessages(orderedHistory, input.content, this.tools);
       const first = await this.complete(messages, abortController.signal);
       if (abortController.signal.aborted) throw new AppError('CONFLICT', 'Assist generation cancelled');
       if (Array.from(first.text).length > MAX_ASSIST_TOOL_CALL_CHARS) throw providerFailure();
