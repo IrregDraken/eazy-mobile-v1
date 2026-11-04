@@ -255,7 +255,7 @@ class _SocialPageState extends State<SocialPage> {
   void _openHomeMenu(String value) {
     switch (value) {
       case 'discover':
-        context.push('/discovery');
+        context.go('/home?tab=shop');
       case 'notifications':
         context.push('/notifications');
       case 'settings':
