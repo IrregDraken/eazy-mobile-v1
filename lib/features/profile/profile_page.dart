@@ -121,6 +121,7 @@ class _ProfilePageState extends State<ProfilePage> {
         nextProfile['displayName'] = composedName;
       }
       nextProfile['avatarUrl'] ??= nextProfile['avatar_url'];
+      nextProfile['coverUrl'] ??= nextProfile['cover_url'];
       nextProfile['userId'] ??= nextProfile['user_id'];
       final actualUsername =
           (nextProfile['username'] ?? nextProfile['user_name'])
@@ -684,6 +685,40 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _changeCover() async {
+    if (!isOwnProfile || saving) return;
+    setState(() => saving = true);
+    try {
+      final upload = await EazyMediaService(api).pickAndUpload(kind: 'cover');
+      if (upload == null) return;
+      await api.patch(
+        'profiles/me',
+        auth: true,
+        body: {'coverUrl': upload.path},
+      );
+      await load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile cover updated')),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('We could not update your profile cover. Try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
   Future<void> _changeAvatar() async {
     if (!isOwnProfile || avatarBusy) return;
     setState(() => avatarBusy = true);
@@ -805,6 +840,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 .where((e) => e != null && e.toString().trim().isNotEmpty)
                 .join(' ');
     final avatar = profile['avatarUrl']?.toString();
+    final cover = profile['coverUrl']?.toString();
     final bio = profile['bio']?.toString() ?? '';
     final postsCount = stats['posts'] ?? profile['postsCount'] ?? 0;
     final followers = stats['followers'] ?? profile['followersCount'] ?? 0;
@@ -876,6 +912,55 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      height: 118,
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(18),
+                        image: cover != null && cover.startsWith('http')
+                            ? DecorationImage(
+                                image: NetworkImage(cover),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                        gradient: cover == null || !cover.startsWith('http')
+                            ? const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF168C58), Color(0xFF073F2B)],
+                              )
+                            : null,
+                      ),
+                      child: Stack(
+                        children: [
+                          if (cover == null || !cover.startsWith('http'))
+                            Positioned(
+                              left: 16,
+                              bottom: 14,
+                              child: Text(
+                                'Your Eazy space',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: .92),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          if (isOwnProfile)
+                            Positioned(
+                              right: 10,
+                              bottom: 10,
+                              child: FilledButton.tonalIcon(
+                                onPressed: saving ? null : _changeCover,
+                                icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                                label: const Text('Edit cover'),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -980,6 +1065,27 @@ class _ProfilePageState extends State<ProfilePage> {
                         padding: const EdgeInsets.only(top: 6),
                         child: Text(bio, style: const TextStyle(height: 1.45)),
                       ),
+                    if ((profile['location'] ?? profile['city'])?.toString().trim().isNotEmpty == true)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 7),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.location_on_outlined,
+                              size: 15,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              (profile['location'] ?? profile['city']).toString(),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     const SizedBox(height: 16),
                     if (isOwnProfile)
                       Row(
@@ -1048,94 +1154,6 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          PopupMenuButton<String>(
-                            tooltip: 'Profile options',
-                            onSelected: (value) async {
-                              try {
-                                if (value == 'block') {
-                                  await api.post(
-                                    'social/block/$username',
-                                    auth: true,
-                                  );
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Account blocked'),
-                                      ),
-                                    );
-                                  }
-                                } else if (value == 'report') {
-                                  final controller = TextEditingController();
-                                  final reason = await showDialog<String>(
-                                    context: context,
-                                    builder: (ctx) {
-                                      return AlertDialog(
-                                        title: const Text('Report profile'),
-                                        content: TextField(
-                                          controller: controller,
-                                          maxLines: 3,
-                                          decoration: const InputDecoration(
-                                            hintText: 'Tell us what happened',
-                                          ),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(ctx),
-                                            child: const Text('Cancel'),
-                                          ),
-                                          FilledButton(
-                                            onPressed:
-                                                () => Navigator.pop(
-                                                  ctx,
-                                                  controller.text.trim(),
-                                                ),
-                                            child: const Text('Submit report'),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  );
-                                  controller.dispose();
-                                  if (reason != null && reason.length >= 3) {
-                                    await api.post(
-                                      'social/report/$username',
-                                      auth: true,
-                                      body: {'reason': reason},
-                                    );
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Report sent to Eazy for review',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                }
-                              } on ApiException catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(e.message)),
-                                  );
-                                }
-                              }
-                            },
-                            itemBuilder:
-                                (_) => const [
-                                  PopupMenuItem(
-                                    value: 'block',
-                                    child: Text('Block account'),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'report',
-                                    child: Text('Report account'),
-                                  ),
-                                ],
-                            icon: const Icon(Icons.more_horiz_rounded),
-                          ),
                         ],
                       ),
                     const SizedBox(height: 8),
