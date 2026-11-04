@@ -124,6 +124,7 @@ export class SocialRepository {
          GROUP BY followee_id
        ) follower_counts ON follower_counts.followee_id = p.user_id
        WHERE u.status = 'active'
+         AND p.onboarding_status = 'onboarding_complete'
          AND p.user_id <> $1
          AND NOT EXISTS (
            SELECT 1 FROM follows f
