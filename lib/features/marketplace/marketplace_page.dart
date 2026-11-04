@@ -69,6 +69,11 @@ class _MarketplacePageState extends State<MarketplacePage> {
     if (mounted) await _loadCartCount();
   }
 
+  Future<void> _refreshDiscover() async {
+    await load();
+    await _loadCartCount();
+  }
+
   Future<void> load() async {
     setState(() {
       if (products.isEmpty) loading = true;
@@ -157,7 +162,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
         availability != 'all';
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: load,
+        onRefresh: _refreshDiscover,
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
@@ -475,7 +480,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     childAspectRatio: .68,
                   ),
                   itemCount: products.length,
-                  itemBuilder: (c, i) => _Product(product: products[i]),
+                  itemBuilder: (c, i) => _Product(product: products[i], onReturn: _loadCartCount),
                 ),
               ),
           ],
@@ -644,8 +649,9 @@ class _CategoryTile extends StatelessWidget {
 }
 
 class _Product extends StatelessWidget {
-  const _Product({required this.product});
+  const _Product({required this.product, this.onReturn});
   final Map<String, dynamic> product;
+  final VoidCallback? onReturn;
 
   @override
   Widget build(BuildContext context) {
@@ -661,12 +667,14 @@ class _Product extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap:
-            () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => ProductDetailPage(product: product),
-              ),
+        onTap: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProductDetailPage(product: product),
             ),
+          );
+          onReturn?.call();
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
