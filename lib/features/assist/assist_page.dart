@@ -214,11 +214,18 @@ class _AssistPageState extends State<AssistPage> {
       } else {
         if (mounted) {
           await _loadMessages();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('This response may have already finished or is running on another server instance.')),
+          );
           setState(() => error = null);
         }
       }
     } on ApiException catch (e) {
-      if (mounted) setState(() => error = _friendlyError(e));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not confirm cancellation: ${e.message}')),
+        );
+      }
     } finally {
       if (mounted && cancelledGenerationId != generation) {
         setState(() => cancelling = false);
