@@ -10,6 +10,7 @@ import { notifyFollow } from '../notifications/producers/social.js';
 const usernamePattern = /^[a-z0-9_]{3,32}$/;
 export const socialUsernameSchema = z.string().trim().toLowerCase().regex(usernamePattern, 'Invalid username');
 export const searchQuerySchema = z.object({ q: z.string().trim().toLowerCase().min(2).max(80), page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(50).default(20) });
+export const socialSuggestionsQuerySchema = z.object({ limit: z.coerce.number().int().min(1).max(10).default(5) });
 export const socialPaginationSchema = z.object({ page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(50).default(20) });
 export const reportSchema = z.object({ reason: z.string().trim().min(3).max(1000) }).strict();
 
@@ -93,6 +94,10 @@ export class SocialService {
   async listBlocks(currentUserId: string, pagination: Pagination) {
     const result = await this.repository.blocks(this.pool, currentUserId, pagination.page, pagination.limit);
     return { items: result.items, meta: paginationMeta(pagination, result.total) };
+  }
+
+  async suggestions(currentUserId: string, input: z.infer<typeof socialSuggestionsQuerySchema>) {
+    return { items: await this.repository.suggestions(this.pool, currentUserId, input.limit) };
   }
 
   async search(currentUserId: string, input: z.infer<typeof searchQuerySchema>) {
