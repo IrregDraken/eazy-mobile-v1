@@ -2403,7 +2403,8 @@ class _ActivationStep extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          maxLines: 1,
+          maxLines: 2,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w700,
