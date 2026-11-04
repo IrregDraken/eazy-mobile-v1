@@ -3,10 +3,12 @@ import { z } from 'zod';
 import { requireAuth, currentUserId } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { sendSuccess } from '../../utils/http.js';
+import { createRateLimiter } from '../../middleware/rate-limit.js';
 import { ProfileService, profilePatchSchema, usernameSchema } from './service.js';
 
 export function createProfileRouter(service: ProfileService): Router {
   const router = Router();
+  const searchLimit = createRateLimiter({ name: 'profile-search', windowMs: 60_000, max: 30 });
   router.get('/me', requireAuth, async (request, response) => sendSuccess(response, { profile: await service.getMe(currentUserId(request)) }));
   router.patch('/me', requireAuth, validate('body', profilePatchSchema), async (request, response) => sendSuccess(response, { profile: await service.update(currentUserId(request), request.body) }));
   router.get('/me/stats', requireAuth, async (request, response) => sendSuccess(response, { stats: await service.getStats(currentUserId(request)) }));
@@ -15,7 +17,7 @@ export function createProfileRouter(service: ProfileService): Router {
     const currentUser = request.auth?.userId;
     return sendSuccess(response, await service.isUsernameAvailable(param(request.params.username), currentUser));
   });
-  router.get('/search', requireAuth, validate('query', z.object({ q: z.string().trim().min(2).max(80) })), async (request, response) => sendSuccess(response, { items: await service.searchPublic(String(request.query.q ?? ''), currentUserId(request)) }));
+  router.get('/search', requireAuth, searchLimit, validate('query', z.object({ q: z.string().trim().min(2).max(80) })), async (request, response) => sendSuccess(response, { items: await service.searchPublic(String(request.query.q ?? ''), currentUserId(request)) }));
   router.get('/:username', validate('params', z.object({ username: usernameSchema })), async (request, response) => sendSuccess(response, { profile: await service.getPublic(param(request.params.username), request.auth?.userId) }));
   return router;
 }
