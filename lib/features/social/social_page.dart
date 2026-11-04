@@ -32,6 +32,8 @@ class _SocialPageState extends State<SocialPage> {
   int page = 1;
   bool hasMore = true, loadingMore = false, newPostsAvailable = false;
   final dismissedSuggestions = <String>{};
+  bool dismissAllSuggestions = false;
+  bool dismissCreatePostPrompt = false;
   final followedSuggestions = <String>{};
 
   @override
@@ -148,6 +150,117 @@ class _SocialPageState extends State<SocialPage> {
       }
     } finally {
       if (mounted) setState(() => loadingMore = false);
+    }
+  }
+
+  Future<void> _searchPeople() async {
+    final controller = TextEditingController();
+    final query = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Search Eazy'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (value) => Navigator.pop(dialogContext, value),
+          decoration: const InputDecoration(
+            hintText: 'Find people by name or username',
+            prefixIcon: Icon(Icons.search_rounded),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            child: const Text('Search'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (query == null || query.trim().length < 2 || !mounted) return;
+    setState(() => loadingMore = true);
+    try {
+      final result = await api.get(
+        'profiles/search?q=${Uri.encodeQueryComponent(query.trim())}',
+        auth: true,
+      );
+      final people = (result['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((person) => Map<String, dynamic>.from(person))
+          .toList();
+      if (!mounted) return;
+      if (people.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No people matched that search.')),
+        );
+        return;
+      }
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        isScrollControlled: true,
+        builder: (sheetContext) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(sheetContext).height * .65,
+            child: ListView.separated(
+              itemCount: people.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (_, index) {
+                final person = people[index];
+                final username = person['username']?.toString() ?? '';
+                final name = person['displayName']?.toString() ?? username;
+                final avatar = person['avatarUrl']?.toString();
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: avatar != null && avatar.startsWith('http')
+                        ? NetworkImage(avatar)
+                        : null,
+                    child: avatar == null || !avatar.startsWith('http')
+                        ? Text(
+                            name.isEmpty ? 'E' : name.characters.first.toUpperCase(),
+                          )
+                        : null,
+                  ),
+                  title: Text(name),
+                  subtitle: Text('@$username'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    context.push('/profile/$username');
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => loadingMore = false);
+    }
+  }
+
+  void _openHomeMenu(String value) {
+    switch (value) {
+      case 'discover':
+        context.push('/discovery');
+      case 'notifications':
+        context.push('/notifications');
+      case 'settings':
+        context.push('/settings');
+      case 'account':
+        context.push('/account-settings');
+      case 'security':
+        context.push('/security');
     }
   }
 
@@ -332,16 +445,59 @@ class _SocialPageState extends State<SocialPage> {
                   IconButton(
                     tooltip: 'Notifications',
                     onPressed: () => context.push('/notifications'),
-                    icon: Icon(Icons.notifications_none_rounded),
+                    icon: const Icon(Icons.notifications_none_rounded),
                   ),
-                  IconButton(
+                  FilledButton.tonalIcon(
                     onPressed: posting ? null : compose,
-                    icon: Icon(
-                      Icons.add_circle_rounded,
-                      color: context.eazyAccent,
+                    icon: const Icon(Icons.add_rounded, size: 17),
+                    label: const Text('Create'),
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                     ),
                   ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Home menu',
+                    icon: const Icon(Icons.menu_rounded),
+                    onSelected: _openHomeMenu,
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'discover', child: Text('Discover')),
+                      PopupMenuItem(value: 'notifications', child: Text('Notifications')),
+                      PopupMenuItem(value: 'settings', child: Text('Settings')),
+                      PopupMenuItem(value: 'account', child: Text('Account settings')),
+                      PopupMenuItem(value: 'security', child: Text('Security')),
+                    ],
+                  ),
                 ],
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Material(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .55),
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: _searchPeople,
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    height: 42,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 13),
+                      child: Row(
+                        children: [
+                          Icon(Icons.search_rounded, size: 19, color: context.eazyMuted),
+                          const SizedBox(width: 9),
+                          Text(
+                            'Search people on Eazy',
+                            style: TextStyle(color: context.eazyMuted, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -410,13 +566,45 @@ class _SocialPageState extends State<SocialPage> {
               hasScrollBody: false,
               child: _State(error!, load),
             ),
-          if (!loading && error == null && posts.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: _State(
-                'No posts yet',
-                compose,
-                actionLabel: 'Create post',
+          if (!loading && error == null && posts.isEmpty && !dismissCreatePostPrompt)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Your feed is quiet',
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Dismiss prompt',
+                              onPressed: () => setState(() => dismissCreatePostPrompt = true),
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                          ],
+                        ),
+                        const Text('Start the conversation by sharing something with your Eazy circle.'),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: FilledButton.icon(
+                            onPressed: posting ? null : compose,
+                            icon: const Icon(Icons.add_rounded),
+                            label: const Text('Create a post'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           if (loading && posts.isNotEmpty)
@@ -480,9 +668,9 @@ class _SocialPageState extends State<SocialPage> {
           SliverList.builder(
             itemCount:
                 posts.length +
-                (suggestions.isNotEmpty ? posts.length ~/ 10 : 0),
+                (suggestions.isNotEmpty && !dismissAllSuggestions ? posts.length ~/ 10 : 0),
             itemBuilder: (c, i) {
-              if ((i + 1) % 11 == 0 && suggestions.isNotEmpty) {
+              if ((i + 1) % 11 == 0 && suggestions.isNotEmpty && !dismissAllSuggestions) {
                 return _SuggestedAccounts(
                   people:
                       suggestions.where((person) {
@@ -493,6 +681,7 @@ class _SocialPageState extends State<SocialPage> {
                       }).toList(),
                   followed: followedSuggestions,
                   onFollow: followSuggestion,
+                  onDismissAll: () => setState(() => dismissAllSuggestions = true),
                   onDismiss:
                       (person) => setState(() {
                         dismissedSuggestions.add(
@@ -1563,11 +1752,13 @@ class _SuggestedAccounts extends StatelessWidget {
     required this.people,
     required this.followed,
     required this.onFollow,
+    required this.onDismissAll,
     required this.onDismiss,
   });
   final List<Map<String, dynamic>> people;
   final Set<String> followed;
   final Future<void> Function(Map<String, dynamic>) onFollow;
+  final VoidCallback onDismissAll;
   final ValueChanged<Map<String, dynamic>> onDismiss;
 
   @override
@@ -1588,10 +1779,11 @@ class _SuggestedAccounts extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
                   ),
                 ),
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  color: context.eazyAccent,
-                  size: 18,
+                IconButton(
+                  tooltip: 'Dismiss people suggestions',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onDismissAll,
+                  icon: const Icon(Icons.close_rounded, size: 18),
                 ),
               ],
             ),
