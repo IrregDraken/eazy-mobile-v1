@@ -67,7 +67,7 @@ export const productSearchSchema = z.object({
   currency: currencySchema.optional(),
   availability: z.enum(['in_stock', 'out_of_stock']).optional(),
   status: z.enum(['active', 'sold_out']).optional(),
-  sort: z.enum(['newest', 'price_asc', 'price_desc']).default('newest'),
+  sort: z.enum(['newest', 'featured', 'price_asc', 'price_desc']).default('newest'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20)
 }).strict().superRefine((value, ctx) => {
