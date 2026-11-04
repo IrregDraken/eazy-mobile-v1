@@ -735,7 +735,7 @@ class _StoryCaptionDialogState extends State<_StoryCaptionDialog> {
   void _submit() {
     if (_submitted) return;
     final caption = _controller.text.trim();
-    setState(() => _submitted = true);
+    _submitted = true;
     Navigator.of(context).pop(caption);
   }
 
