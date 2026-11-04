@@ -7,6 +7,7 @@ export interface SocialProfile {
   displayName: string;
   avatarUrl: string | null;
   isFollowing?: boolean;
+  followerCount?: number;
 }
 
 export class SocialRepository {
@@ -109,6 +110,35 @@ export class SocialRepository {
       [userId, pattern, limit, (page - 1) * limit]
     );
     return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
+  async suggestions(client: Pool, userId: string, limit: number): Promise<SocialProfile[]> {
+    const result = await client.query<SocialProfile>(
+      `SELECT p.username, p.display_name AS "displayName", p.avatar_url AS "avatarUrl",
+         COALESCE(follower_counts.total, 0)::int AS "followerCount"
+       FROM users u
+       JOIN profiles p ON p.user_id = u.id
+       LEFT JOIN (
+         SELECT followee_id, count(*)::int AS total
+         FROM follows
+         GROUP BY followee_id
+       ) follower_counts ON follower_counts.followee_id = p.user_id
+       WHERE u.status = 'active'
+         AND p.user_id <> $1
+         AND NOT EXISTS (
+           SELECT 1 FROM follows f
+           WHERE f.follower_id = $1 AND f.followee_id = p.user_id
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM blocks b
+           WHERE (b.blocker_id = $1 AND b.blocked_id = p.user_id)
+              OR (b.blocker_id = p.user_id AND b.blocked_id = $1)
+         )
+       ORDER BY "followerCount" DESC, u.created_at DESC, p.username ASC
+       LIMIT $2`,
+      [userId, limit]
+    );
+    return result.rows;
   }
 
   async report(client: DbClient, reporterId: string, targetId: string, reason: string): Promise<string> {
