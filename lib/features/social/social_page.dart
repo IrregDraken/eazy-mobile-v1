@@ -225,7 +225,7 @@ class _SocialPageState extends State<SocialPage> {
                         : null,
                     child: avatar == null || !avatar.startsWith('http')
                         ? Text(
-                            name.isEmpty ? 'E' : name.characters.first.toUpperCase(),
+                            name.isEmpty ? 'E' : name.substring(0, 1).toUpperCase(),
                           )
                         : null,
                   ),
@@ -256,14 +256,19 @@ class _SocialPageState extends State<SocialPage> {
     switch (value) {
       case 'discover':
         context.go('/home?tab=shop');
+        return;
       case 'notifications':
         context.push('/notifications');
+        return;
       case 'settings':
         context.push('/settings');
+        return;
       case 'account':
         context.push('/account-settings');
+        return;
       case 'security':
         context.push('/security');
+        return;
     }
   }
 
