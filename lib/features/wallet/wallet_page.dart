@@ -1842,7 +1842,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   _walletActivated
                       ? 'Available for transfers and payments'
                       : 'Activate your wallet to unlock transfers',
