@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
+import { createRateLimiter } from '../../middleware/rate-limit.js';
 import { ChatService } from './service.js';
 import { createChatController } from './controller.js';
 import {
@@ -19,9 +20,10 @@ import {
 export function createChatRouter(service: ChatService): Router {
   const router = Router();
   const controller = createChatController(service);
+  const sendMessageLimit = createRateLimiter({ name: 'chat-message-send', windowMs: 60_000, max: 30 });
   router.post('/conversations', requireAuth, validate('body', createConversationSchema), controller.createConversation);
   router.get('/conversations', requireAuth, validate('query', chatPaginationSchema), controller.listConversations);
-  router.post('/conversations/:conversationId/messages', requireAuth, validate('params', conversationParamsSchema), validate('body', createMessageSchema), controller.sendMessage);
+  router.post('/conversations/:conversationId/messages', requireAuth, sendMessageLimit, validate('params', conversationParamsSchema), validate('body', createMessageSchema), controller.sendMessage);
   router.get('/conversations/:conversationId/messages', requireAuth, validate('params', conversationParamsSchema), validate('query', chatPaginationSchema), controller.listMessages);
   router.post('/conversations/:conversationId/read', requireAuth, validate('params', conversationParamsSchema), validate('body', readStateSchema), controller.markRead);
   router.get('/conversations/:conversationId', requireAuth, validate('params', conversationParamsSchema), controller.getConversation);
