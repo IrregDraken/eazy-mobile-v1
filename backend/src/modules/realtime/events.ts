@@ -32,7 +32,8 @@ const notification = z.object({
 
 export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('subscribe'), channel: z.enum(['user', 'conversation']), id: uuid }).strict(),
-  z.object({ type: z.literal('unsubscribe'), channel: z.enum(['user', 'conversation']), id: uuid }).strict()
+  z.object({ type: z.literal('unsubscribe'), channel: z.enum(['user', 'conversation']), id: uuid }).strict(),
+  z.object({ type: z.literal('typing'), channel: z.literal('conversation'), id: uuid, active: z.boolean() }).strict()
 ]);
 
 export const realtimeEventSchema = z.discriminatedUnion('event', [
@@ -40,6 +41,7 @@ export const realtimeEventSchema = z.discriminatedUnion('event', [
   z.object({ event: z.literal('message.reaction.created'), data: z.object({ conversationId: uuid, messageId: uuid, reaction: z.string().min(1).max(32) }).strict() }).strict(),
   z.object({ event: z.literal('message.reaction.deleted'), data: z.object({ conversationId: uuid, messageId: uuid, reaction: z.string().min(1).max(32) }).strict() }).strict(),
   z.object({ event: z.literal('message.read'), data: z.object({ conversationId: uuid, lastReadMessageId: uuid.nullable(), readAt: z.string(), reader: participant }).strict() }).strict(),
+  z.object({ event: z.literal('conversation.typing'), data: z.object({ conversationId: uuid, userId: uuid, active: z.boolean() }).strict() }).strict(),
   z.object({ event: z.literal('notification.created'), data: z.object({ notification }).strict() }).strict()
 ]);
 
@@ -83,7 +85,8 @@ export function eventConversationId(event: RealtimeEvent): string | null {
     case 'message.created': return event.data.message.conversationId;
     case 'message.reaction.created':
     case 'message.reaction.deleted':
-    case 'message.read': return event.data.conversationId;
+    case 'message.read':
+    case 'conversation.typing': return event.data.conversationId;
     case 'notification.created': return null;
   }
 }
@@ -116,6 +119,7 @@ export const REALTIME_EVENTS: readonly RealtimeEventName[] = [
   'message.reaction.created',
   'message.reaction.deleted',
   'message.read',
+  'conversation.typing',
   'notification.created'
 ];
 
