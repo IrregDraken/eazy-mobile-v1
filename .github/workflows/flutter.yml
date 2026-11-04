@@ -1,8 +1,8 @@
 name: Eazy Monorepo CI
 
 concurrency:
-  group: eazy-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.sha }}
-  cancel-in-progress: false
+  group: eazy-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
@@ -224,15 +224,6 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm install --package-lock-only --ignore-scripts
-      - run: npm audit fix --package-lock-only --ignore-scripts || true
-      - name: Upload generated migration-test lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: eazy-migration-package-lock-${{ github.sha }}
-          path: backend/package-lock.json
-          if-no-files-found: error
-          retention-days: 7
       - run: npm ci
       - name: Create Supabase compatibility objects required by the production migrations
         run: >-
@@ -243,8 +234,6 @@ jobs:
 
   backend-build-test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     defaults:
       run:
         working-directory: backend
@@ -255,9 +244,6 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm install --package-lock-only --ignore-scripts
-      - name: Apply compatible security updates to the generated lockfile
-        run: npm audit fix --package-lock-only --ignore-scripts || true
       - run: npm ci
       - name: Report backend dependency vulnerabilities
         shell: bash
@@ -266,26 +252,5 @@ jobs:
           node --input-type=module -e "import fs from 'node:fs'; const audit = JSON.parse(fs.readFileSync('/tmp/eazy-npm-audit.json', 'utf8')); for (const [name, item] of Object.entries(audit.vulnerabilities ?? {})) console.log(JSON.stringify({name, severity:item.severity, direct:item.isDirect, range:item.range, fixAvailable:item.fixAvailable, via:item.via.map(v => typeof v === 'string' ? v : {title:v.title, url:v.url, range:v.range})}));"
       - run: npm run build
       - run: npm test
-      - name: Upload generated backend lockfile for review
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: eazy-backend-package-lock-${{ github.sha }}
-          path: backend/package-lock.json
-          if-no-files-found: error
-          retention-days: 7
       - name: Fail on high-severity dependency advisories
         run: npm audit --audit-level=high
-      - name: Commit refreshed backend lockfile to implementation branch
-        if: always() && github.ref == 'refs/heads/codex/eazy-production-batch-1-8'
-        shell: bash
-        run: |
-          if git diff --quiet -- package-lock.json; then
-            echo "Backend lockfile is already current."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          git commit -m "chore(deps): refresh backend lockfile"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
