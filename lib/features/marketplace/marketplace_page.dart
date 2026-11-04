@@ -111,6 +111,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
         );
         if (categoryIds.isEmpty) {
           products = [];
+          featuredProducts = [];
+          justForYouProducts = [];
           return;
         }
         params['categoryIds'] = categoryIds.join(',');
@@ -142,7 +144,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
         final recommendationResults = await Future.wait([
           api.get('marketplace/products?status=active&sort=featured&page=1&limit=6')
               .catchError((_) => <String, dynamic>{}),
-          api.get('marketplace/products?status=active&sort=newest&page=1&limit=8')
+          api.get('marketplace/products?status=active&sort=newest&page=1&limit=12')
               .catchError((_) => <String, dynamic>{}),
         ]);
         final featured = (recommendationResults[0]['items'] as List? ?? const [])
@@ -153,9 +155,6 @@ class _MarketplacePageState extends State<MarketplacePage> {
             .where((item) => item['ratingAverage'] != null)
             .take(6)
             .toList();
-        if (featuredProducts.isEmpty) {
-          featuredProducts = featured.take(6).toList();
-        }
         final featuredIds = featuredProducts.map((item) => item['id']?.toString()).toSet();
         justForYouProducts = (recommendationResults[1]['items'] as List? ?? const [])
             .whereType<Map>()
