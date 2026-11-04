@@ -12,6 +12,7 @@ export interface ProfileRecord {
   bio: string | null;
   avatar_url: string | null;
   cover_url: string | null;
+  location: string | null;
   onboarding_status: 'profile_incomplete' | 'onboarding_complete';
 }
 
@@ -34,7 +35,7 @@ export interface ProfileStats {
 }
 
 
-const profileColumns = 'user_id, username, display_name, first_name, middle_name, last_name, date_of_birth, bio, avatar_url, cover_url, onboarding_status';
+const profileColumns = 'user_id, username, display_name, first_name, middle_name, last_name, date_of_birth, bio, avatar_url, cover_url, location, onboarding_status';
 
 export class ProfileRepository {
   constructor(private readonly pool: Pool) {}
@@ -46,7 +47,7 @@ export class ProfileRepository {
 
   async getPublicByUsername(username: string, viewerId?: string): Promise<PublicProfileRecord | null> {
     const result = await this.pool.query<PublicProfileRecord>(
-      `SELECT p.user_id, username, display_name, first_name, middle_name, last_name, bio, avatar_url, cover_url, onboarding_status
+      `SELECT p.user_id, username, display_name, first_name, middle_name, last_name, bio, avatar_url, cover_url, location, onboarding_status
        FROM profiles p JOIN users u ON u.id = p.user_id AND u.status = 'active'
        WHERE p.username = $1
          AND ($2::uuid IS NULL OR NOT EXISTS (
@@ -63,7 +64,7 @@ export class ProfileRepository {
     const normalized = query.trim().toLowerCase();
     const pattern = `%${normalized}%`;
     const result = await this.pool.query<PublicProfileRecord>(
-      `SELECT p.user_id, p.username, p.display_name, p.first_name, p.last_name, p.bio, p.avatar_url, p.cover_url, p.onboarding_status
+      `SELECT p.user_id, p.username, p.display_name, p.first_name, p.last_name, p.bio, p.avatar_url, p.cover_url, p.location, p.onboarding_status
        FROM profiles p JOIN users u ON u.id = p.user_id AND u.status = 'active'
        WHERE p.user_id <> $1
          AND (
@@ -108,7 +109,7 @@ export class ProfileRepository {
   }
 
   async updateCurrent(client: DbClient, userId: string, fields: Record<string, unknown>): Promise<ProfileRecord | null> {
-    const allowed = ['username', 'display_name', 'first_name', 'middle_name', 'last_name', 'date_of_birth', 'bio', 'avatar_url', 'cover_url'] as const;
+    const allowed = ['username', 'display_name', 'first_name', 'middle_name', 'last_name', 'date_of_birth', 'bio', 'avatar_url', 'cover_url', 'location'] as const;
     const entries = Object.entries(fields).filter(([key, value]) => allowed.includes(key as typeof allowed[number]) && value !== undefined);
     if (entries.length === 0) return this.getByUserId(userId, client);
     const set = entries.map(([key], index) => `${key} = $${index + 2}`).join(', ');
