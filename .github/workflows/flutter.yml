@@ -243,6 +243,8 @@ jobs:
 
   backend-build-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: backend
@@ -274,3 +276,16 @@ jobs:
           retention-days: 7
       - name: Fail on high-severity dependency advisories
         run: npm audit --audit-level=high
+      - name: Commit refreshed backend lockfile to implementation branch
+        if: always() && github.ref == 'refs/heads/codex/eazy-production-batch-1-8'
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "Backend lockfile is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore(deps): refresh backend lockfile"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
