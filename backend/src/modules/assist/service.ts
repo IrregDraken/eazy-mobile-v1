@@ -74,7 +74,7 @@ export class AssistService {
       ? null
       : new AbortController();
     if (generationController) this.activeGenerations.set(generationKey, generationController);
-    let userRow;
+    let userRow: Awaited<ReturnType<AssistRepositoryContract['insertMessage']>>;
     try {
       userRow = await withTransaction(this.pool, client =>
         this.repository.insertMessage(client, userId, sessionId, 'user', input.content)
