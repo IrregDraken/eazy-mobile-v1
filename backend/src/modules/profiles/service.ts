@@ -96,7 +96,7 @@ export class ProfileService {
       throw error;
     }
     if (!profile) throw new AppError('NOT_FOUND', 'Profile not found');
-    return { ...profile, avatar_url: await this.resolveAvatar(profile.user_id, profile.avatar_url) };
+    return { ...profile, avatar_url: await this.resolveAvatar(profile.user_id, profile.avatar_url), cover_url: await this.resolveCover(profile.user_id, profile.cover_url) };
   }
 
   private async resolveAvatar(userId: string, value: string | null): Promise<string | null> {
@@ -116,7 +116,7 @@ export class ProfileService {
   async completeOnboarding(userId: string): Promise<ProfileRecord> {
     const profile = await withTransaction(this.pool, client => this.repository.completeOnboarding(client, userId));
     if (!profile) throw new AppError('VALIDATION_ERROR', 'Complete username, first name, and date of birth before finishing onboarding');
-    return { ...profile, avatar_url: await this.resolveAvatar(profile.user_id, profile.avatar_url) };
+    return { ...profile, avatar_url: await this.resolveAvatar(profile.user_id, profile.avatar_url), cover_url: await this.resolveCover(profile.user_id, profile.cover_url) };
   }
 }
 
