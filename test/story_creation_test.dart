@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:eazy_mobile_v1/app/theme/eazy_theme.dart';
 import 'package:eazy_mobile_v1/core/media/media_service.dart';
 import 'package:eazy_mobile_v1/core/network/api_client.dart';
 import 'package:eazy_mobile_v1/features/social/stories_tray.dart';
 
 class _FakeApiClient extends ApiClient {
+  _FakeApiClient()
+      : super(client: MockClient((_) async => http.Response('{}', 200)));
+
   Map<String, dynamic>? submittedStory;
 
   @override
