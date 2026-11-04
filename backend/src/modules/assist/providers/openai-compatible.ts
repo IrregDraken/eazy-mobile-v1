@@ -38,6 +38,9 @@ export class OpenAICompatibleProvider implements AIProvider {
   async complete(input: Parameters<AIProvider['complete']>[0]): Promise<{ text: string; providerReference?: string }> {
     const messages = input.messages.map(message => ({ role: message.role, content: message.content }));
     const controller = new AbortController();
+    const abortFromCaller = () => controller.abort(input.signal?.reason);
+    if (input.signal?.aborted) abortFromCaller();
+    else input.signal?.addEventListener('abort', abortFromCaller, { once: true });
     const timeout = setTimeout(() => controller.abort(), this.config.AI_PROVIDER_TIMEOUT_MS ?? 15_000);
     try {
       const endpoint = new URL(this.endpoint.toString());
@@ -85,8 +88,12 @@ export class OpenAICompatibleProvider implements AIProvider {
       const providerReference = typeof record.id === 'string' && record.id.length > 0 && record.id.length <= 255 ? record.id : undefined;
       return { text: text.trim(), ...(providerReference ? { providerReference } : {}) };
     } catch {
+      if (input.signal?.aborted) {
+        throw new AppError('CONFLICT', 'Assist generation cancelled');
+      }
       throw unavailable();
     } finally {
+      input.signal?.removeEventListener('abort', abortFromCaller);
       clearTimeout(timeout);
     }
   }
