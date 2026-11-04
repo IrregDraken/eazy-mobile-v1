@@ -273,6 +273,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> sendToEazyUser() async {
+    if (!_walletActivated) {
+      await requestVirtualAccount();
+      return;
+    }
     final searchInput = TextEditingController();
     final query = await showDialog<String>(
       context: context,
@@ -732,6 +736,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> sendToExternalBank() async {
+    if (!_walletActivated) {
+      await requestVirtualAccount();
+      return;
+    }
     List<Map<String, dynamic>> availableBanks;
     setState(() => busy = true);
     try {
@@ -961,6 +969,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> receiveFromEazyUser() async {
+    if (!_walletActivated) {
+      await requestVirtualAccount();
+      return;
+    }
     setState(() => busy = true);
     try {
       final result = await api.post(
@@ -985,10 +997,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> receiveFromExternalBank() async {
-    if (virtualAccount == null) {
+    if (!_walletActivated) {
       await requestVirtualAccount();
     }
-    if (!mounted || virtualAccount == null) return;
+    if (!mounted || !_walletActivated) return;
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -997,7 +1009,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> requestVirtualAccount() async {
-    if (virtualAccount != null || busy) return;
+    final activationStatus = virtualAccount?['status']?.toString().toLowerCase();
+    if (_walletActivated || activationStatus == 'pending' || busy) return;
     final consent = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1038,6 +1051,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> scanQr() async {
+    if (!_walletActivated) {
+      await requestVirtualAccount();
+      return;
+    }
     final token = await Navigator.of(
       context,
     ).push<String>(MaterialPageRoute(builder: (_) => const _QrScannerPage()));
@@ -1231,6 +1248,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   String get _currency => wallet?['currency']?.toString() ?? 'NGN';
+  bool get _walletActivated =>
+      virtualAccount?['status']?.toString().toLowerCase() == 'active';
+
   String get _username =>
       username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
@@ -1670,6 +1690,101 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             ],
           ),
           const SizedBox(height: 14),
+          if (!_walletActivated) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          virtualAccount?['status']?.toString().toLowerCase() == 'pending'
+                              ? Icons.hourglass_top_rounded
+                              : virtualAccount?['status']?.toString().toLowerCase() == 'failed'
+                                  ? Icons.error_outline_rounded
+                                  : Icons.shield_outlined,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            virtualAccount?['status']?.toString().toLowerCase() == 'pending'
+                                ? 'Wallet activation pending'
+                                : virtualAccount?['status']?.toString().toLowerCase() == 'failed'
+                                    ? 'Wallet activation needs attention'
+                                    : 'Activate your Eazy Wallet',
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      virtualAccount?['status']?.toString().toLowerCase() == 'pending'
+                          ? 'Paystack is processing your dedicated NGN account. Your wallet will unlock after the provider confirms the assignment.'
+                          : virtualAccount?['status']?.toString().toLowerCase() == 'failed'
+                              ? (virtualAccount?['failureReason']?.toString().isNotEmpty == true
+                                  ? virtualAccount!['failureReason'].toString()
+                                  : 'The provider could not complete the assignment. You can safely retry.')
+                              : 'Activate once to enable Eazy-to-Eazy transfers, QR payments and receiving money from external banks.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        _ActivationStep(label: 'Details', complete: true),
+                        const Expanded(child: Divider()),
+                        _ActivationStep(
+                          label: 'Provider',
+                          complete: virtualAccount?['status']?.toString().toLowerCase() == 'pending',
+                        ),
+                        const Expanded(child: Divider()),
+                        const _ActivationStep(label: 'Active', complete: false),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: busy || loading
+                            ? null
+                            : virtualAccount?['status']?.toString().toLowerCase() == 'pending'
+                                ? load
+                                : requestVirtualAccount,
+                        icon: Icon(
+                          virtualAccount?['status']?.toString().toLowerCase() == 'pending'
+                              ? Icons.sync_rounded
+                              : Icons.lock_open_rounded,
+                        ),
+                        label: Text(
+                          virtualAccount?['status']?.toString().toLowerCase() == 'pending'
+                              ? 'Refresh activation status'
+                              : virtualAccount?['status']?.toString().toLowerCase() == 'failed'
+                                  ? 'Retry activation'
+                                  : 'Activate wallet',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Your name, email and phone number from your Eazy profile are shared with Paystack only to request the dedicated account. Eazy is not a bank.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
           Container(
             padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
             decoration: BoxDecoration(
@@ -1728,7 +1843,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Available for transfers and payments',
+                  _walletActivated
+                      ? 'Available for transfers and payments'
+                      : 'Activate your wallet to unlock transfers',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
@@ -1742,7 +1859,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       child: _WalletAction(
                         icon: Icons.arrow_upward_rounded,
                         label: 'Send',
-                        onTap: busy ? null : _showSendOptions,
+                        onTap: busy || !_walletActivated ? null : _showSendOptions,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1750,7 +1867,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       child: _WalletAction(
                         icon: Icons.arrow_downward_rounded,
                         label: 'Receive',
-                        onTap: busy ? null : _showReceiveOptions,
+                        onTap: busy || !_walletActivated ? null : _showReceiveOptions,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1758,7 +1875,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       child: _WalletAction(
                         icon: Icons.qr_code_scanner_rounded,
                         label: 'Scan QR',
-                        onTap: busy ? null : scanQr,
+                        onTap: busy || !_walletActivated ? null : scanQr,
                       ),
                     ),
                     const SizedBox(width: 6),
