@@ -48,6 +48,7 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
   MediaUpload? image;
   bool loadingCategories = true;
   bool uploading = false;
+  double uploadProgress = 0;
   bool publishing = false;
   String? error;
 
@@ -189,9 +190,14 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
 
   Future<void> _pickImage() async {
     if (uploading || publishing) return;
-    setState(() { uploading = true; error = null; });
+    setState(() { uploading = true; uploadProgress = 0; error = null; });
     try {
-      final uploaded = await media.pickAndUpload(kind: 'product');
+      final uploaded = await media.pickAndUpload(
+        kind: 'product',
+        onProgress: (progress) {
+          if (mounted) setState(() => uploadProgress = progress.clamp(0, 1).toDouble());
+        },
+      );
       if (mounted && uploaded != null) setState(() => image = uploaded);
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
@@ -359,7 +365,11 @@ class _SellerSetupPageState extends State<SellerSetupPage> {
                     ])),
             ),
           ),
-          if (uploading) const LinearProgressIndicator(minHeight: 3),
+          if (uploading)
+            LinearProgressIndicator(
+              value: uploadProgress > 0 ? uploadProgress : null,
+              minHeight: 3,
+            ),
           const SizedBox(height: 18),
           TextField(controller: name, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(labelText: 'Product name', hintText: 'What are you selling?')),
           const SizedBox(height: 12),
