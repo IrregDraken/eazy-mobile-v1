@@ -2264,6 +2264,44 @@ class _WalletAction extends StatelessWidget {
   );
 }
 
+class _ActivationStep extends StatelessWidget {
+  const _ActivationStep({required this.label, required this.complete});
+
+  final String label;
+  final bool complete;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 12,
+          backgroundColor: complete
+              ? colors.primary
+              : colors.surfaceContainerHighest,
+          child: Icon(
+            complete ? Icons.check_rounded : Icons.circle_outlined,
+            size: 14,
+            color: complete ? colors.onPrimary : colors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: complete ? colors.primary : colors.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _Info extends StatelessWidget {
   const _Info(this.label, this.value);
   final String label;
