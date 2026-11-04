@@ -156,7 +156,16 @@ class _AssistPageState extends State<AssistPage> {
       });
       _scrollToEnd();
     } on ApiException catch (e) {
+      // The backend persists the user message before calling the AI provider.
+      // Reconcile history instead of deleting a message that may already exist.
       messages.removeWhere((message) => message['id'] == pendingId);
+      if (mounted) {
+        try {
+          await _loadMessages();
+        } catch (_) {
+          // Keep the local error visible if history is temporarily unavailable.
+        }
+      }
       if (mounted) {
         setState(() {
           if (composer.text.trim().isEmpty) composer.text = content;
@@ -316,13 +325,20 @@ class _ThinkingBubble extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(strokeWidth: 2),
+          Text(
+            '•••',
+            style: TextStyle(
+              color: context.eazyAccent,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
           ),
-          SizedBox(width: 9),
-          Text('Eazy is thinking…', style: TextStyle(color: context.eazyMuted)),
+          const SizedBox(width: 9),
+          Text(
+            'Eazy is typing…',
+            style: TextStyle(color: context.eazyMuted),
+          ),
         ],
       ),
     ),
