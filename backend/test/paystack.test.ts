@@ -58,3 +58,69 @@ test('verified order payment writes seller escrow holds in integer kobo exactly 
   assert.deepEqual(hold.values, ['order-id']);
   assert.equal(calls.filter(call => call.sql.includes('INSERT INTO seller_payable_ledger')).length, 1);
 });
+
+
+const originalFetch = globalThis.fetch;
+test.afterEach(() => { globalThis.fetch = originalFetch; });
+
+test('Paystack DVA assignment uses profile identity and resolves nested customer code', async () => {
+  const requests: { url: string; method: string; body: Record<string, unknown> }[] = [];
+  globalThis.fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    const method = init?.method ?? 'GET';
+    const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
+    requests.push({ url, method, body });
+    if (url.endsWith('/customer/user@example.com')) {
+      return new Response(JSON.stringify({ status: false, message: 'Customer not found' }), { status: 404 });
+    }
+    if (url.endsWith('/customer') && method === 'POST') {
+      return new Response(JSON.stringify({ status: true, data: { customer_code: 'CUS_eazy_test' } }), { status: 200 });
+    }
+    if (url.endsWith('/dedicated_account') && method === 'POST') {
+      return new Response(JSON.stringify({ status: true, data: {
+        customer: { customer_code: 'CUS_eazy_test' },
+        account_number: '0123456789',
+        account_name: 'EAZY USER',
+        bank: { name: 'Test Bank', slug: 'test-bank' },
+        active: true,
+        assigned: true
+      } }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ status: false, message: 'Unexpected request' }), { status: 500 });
+  };
+
+  const provider = new PaystackBankProvider(config);
+  const account = await provider.assignVirtualAccount({
+    email: 'user@example.com',
+    firstName: 'Eazy',
+    lastName: 'User',
+    phone: '+2348012345678',
+    currency: 'NGN'
+  });
+  assert.equal(account.customerCode, 'CUS_eazy_test');
+  assert.equal(account.accountNumber, '0123456789');
+  assert.equal(account.status, 'active');
+  const assignment = requests.find(request => request.url.endsWith('/dedicated_account'));
+  assert.ok(assignment);
+  assert.equal(assignment.body.customer, 'CUS_eazy_test');
+  assert.equal(assignment.body.preferred_bank, 'test-bank');
+  assert.equal('bvn' in assignment.body, false);
+  assert.equal('account_number' in assignment.body, false);
+  assert.equal('bank_code' in assignment.body, false);
+});
+
+test('Paystack does not mark an unassigned or inactive DVA as active', async () => {
+  globalThis.fetch = async () => new Response(JSON.stringify({ status: true, data: {
+    customer_code: 'CUS_pending',
+    dedicated_account: {
+      account_number: '0123456789',
+      account_name: 'EAZY USER',
+      bank: { name: 'Wema Bank', slug: 'wema-bank' },
+      active: false,
+      assigned: false
+    }
+  } }), { status: 200 });
+  const provider = new PaystackBankProvider({ ...config, PAYSTACK_MODE: 'live' });
+  const account = await provider.getVirtualAccount({ customerCode: 'CUS_pending' });
+  assert.equal(account?.status, 'pending');
+});
