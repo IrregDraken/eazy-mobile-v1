@@ -108,6 +108,7 @@ class _ConversationPageState extends State<ConversationPage> {
   Timer? typingTimer;
   Timer? otherTypingTimer;
   bool typingAnnounced = false;
+  bool userTyping = false;
   bool otherTyping = false;
   final scroll = ScrollController();
   late final EazyMediaService media;
@@ -305,10 +306,12 @@ class _ConversationPageState extends State<ConversationPage> {
     try {
       final saved = await draftStorage.read(key: _draftStorageKey);
       if (mounted && draft.text.isEmpty && saved != null && saved.isNotEmpty) {
+        draft.removeListener(_scheduleDraftSave);
         draft.value = TextEditingValue(
           text: saved,
           selection: TextSelection.collapsed(offset: saved.length),
         );
+        draft.addListener(_scheduleDraftSave);
       }
     } catch (_) {
       // Draft restoration is best-effort; it must not block opening a chat.
@@ -344,6 +347,7 @@ class _ConversationPageState extends State<ConversationPage> {
       _stopTypingPresence();
       return;
     }
+    userTyping = true;
     if (!typingAnnounced) {
       typingAnnounced = true;
       _sendTypingPresence(true);
@@ -355,8 +359,12 @@ class _ConversationPageState extends State<ConversationPage> {
   void _stopTypingPresence() {
     typingTimer?.cancel();
     typingTimer = null;
-    if (!typingAnnounced) return;
+    if (!typingAnnounced) {
+      userTyping = false;
+      return;
+    }
     typingAnnounced = false;
+    userTyping = false;
     _sendTypingPresence(false);
   }
 
@@ -542,7 +550,7 @@ class _ConversationPageState extends State<ConversationPage> {
       ws.add(
         jsonEncode({'type': 'subscribe', 'channel': 'conversation', 'id': id}),
       );
-      if (draft.text.trim().isNotEmpty) {
+      if (userTyping && draft.text.trim().isNotEmpty) {
         typingAnnounced = true;
         _sendTypingPresence(true);
       }
