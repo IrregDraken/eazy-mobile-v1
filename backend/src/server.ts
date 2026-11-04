@@ -162,11 +162,11 @@ if (pool) {
   const walletRepository = new WalletRepository(pool);
   const walletService = new WalletService(pool, walletRepository, new LedgerService(new LedgerRepository()));
   const paymentPinService = new PaymentPinService(pool, emailProvider, config);
-  authOptions.walletRouter = createWalletRouter(walletService, paymentPinService);
-  authOptions.qrRouter = createQrRouter(new QrService(pool, new QrRepository(pool)), walletService, paymentPinService);
   const bankProvider = config.PAYSTACK_ENABLED && config.PAYSTACK_SECRET_KEY ? new PaystackBankProvider(config) : new UnavailableBankProvider();
   const bankLedger = new LedgerService(new LedgerRepository());
   const virtualAccountService = new VirtualAccountService(pool, bankProvider, bankLedger);
+  authOptions.walletRouter = createWalletRouter(walletService, paymentPinService, virtualAccountService);
+  authOptions.qrRouter = createQrRouter(new QrService(pool, new QrRepository(pool)), walletService, paymentPinService, virtualAccountService);
   authOptions.bankRouter = createBankRouter(new BankService(bankProvider));
   authOptions.bankTransferRouter = createBankTransferRouter(new BankTransferService(pool, bankProvider, bankLedger), virtualAccountService, paymentPinService);
   authOptions.virtualAccountRouter = createVirtualAccountRouter(virtualAccountService);
