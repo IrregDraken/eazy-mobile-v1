@@ -21,6 +21,7 @@ class _AssistPageState extends State<AssistPage> {
   bool loading = true;
   bool sending = false;
   bool cancelling = false;
+  bool retryLastSend = false;
   int generationId = 0;
   int? cancelledGenerationId;
 
@@ -125,6 +126,7 @@ class _AssistPageState extends State<AssistPage> {
     if (content.isEmpty || id == null || sending) return;
     final generation = ++generationId;
     final pendingId = 'pending-${DateTime.now().microsecondsSinceEpoch}';
+    retryLastSend = false;
     setState(() {
       sending = true;
       error = null;
@@ -184,6 +186,7 @@ class _AssistPageState extends State<AssistPage> {
       if (mounted) {
         setState(() {
           if (composer.text.trim().isEmpty) composer.text = content;
+          retryLastSend = true;
           error = _friendlyError(e);
         });
       }
@@ -248,8 +251,10 @@ class _AssistPageState extends State<AssistPage> {
   Future<void> _retry() async {
     if (sending) return;
     if (sessionId != null && composer.text.trim().isNotEmpty) {
-      await _send();
-      return;
+      if (retryLastSend) {
+        await _send();
+        return;
+      }
     }
     setState(() {
       loading = true;
