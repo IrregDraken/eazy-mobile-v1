@@ -32,7 +32,8 @@ export const profilePatchSchema = z.object({
   dateOfBirth: dateOfBirthSchema.optional(),
   bio: z.string().max(500).nullable().optional(),
   avatarUrl: z.string().trim().max(2048).nullable().optional().refine(value => value == null || /^https?:\/\//.test(value) || /^[^/][^?]*\/[^?]+$/.test(value), 'Avatar must be an HTTPS URL or Eazy media storage path'),
-  coverUrl: z.string().trim().max(2048).nullable().optional().refine(value => value == null || /^https?:\/\//.test(value) || /^[^/][^?]*\/[^?]+$/.test(value), 'Cover image must be an HTTPS URL or Eazy media storage path')
+  coverUrl: z.string().trim().max(2048).nullable().optional().refine(value => value == null || /^https:\/\//.test(value) || /^[^/][^?]*\/[^?]+$/.test(value), 'Cover image must be an HTTPS URL or Eazy media storage path'),
+  location: z.string().trim().max(120).nullable().optional()
 }).strict();
 
 export class ProfileService {
@@ -49,7 +50,7 @@ export class ProfileService {
     if (!usernamePattern.test(normalized)) throw new AppError('VALIDATION_ERROR', 'Invalid username');
     const profile = await this.repository.getPublicByUsername(normalized, viewerId);
     if (!profile) throw new AppError('NOT_FOUND', 'Profile not found');
-    return { username: profile.username, displayName: profile.display_name, firstName: profile.first_name, lastName: profile.last_name, bio: profile.bio, avatarUrl: await this.resolveAvatar(profile.user_id, profile.avatar_url), coverUrl: await this.resolveCover(profile.user_id, profile.cover_url) };
+    return { username: profile.username, displayName: profile.display_name, firstName: profile.first_name, lastName: profile.last_name, bio: profile.bio, location: profile.location, avatarUrl: await this.resolveAvatar(profile.user_id, profile.avatar_url), coverUrl: await this.resolveCover(profile.user_id, profile.cover_url) };
   }
 
   async searchPublic(query: string, viewerId: string) {
