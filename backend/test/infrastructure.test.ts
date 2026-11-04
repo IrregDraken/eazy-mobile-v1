@@ -85,16 +85,17 @@ test('rate limiter enforces both authenticated-user and network budgets', () => 
 
 test('upstream fetch helper aborts and rejects when the provider exceeds its timeout', async () => {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (_input, init) => new Promise<Response>((resolve) => {
-    init?.signal?.addEventListener('abort', () => {
-      resolve(new Response('aborted', { status: 200 }));
-    }, { once: true });
-  });
+  let observedSignal: AbortSignal | undefined;
+  globalThis.fetch = async (_input, init) => {
+    observedSignal = init?.signal ?? undefined;
+    return new Promise<Response>(() => {});
+  };
   try {
     await assert.rejects(
       () => fetchWithTimeout('https://provider.example.test', {}, 10),
       /Upstream request timed out/,
     );
+    assert.equal(observedSignal?.aborted, true);
   } finally {
     globalThis.fetch = originalFetch;
   }
