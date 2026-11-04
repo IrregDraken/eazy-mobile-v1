@@ -28,6 +28,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   final storage = const FlutterSecureStorage();
   bool loading = true;
   bool busy = false;
+  bool _loadInProgress = false;
   bool balanceVisible = true;
   bool paymentPinConfigured = false;
   int paymentPinLength = 4;
@@ -86,6 +87,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       '$prefix-${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}';
 
   Future<void> load() async {
+    if (_loadInProgress) return;
+    _loadInProgress = true;
     // Keep an already-rendered wallet visible during refreshes and post-action
     // reconciliation. Only the first load needs a full-page loading state.
     final firstLoad = wallet == null;
@@ -177,6 +180,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
+      _loadInProgress = false;
       if (mounted) {
         setState(() => loading = false);
         _scheduleActivationPoll();
