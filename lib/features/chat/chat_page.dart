@@ -1246,6 +1246,107 @@ class _ConversationPageState extends State<ConversationPage> {
     }
   }
 
+  Future<void> _searchMessages() async {
+    final controller = TextEditingController();
+    final query = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Search conversation'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (value) => Navigator.pop(dialogContext, value),
+          decoration: const InputDecoration(
+            hintText: 'Search loaded messages',
+            prefixIcon: Icon(Icons.search_rounded),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            child: const Text('Search'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (query == null || query.trim().length < 2 || !mounted) return;
+    final needle = query.trim().toLowerCase();
+    final matches = messages.where((message) {
+      final body = message['body']?.toString().toLowerCase() ?? '';
+      return body.contains(needle);
+    }).toList();
+    if (matches.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No matching messages in the loaded conversation history.')),
+      );
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(sheetContext).height * .65,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Text(
+                  '${matches.length} matching message${matches.length == 1 ? '' : 's'}',
+                  style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: matches.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (_, index) {
+                    final message = matches[index];
+                    final sender = message['sender'] is Map
+                        ? Map<String, dynamic>.from(message['sender'] as Map)
+                        : <String, dynamic>{};
+                    final body = message['body']?.toString() ?? '';
+                    return ListTile(
+                      title: Text(
+                        body,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        sender['displayName']?.toString() ??
+                            sender['username']?.toString() ??
+                            ( _isMine(message) ? 'You' : _conversationTitle),
+                      ),
+                      onTap: () async {
+                        await Clipboard.setData(ClipboardData(text: body));
+                        if (sheetContext.mounted) Navigator.pop(sheetContext);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Message copied')),
+                          );
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = _conversationTitle;
@@ -1274,7 +1375,16 @@ class _ConversationPageState extends State<ConversationPage> {
                           ?.toString()
                           .isNotEmpty !=
                       true
-                  ? Icon(Icons.person_rounded, color: context.eazyAccent, size: 18)
+                  ? Text(
+                      (_otherParticipant['username']?.toString().trim().isNotEmpty == true
+                              ? _otherParticipant['username'].toString().trim().substring(0, 1)
+                              : 'E')
+                          .toUpperCase(),
+                      style: TextStyle(
+                        color: context.eazyAccent,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    )
                   : null,
             ),
             const SizedBox(width: 10),
@@ -1309,36 +1419,52 @@ class _ConversationPageState extends State<ConversationPage> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Chat wallpaper',
-            onPressed: _chooseChatWallpaper,
-            icon: const Icon(Icons.wallpaper_outlined),
+            tooltip: 'Search conversation',
+            onPressed: _searchMessages,
+            icon: const Icon(Icons.search_rounded),
           ),
           PopupMenuButton<String>(
-            tooltip: 'Conversation options',
-            onSelected: _handleRecipientAction,
-            itemBuilder:
-                (_) => const [
-                  PopupMenuItem(
-                    value: 'block',
-                    child: Row(
-                      children: [
-                        Icon(Icons.block_rounded),
-                        SizedBox(width: 10),
-                        Text('Block account'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'report',
-                    child: Row(
-                      children: [
-                        Icon(Icons.flag_outlined),
-                        SizedBox(width: 10),
-                        Text('Report account'),
-                      ],
-                    ),
-                  ),
-                ],
+            tooltip: 'Conversation menu',
+            icon: const Icon(Icons.menu_rounded),
+            onSelected: (value) {
+              if (value == 'wallpaper') {
+                _chooseChatWallpaper();
+              } else {
+                _handleRecipientAction(value);
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'wallpaper',
+                child: Row(
+                  children: [
+                    Icon(Icons.wallpaper_outlined),
+                    SizedBox(width: 10),
+                    Text('Chat wallpaper'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'block',
+                child: Row(
+                  children: [
+                    Icon(Icons.block_rounded),
+                    SizedBox(width: 10),
+                    Text('Block account'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'report',
+                child: Row(
+                  children: [
+                    Icon(Icons.flag_outlined),
+                    SizedBox(width: 10),
+                    Text('Report account'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
