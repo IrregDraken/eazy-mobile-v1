@@ -11,8 +11,10 @@ import { createWalletController } from './controller.js';
 import type { WalletService } from './service.js';
 import type { PaymentPinService } from './payment-pin-service.js';
 import { requirePaymentPin } from './payment-pin-middleware.js';
+import type { VirtualAccountService } from '../bank/virtual-account-service.js';
+import { requireActiveVirtualAccount } from '../bank/virtual-account-middleware.js';
 
-export function createWalletRouter(service: WalletService, paymentPin?: PaymentPinService): Router {
+export function createWalletRouter(service: WalletService, paymentPin?: PaymentPinService, virtualAccounts?: VirtualAccountService): Router {
   const router = Router();
   const controller = createWalletController(service);
   const rateLimit = createRateLimiter({ name: 'wallet-transfer', windowMs: 60_000, max: 10 });
@@ -73,7 +75,7 @@ export function createWalletRouter(service: WalletService, paymentPin?: PaymentP
         sendSuccess(response, await paymentPin.reset(currentUserId(request), body.pin, body.confirmation, body.challengeId, body.code));
       } catch (error) { next(error); }
     });
-    router.post('/transfers', rateLimit, requireIdempotencyKey, validate('body', transferSchema), requirePaymentPin(paymentPin), controller.transfer);
+    router.post('/transfers', rateLimit, requireIdempotencyKey, validate('body', transferSchema), requireActiveVirtualAccount(virtualAccounts), requirePaymentPin(paymentPin), controller.transfer);
   } else {
     router.post('/transfers', rateLimit, requireIdempotencyKey, validate('body', transferSchema), (_request, _response, next) => {
       next(new AppError('SERVICE_UNAVAILABLE', 'Payment PIN authorization is unavailable'));
