@@ -1732,7 +1732,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 child: Text(
                   'Wallet',
                   style: TextStyle(
-                    fontSize: 30,
+                    fontSize: 26,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -1,
                   ),
@@ -1867,9 +1867,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             const SizedBox(height: 14),
           ],
           Container(
-            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(24),
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -1893,7 +1893,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                         'Total Balance',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 22,
+                          fontSize: 18,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -1921,7 +1921,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                             ),
                             SizedBox(width: 4),
                             Text(
-                              'Active',
+                              'Verified',
                               style: TextStyle(
                                 color: EazyColors.goldBright,
                                 fontSize: 11,
@@ -1950,7 +1950,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       : formatEazyMoney(_balance, currency: _currency),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 38,
+                    fontSize: 32,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -1,
                   ),
@@ -1966,7 +1966,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 14),
                 Row(
                   children: [
                     Expanded(
