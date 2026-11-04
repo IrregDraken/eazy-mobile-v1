@@ -103,6 +103,9 @@ export class RealtimeService implements RealtimePublisher {
       event,
       async (connection, channel) => channel === `conversation:${normalized}` && await this.authorizeDelivery(connection, channel),
       async connection => {
+        if (event.event === 'conversation.typing') {
+          return event.data.userId === connection.userId ? null : event;
+        }
         if (event.event !== 'message.created') return event;
         const memberView = await this.chat.getMessageForMember(this.pool, event.data.message.id, connection.userId);
         return memberView ? eventForMessage(memberView) : null;
