@@ -27,6 +27,7 @@ class _HomeShellState extends State<HomeShell> {
   double? _assistLeft;
   double? _assistTop;
   bool _assistVisible = true;
+  bool _assistMinimized = false;
 
   @override
   void initState() {
@@ -87,9 +88,10 @@ class _HomeShellState extends State<HomeShell> {
         final left = (_assistLeft ?? defaultLeft).clamp(8.0, constraints.maxWidth - 80).toDouble();
         final top = (_assistTop ?? defaultTop).clamp(8.0, constraints.maxHeight - 160).toDouble();
         final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
-        final showAssist = (index == 0 || index == 1 || index == 4) &&
-            _assistVisible &&
-            !keyboardOpen;
+        final assistAllowed = index == 0 || index == 1 || index == 4;
+        final showAssist = assistAllowed && _assistVisible && !keyboardOpen;
+        final showMiniAssist =
+            assistAllowed && _assistMinimized && !_assistVisible && !keyboardOpen;
         return Stack(
           children: [
             NotificationListener<ScrollNotification>(
@@ -98,8 +100,17 @@ class _HomeShellState extends State<HomeShell> {
                     notification.direction != ScrollDirection.idle) {
                   final shouldShow = notification.direction == ScrollDirection.forward;
                   if (_assistVisible != shouldShow) {
-                    setState(() => _assistVisible = shouldShow);
+                    setState(() {
+                      _assistVisible = shouldShow;
+                      _assistMinimized = !shouldShow;
+                    });
                   }
+                } else if (notification is ScrollEndNotification &&
+                    !_assistVisible) {
+                  setState(() {
+                    _assistVisible = true;
+                    _assistMinimized = false;
+                  });
                 }
                 return false;
               },
@@ -116,8 +127,56 @@ class _HomeShellState extends State<HomeShell> {
                       _assistTop = (top + details.delta.dy).clamp(8.0, constraints.maxHeight - 160).toDouble();
                     });
                   },
-                  onPanEnd: (_) => _saveAssistPosition(),
+                  onPanEnd: (_) {
+                    setState(() {
+                      _assistLeft = left < constraints.maxWidth / 2
+                          ? 8.0
+                          : constraints.maxWidth - 80;
+                      _assistTop = top
+                          .clamp(8.0, constraints.maxHeight - 160)
+                          .toDouble();
+                    });
+                    _saveAssistPosition();
+                  },
                   child: const EazyAssistFab(),
+                ),
+              ),
+            if (showMiniAssist)
+              Positioned(
+                right: 0,
+                top: (constraints.maxHeight * .55)
+                    .clamp(8.0, constraints.maxHeight - 100)
+                    .toDouble(),
+                child: Semantics(
+                  button: true,
+                  label: 'Restore Eazy Assist',
+                  child: Material(
+                    color: Theme.of(context).colorScheme.surface,
+                    elevation: 5,
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(18),
+                    ),
+                    child: InkWell(
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(18),
+                      ),
+                      onTap: () => setState(() {
+                        _assistVisible = true;
+                        _assistMinimized = false;
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 15,
+                        ),
+                        child: Icon(
+                          Icons.auto_awesome_rounded,
+                          color: context.eazyAccent,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
           ],
