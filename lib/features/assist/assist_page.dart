@@ -20,6 +20,9 @@ class _AssistPageState extends State<AssistPage> {
   String? error;
   bool loading = true;
   bool sending = false;
+  bool cancelling = false;
+  int generationId = 0;
+  int? cancelledGenerationId;
 
   @override
   void initState() {
@@ -120,6 +123,7 @@ class _AssistPageState extends State<AssistPage> {
     final content = composer.text.trim();
     final id = sessionId;
     if (content.isEmpty || id == null || sending) return;
+    final generation = ++generationId;
     final pendingId = 'pending-${DateTime.now().microsecondsSinceEpoch}';
     setState(() {
       sending = true;
@@ -159,6 +163,17 @@ class _AssistPageState extends State<AssistPage> {
       // The backend persists the user message before calling the AI provider.
       // Reconcile history instead of deleting a message that may already exist.
       messages.removeWhere((message) => message['id'] == pendingId);
+      if (_cancelledGenerationId == generation) {
+        if (mounted) {
+          try {
+            await _loadMessages();
+          } catch (_) {
+            // Keep the conversation visible if history is temporarily unavailable.
+          }
+          if (mounted) setState(() => error = null);
+        }
+        return;
+      }
       if (mounted) {
         try {
           await _loadMessages();
@@ -173,7 +188,41 @@ class _AssistPageState extends State<AssistPage> {
         });
       }
     } finally {
-      if (mounted) setState(() => sending = false);
+      if (mounted) {
+        setState(() {
+          sending = false;
+          cancelling = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _cancelGeneration() async {
+    final id = sessionId;
+    final generation = generationId;
+    if (!sending || cancelling || id == null) return;
+    setState(() => cancelling = true);
+    try {
+      final result = await api.post(
+        'assist/sessions/$id/cancel',
+        auth: true,
+        body: const {},
+      );
+      if (result['cancelled'] == true) {
+        cancelledGenerationId = generation;
+        if (mounted) setState(() => error = null);
+      } else {
+        if (mounted) {
+          await _loadMessages();
+          setState(() => error = null);
+        }
+      }
+    } on ApiException catch (e) {
+      if (mounted) setState(() => error = _friendlyError(e));
+    } finally {
+      if (mounted && cancelledGenerationId != generation) {
+        setState(() => cancelling = false);
+      }
     }
   }
 
@@ -236,7 +285,7 @@ class _AssistPageState extends State<AssistPage> {
           ),
           IconButton(
             tooltip: 'Refresh chat',
-            onPressed: loading ? null : _bootstrap,
+            onPressed: loading || sending ? null : _bootstrap,
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -297,19 +346,24 @@ class _AssistPageState extends State<AssistPage> {
                           SizedBox(
                             width: 54,
                             height: 54,
-                            child: FilledButton(
-                              onPressed:
-                                  sessionId != null && !sending ? _send : null,
-                              child:
-                                  sending
-                                      ? const SizedBox(
-                                        width: 19,
-                                        height: 19,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                      : const Icon(Icons.arrow_upward_rounded),
+                            child: Tooltip(
+                              message: sending ? 'Cancel generation' : 'Send message',
+                              child: FilledButton(
+                                onPressed: sessionId == null
+                                    ? null
+                                    : sending
+                                        ? (cancelling ? null : _cancelGeneration)
+                                        : _send,
+                                child: sending
+                                    ? cancelling
+                                        ? const SizedBox(
+                                            width: 19,
+                                            height: 19,
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          )
+                                        : const Icon(Icons.stop_rounded)
+                                    : const Icon(Icons.arrow_upward_rounded),
+                              ),
                             ),
                           ),
                         ],
