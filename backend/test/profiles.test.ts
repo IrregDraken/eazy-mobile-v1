@@ -71,3 +71,14 @@ test('cover upload creates a private cover path and rejects non-image media', as
   );
   assert.equal(paths.length, 1);
 });
+
+test('profile cover updates cannot reference another user storage path', async () => {
+  const service = new ProfileService(
+    {} as never,
+    {} as unknown as ProfileRepository,
+  );
+  await assert.rejects(
+    () => service.update('user-a', { coverUrl: 'user-b/cover/private.webp' }),
+    (error: unknown) => error instanceof AppError && error.code === 'FORBIDDEN',
+  );
+});
