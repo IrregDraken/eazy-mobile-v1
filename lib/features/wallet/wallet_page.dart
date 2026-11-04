@@ -1854,6 +1854,39 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
+                    if (_walletActivated)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: EazyColors.gold.withValues(alpha: .18),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: EazyColors.gold.withValues(alpha: .65),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.verified_rounded,
+                              size: 14,
+                              color: EazyColors.goldBright,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Active',
+                              style: TextStyle(
+                                color: EazyColors.goldBright,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     IconButton(
                       tooltip: balanceVisible ? 'Hide balance' : 'Show balance',
                       onPressed: _toggleBalanceVisibility,
