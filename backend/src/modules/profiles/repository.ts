@@ -23,6 +23,7 @@ export interface PublicProfileRecord {
   last_name: string | null;
   bio: string | null;
   avatar_url: string | null;
+  cover_url: string | null;
   onboarding_status: 'profile_incomplete' | 'onboarding_complete';
 }
 
@@ -62,7 +63,7 @@ export class ProfileRepository {
     const normalized = query.trim().toLowerCase();
     const pattern = `%${normalized}%`;
     const result = await this.pool.query<PublicProfileRecord>(
-      `SELECT p.user_id, p.username, p.display_name, p.first_name, p.last_name, p.bio, p.avatar_url, p.onboarding_status
+      `SELECT p.user_id, p.username, p.display_name, p.first_name, p.last_name, p.bio, p.avatar_url, p.cover_url, p.onboarding_status
        FROM profiles p JOIN users u ON u.id = p.user_id AND u.status = 'active'
        WHERE p.user_id <> $1
          AND (
