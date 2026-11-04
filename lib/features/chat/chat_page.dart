@@ -105,6 +105,10 @@ class _ConversationPageState extends State<ConversationPage> {
   final draft = TextEditingController();
   final draftStorage = const FlutterSecureStorage();
   Timer? draftSaveTimer;
+  Timer? typingTimer;
+  Timer? otherTypingTimer;
+  bool typingAnnounced = false;
+  bool otherTyping = false;
   final scroll = ScrollController();
   late final EazyMediaService media;
   final List<MediaUpload> pendingAttachments = [];
@@ -117,6 +121,7 @@ class _ConversationPageState extends State<ConversationPage> {
   bool loading = true, sending = false;
   String? error;
   String? currentUsername;
+  String? currentUserId;
   WebSocket? socket;
   StreamSubscription? subscription;
   Timer? realtimeReconnectTimer;
@@ -316,6 +321,43 @@ class _ConversationPageState extends State<ConversationPage> {
       const Duration(milliseconds: 350),
       _persistDraft,
     );
+    _scheduleTypingPresence();
+  }
+
+  void _sendTypingPresence(bool active) {
+    final ws = socket;
+    if (ws == null || ws.readyState != WebSocket.open) return;
+    try {
+      ws.add(jsonEncode({
+        'type': 'typing',
+        'channel': 'conversation',
+        'id': id,
+        'active': active,
+      }));
+    } catch (_) {
+      // Typing presence is ephemeral and must never block message sending.
+    }
+  }
+
+  void _scheduleTypingPresence() {
+    if (draft.text.trim().isEmpty) {
+      _stopTypingPresence();
+      return;
+    }
+    if (!typingAnnounced) {
+      typingAnnounced = true;
+      _sendTypingPresence(true);
+    }
+    typingTimer?.cancel();
+    typingTimer = Timer(const Duration(milliseconds: 1800), _stopTypingPresence);
+  }
+
+  void _stopTypingPresence() {
+    typingTimer?.cancel();
+    typingTimer = null;
+    if (!typingAnnounced) return;
+    typingAnnounced = false;
+    _sendTypingPresence(false);
   }
 
   Future<void> _persistDraft() async {
@@ -388,10 +430,14 @@ class _ConversationPageState extends State<ConversationPage> {
 
   Future<void> loadMyProfile() async {
     try {
-      final result = await widget.api.get('profiles/me', auth: true);
+      final result = await widget.api.get('auth/me', auth: true);
       final profile = result['profile'];
+      final user = result['user'];
       if (mounted && profile is Map) {
-        setState(() => currentUsername = profile['username']?.toString());
+        setState(() {
+          currentUsername = profile['username']?.toString();
+          currentUserId = user is Map ? user['id']?.toString() : null;
+        });
       }
     } catch (_) {}
   }
@@ -413,6 +459,9 @@ class _ConversationPageState extends State<ConversationPage> {
   @override
   void dispose() {
     draftSaveTimer?.cancel();
+    typingTimer?.cancel();
+    otherTypingTimer?.cancel();
+    _stopTypingPresence();
     draft.removeListener(_scheduleDraftSave);
     unawaited(_persistDraft());
     realtimeReconnectTimer?.cancel();
@@ -493,13 +542,34 @@ class _ConversationPageState extends State<ConversationPage> {
       ws.add(
         jsonEncode({'type': 'subscribe', 'channel': 'conversation', 'id': id}),
       );
+      if (draft.text.trim().isNotEmpty) {
+        typingAnnounced = true;
+        _sendTypingPresence(true);
+      }
       if (recoveringConnection) unawaited(loadMessages());
       subscription = ws.listen(
         (raw) {
           try {
             final frame = jsonDecode(raw.toString());
             if (frame is! Map || frame['type'] != 'event') return;
-            if (frame['event'] == 'message.created' &&
+            if (frame['event'] == 'conversation.typing' &&
+                frame['data'] is Map) {
+              final data = Map<String, dynamic>.from(frame['data'] as Map);
+              if (data['conversationId']?.toString() == id &&
+                  data['userId']?.toString() != currentUserId) {
+                final active = data['active'] == true;
+                otherTypingTimer?.cancel();
+                if (mounted) setState(() => otherTyping = active);
+                if (active) {
+                  otherTypingTimer = Timer(
+                    const Duration(milliseconds: 2200),
+                    () {
+                      if (mounted) setState(() => otherTyping = false);
+                    },
+                  );
+                }
+              }
+            } else if (frame['event'] == 'message.created' &&
                 frame['data'] is Map &&
                 frame['data']['message'] is Map) {
               final m = Map<String, dynamic>.from(
@@ -563,6 +633,7 @@ class _ConversationPageState extends State<ConversationPage> {
   Future<void> send() async {
     final body = draft.text.trim();
     if ((body.isEmpty && pendingAttachments.isEmpty) || sending || uploadingAttachment) return;
+    _stopTypingPresence();
     final pendingId = 'pending-${DateTime.now().microsecondsSinceEpoch}';
     final isEditing = editing != null;
     if (!isEditing && body.isNotEmpty) {
@@ -1516,6 +1587,35 @@ class _ConversationPageState extends State<ConversationPage> {
                         },
                       ),
             ),
+            if (otherTyping)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 13,
+                        height: 13,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.8,
+                          color: context.eazyAccent,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${_conversationTitle} is typing…',
+                        style: TextStyle(
+                          color: context.eazyMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             if (uploadingAttachment)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
