@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { AppConfig } from '../../../config/env.js';
 import type { PaymentProvider } from '../../../providers/interfaces.js';
+import { fetchWithTimeout } from '../../../utils/fetch.js';
 
 export interface VerifiedPayment {
   providerReference: string;
@@ -23,11 +24,11 @@ export class PaystackPaymentProvider implements PaymentProvider {
 
   async createPayment(input: { amount: string; currency: string; reference: string }) {
     this.assertEnabled();
-    const response = await fetch('https://api.paystack.co/transaction/initialize', {
+    const response = await fetchWithTimeout('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: { authorization: `Bearer ${this.secretKey}`, 'content-type': 'application/json' },
       body: JSON.stringify({ amount: amountToMinorUnits(input.amount), currency: input.currency, reference: input.reference, callback_url: this.config.PAYMENT_CALLBACK_URL || undefined })
-    });
+    }, this.config.PAYSTACK_TIMEOUT_MS ?? 15_000);
     const payload = await response.json() as { status?: boolean; message?: string; data?: { reference?: string; authorization_url?: string } };
     if (!response.ok || payload.status !== true || !payload.data?.reference) throw new Error(payload.message ?? 'Paystack payment initialization failed');
     return { providerReference: payload.data.reference, authorizationUrl: payload.data.authorization_url };
@@ -35,9 +36,9 @@ export class PaystackPaymentProvider implements PaymentProvider {
 
   async verifyPayment(providerReference: string): Promise<VerifiedPayment | null> {
     this.assertEnabled();
-    const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(providerReference)}`, {
+    const response = await fetchWithTimeout(`https://api.paystack.co/transaction/verify/${encodeURIComponent(providerReference)}`, {
       headers: { authorization: `Bearer ${this.secretKey}` }
-    });
+    }, this.config.PAYSTACK_TIMEOUT_MS ?? 15_000);
     const payload = await response.json() as { status?: boolean; data?: { reference?: string; status?: string; amount?: number; currency?: string } };
     if (!response.ok || payload.status !== true || payload.data?.status?.toLowerCase() !== 'success') return null;
     const reference = payload.data.reference?.trim();
