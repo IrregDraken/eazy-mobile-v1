@@ -986,106 +986,139 @@ class _ConversationPageState extends State<ConversationPage> {
 
   void actions(Map<String, dynamic> m) {
     final status = m['status']?.toString() ?? 'sent';
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder:
-          (ctx) => SafeArea(
-            child: Wrap(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.reply_rounded),
-                  title: const Text('Reply'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    setState(() => replying = m);
-                  },
-                ),
-                if (status != 'deleted')
-                  ListTile(
-                    leading: const Icon(Icons.add_reaction_outlined),
-                    title: const Text('React'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      chooseReaction(m);
-                    },
-                  ),
-                if (status != 'deleted')
-                  ListTile(
-                    leading: const Icon(Icons.translate_rounded),
-                    title: const Text('Translate to English'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      translate(m);
-                    },
-                  ),
-                if (status != 'deleted')
-                  ListTile(
-                    leading: const Icon(Icons.flag_outlined),
-                    title: const Text('Report'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      report(m, 'Other inappropriate content');
-                    },
-                  ),
-                if (status != 'deleted')
-                  ListTile(
-                    leading: const Icon(Icons.edit_outlined),
-                    title: const Text('Edit'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      setState(() {
-                        editing = m;
-                        draft.text = m['body']?.toString() ?? '';
-                      });
-                    },
-                  ),
-                if (status != 'deleted')
-                  ListTile(
-                    leading: const Icon(Icons.delete_outline_rounded),
-                    title: const Text('Delete'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      deleteMessage(m);
-                    },
-                  ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-    );
-  }
-
-  void chooseReaction(Map<String, dynamic> message) {
+    final sender = m['sender'] is Map
+        ? Map<String, dynamic>.from(m['sender'] as Map)
+        : <String, dynamic>{};
+    final isMine = sender['username']?.toString() == currentUsername;
+    final body = m['body']?.toString() ?? '';
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder:
-          (ctx) => SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Wrap(
-                alignment: WrapAlignment.spaceEvenly,
-                spacing: 8,
-                runSpacing: 8,
-                children:
-                    _reactions
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (status != 'deleted')
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 4,
+                    children: _reactions
                         .map(
                           (reaction) => IconButton(
+                            tooltip: 'React $reaction',
+                            visualDensity: VisualDensity.compact,
                             onPressed: () {
                               Navigator.pop(ctx);
-                              reactTo(message, reaction);
+                              reactTo(m, reaction);
                             },
                             icon: Text(
                               reaction,
-                              style: const TextStyle(fontSize: 26),
+                              style: const TextStyle(fontSize: 24),
                             ),
                           ),
                         )
                         .toList(),
+                  ),
+                ),
+              ListTile(
+                leading: const Icon(Icons.reply_rounded),
+                title: const Text('Reply'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() => replying = m);
+                },
               ),
-            ),
+              if (body.trim().isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.copy_rounded),
+                  title: const Text('Copy'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await Clipboard.setData(ClipboardData(text: body));
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Message copied.')),
+                      );
+                    }
+                  },
+                ),
+              if (status != 'deleted')
+                ListTile(
+                  leading: const Icon(Icons.translate_rounded),
+                  title: const Text('Translate to English'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    translate(m);
+                  },
+                ),
+              if (status != 'deleted')
+                ListTile(
+                  leading: const Icon(Icons.more_horiz_rounded),
+                  title: const Text('More'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showMessageMoreActions(m);
+                  },
+                ),
+              if (isMine && status != 'deleted')
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: const Text('Edit'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() {
+                      editing = m;
+                      draft.text = body;
+                    });
+                  },
+                ),
+              if (isMine && status != 'deleted')
+                ListTile(
+                  leading: const Icon(Icons.delete_outline_rounded),
+                  title: const Text('Delete'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    deleteMessage(m);
+                  },
+                ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showMessageMoreActions(Map<String, dynamic> message) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.flag_outlined),
+              title: const Text('Report message'),
+              onTap: () {
+                Navigator.pop(ctx);
+                report(message, 'Other inappropriate content');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.block_rounded),
+              title: const Text('Block account'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _handleRecipientAction('block');
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
