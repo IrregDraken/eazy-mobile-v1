@@ -144,6 +144,43 @@ abstract final class EazyRadius {
   static const sm = 12.0, md = 18.0, lg = 26.0, xl = 34.0;
 }
 
+abstract final class EazySpacing {
+  static const xxs = 4.0;
+  static const xs = 8.0;
+  static const sm = 12.0;
+  static const md = 16.0;
+  static const lg = 20.0;
+  static const xl = 24.0;
+  static const xxl = 32.0;
+  static const xxxl = 40.0;
+}
+
+abstract final class EazyTypography {
+  static const metadata = 12.0;
+  static const body = 14.0;
+  static const control = 16.0;
+  static const section = 20.0;
+  static const heading = 24.0;
+  static const display = 32.0;
+}
+
+abstract final class EazyIconSize {
+  static const sm = 16.0;
+  static const md = 20.0;
+  static const lg = 24.0;
+  static const xl = 28.0;
+}
+
+abstract final class EazyTouchTarget {
+  static const minimum = 48.0;
+}
+
+abstract final class EazyMotion {
+  static const fast = Duration(milliseconds: 120);
+  static const standard = Duration(milliseconds: 180);
+  static const slow = Duration(milliseconds: 280);
+}
+
 abstract final class EazyTheme {
   static ThemeData dark() {
     final scheme = ColorScheme.fromSeed(
