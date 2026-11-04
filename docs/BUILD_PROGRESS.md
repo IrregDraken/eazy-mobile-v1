@@ -478,3 +478,24 @@ Latest verified workflow at time of this update: run 41358004335 built the backe
 - Batch 8: TODO — final premium visual pass and full verification matrix remain.
 
 Do not mark this branch production-ready until CI passes, all remaining batches are completed or explicitly blocked, and the external/device/provider acceptance gates are recorded.
+
+### Approved reference UI implementation — 2026-11-04
+- Implementation branch: `codex/eazy-production-batch-1-8`.
+- Locked scope is recorded in `docs/EAZY_UI_IMPLEMENTATION_SPEC.md`.
+- Chat: conversation search over loaded history, username-initial fallback, hamburger options, and authenticated realtime typing presence. Message bubble layout/reply support from the existing base is retained.
+- Eazy Assist: actionable retry states and server-side provider abort endpoint/control, with cancellation marker persisted in the session.
+- Wallet: personal-details preflight, four-stage activation progress, pending/failed retry copy, and compacted balance card. Existing provider-backed activation remains the source of truth.
+- Profile: cover upload/storage/signing, optional public location editing/display, avatar overlap on cover banner, owner-only Settings/Create actions, and Posts-only tab.
+- Discover: cart quantity badge, rating-backed Featured for You ranking, fresh-listings Just for You section, existing category assets retained.
+- Home: people search, menu, Create action, dismissible feed-empty prompt, and real follow suggestions with follow/block exclusions.
+- Home Assist launcher visibility was corrected to stay off Home, Wallet, and Chat, and remain available on Discover/Profile.
+
+### Verification status for the reference UI pass
+- Added backend tests for Assist cancellation/provider abort, realtime typing authorization, profile cover/location validation, featured ranking, and people-suggestion privacy filters.
+- Added migrations 035 (profile cover), 036 (follow suggestion index), and 037 (public profile location). These are branch-only and have not been applied to production.
+- No local Flutter analyzer, Flutter tests, backend TypeScript build, backend tests, or Android build has been run in this execution environment. The GitHub status endpoint returned no checks for the current head; this is not a passing result.
+- Physical-device testing remains required for chat typing across two accounts, Assist cancellation, cover upload, wallet activation/Paystack status transitions, and release build.
+- Branch comparison currently reports 136 commits ahead of `work/eazy-launch-readiness` and 0 behind. The branch contains prior stacked implementation work as well as this UI pass. Do not merge it wholesale without reviewing that delta.
+- PR #39 and PR #40 remain open and untouched. `main` was not changed. No production deployment or release APK is claimed.
+
+Status: IMPLEMENTATION IN PROGRESS; NOT VERIFIED READY.
