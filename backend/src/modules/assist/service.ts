@@ -70,42 +70,55 @@ export class AssistService {
     if (this.activeGenerations.has(generationKey)) throw new AppError('CONFLICT', 'An Assist response is already being generated');
     if (session.status !== 'active') throw new AppError('CONFLICT', 'Assist session is closed');
 
-    const generationController = isWalletBalanceIntent(input.content)
-      ? null
-      : new AbortController();
-    if (generationController) this.activeGenerations.set(generationKey, generationController);
+    const generationController = new AbortController();
+    this.activeGenerations.set(generationKey, generationController);
     let userRow: Awaited<ReturnType<AssistRepositoryContract['insertMessage']>>;
     try {
       userRow = await withTransaction(this.pool, client =>
         this.repository.insertMessage(client, userId, sessionId, 'user', input.content)
       );
     } catch (error) {
-      if (generationController && this.activeGenerations.get(generationKey) === generationController) {
+      if (this.activeGenerations.get(generationKey) === generationController) {
         this.activeGenerations.delete(generationKey);
       }
       throw error;
     }
     if (!userRow) {
-      if (generationController && this.activeGenerations.get(generationKey) === generationController) {
+      if (this.activeGenerations.get(generationKey) === generationController) {
         this.activeGenerations.delete(generationKey);
       }
       throw new AppError('NOT_FOUND', 'Assist session not found');
     }
 
     if (isWalletBalanceIntent(input.content)) {
-      const toolResult = await this.tools.execute('get_wallet_balance', {}, userId);
-      if (toolResult.tool !== 'get_wallet_balance') {
-        throw new AppError('INTERNAL_ERROR', 'Wallet balance capability returned an invalid result');
+      try {
+        if (generationController.signal.aborted) throw new AppError('CONFLICT', 'Assist generation cancelled');
+        const toolResult = await this.tools.execute('get_wallet_balance', {}, userId);
+        if (generationController.signal.aborted) throw new AppError('CONFLICT', 'Assist generation cancelled');
+        if (toolResult.tool !== 'get_wallet_balance') {
+          throw new AppError('INTERNAL_ERROR', 'Wallet balance capability returned an invalid result');
+        }
+        const content = formatWalletBalance(toolResult.wallet);
+        const assistantRow = await withTransaction(this.pool, client =>
+          this.repository.insertMessage(client, userId, sessionId, 'assistant', content)
+        );
+        if (!assistantRow) throw new AppError('NOT_FOUND', 'Assist session not found');
+        return { userMessage: toAssistMessage(userRow), assistantMessage: toAssistMessage(assistantRow) };
+      } catch (error) {
+        if (!generationController.signal.aborted) throw error;
+        const cancelledRow = await withTransaction(this.pool, client =>
+          this.repository.insertMessage(client, userId, sessionId, 'assistant', 'Generation cancelled.')
+        );
+        if (!cancelledRow) throw new AppError('NOT_FOUND', 'Assist session not found');
+        throw new AppError('CONFLICT', 'Assist generation cancelled');
+      } finally {
+        if (this.activeGenerations.get(generationKey) === generationController) {
+          this.activeGenerations.delete(generationKey);
+        }
       }
-      const content = formatWalletBalance(toolResult.wallet);
-      const assistantRow = await withTransaction(this.pool, client =>
-        this.repository.insertMessage(client, userId, sessionId, 'assistant', content)
-      );
-      if (!assistantRow) throw new AppError('NOT_FOUND', 'Assist session not found');
-      return { userMessage: toAssistMessage(userRow), assistantMessage: toAssistMessage(assistantRow) };
     }
 
-    const abortController = generationController!;
+    const abortController = generationController;
     try {
       const history = await this.repository.recentMessages(userId, sessionId, MAX_ASSIST_HISTORY_MESSAGES);
       const orderedHistory = [...history].reverse().filter(row => row.id !== userRow.id);
