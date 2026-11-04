@@ -56,6 +56,7 @@ const envSchema = z.object({
   ,PAYSTACK_ENABLED: envBoolean.optional()
   ,PAYSTACK_MODE: z.enum(['test', 'live']).optional()
   ,PAYSTACK_SECRET_KEY: z.union([z.string().trim().min(1).max(4096), z.literal('')]).optional()
+  ,PAYSTACK_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30000).default(15000)
   ,PAYMENT_CALLBACK_URL: z.union([z.string().trim().url(), z.literal('')]).optional()
 }).superRefine((value, context) => {
   const aiFields = [
