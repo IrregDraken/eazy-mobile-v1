@@ -31,6 +31,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   bool _loadInProgress = false;
   bool balanceVisible = true;
   bool paymentPinConfigured = false;
+  bool activationDetailsComplete = false;
   int paymentPinLength = 4;
   bool reconcilingPayment = false;
   String? error;
@@ -117,6 +118,24 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         final profileResult = await api.get('profiles/me', auth: true);
         final profile = _map(profileResult['profile']);
         username = profile['username']?.toString();
+        final firstName = (profile['firstName'] ?? profile['first_name'] ?? '').toString().trim();
+        final lastName = (profile['lastName'] ?? profile['last_name'] ?? '').toString().trim();
+        final displayName = (profile['displayName'] ??
+                profile['display_name'] ??
+                profile['fullName'] ??
+                profile['full_name'] ??
+                [firstName, lastName].where((part) => part.isNotEmpty).join(' '))
+            .toString()
+            .trim();
+        final email = (profile['email'] ?? '').toString().trim();
+        final phone = (profile['phone'] ??
+                profile['phoneNumber'] ??
+                profile['phone_number'] ??
+                '')
+            .toString()
+            .trim();
+        activationDetailsComplete =
+            displayName.isNotEmpty && email.contains('@') && phone.isNotEmpty;
       } on ApiException {
         username = null;
       }
@@ -1762,26 +1781,51 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                           ? 'Paystack is processing your dedicated NGN account. Your wallet will unlock after the provider confirms the assignment.'
                           : virtualAccount?['status']?.toString().toLowerCase() == 'failed'
                               ? 'The provider could not complete the assignment. Check your Eazy profile details and retry.'
-                              : 'Activate once to enable Eazy-to-Eazy transfers, QR payments and receiving money from external banks.',
+                              : 'Complete a few steps to send and receive money and get your dedicated virtual account.',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                         height: 1.45,
                       ),
                     ),
                     const SizedBox(height: 14),
-                    Row(
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      runSpacing: 12,
+                      spacing: 8,
                       children: [
-                        _ActivationStep(
-                          label: 'Profile',
-                          complete: virtualAccount != null,
+                        SizedBox(
+                          width: 72,
+                          child: _ActivationStep(
+                            label: 'Personal Details',
+                            complete: activationDetailsComplete,
+                          ),
                         ),
-                        const Expanded(child: Divider()),
-                        _ActivationStep(
-                          label: 'Paystack',
-                          complete: _walletActivated,
+                        SizedBox(
+                          width: 72,
+                          child: _ActivationStep(
+                            label: 'Verification',
+                            complete: _walletActivated,
+                          ),
                         ),
-                        const Expanded(child: Divider()),
-                        const _ActivationStep(label: 'Active', complete: false),
+                        SizedBox(
+                          width: 72,
+                          child: _ActivationStep(
+                            label: 'Virtual Wallet',
+                            complete: (virtualAccount?['accountNumber'] ??
+                                    virtualAccount?['account_number'])
+                                ?.toString()
+                                .trim()
+                                .isNotEmpty ==
+                                true,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 72,
+                          child: _ActivationStep(
+                            label: 'Activate Wallet',
+                            complete: _walletActivated,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
