@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { AppConfig } from '../../../config/env.js';
 import type { BankProvider } from '../../../providers/interfaces.js';
+import { fetchWithTimeout } from '../../../utils/fetch.js';
 
 export class PaystackBankProvider implements BankProvider {
   private readonly secretKey: string;
@@ -143,7 +144,7 @@ export class PaystackBankProvider implements BankProvider {
     return { accountNumber: data.account_number, accountName: data.account_name, bankCode: input.bankCode, bankName: '' };
   }
   private async request(path: string, init: RequestInit = {}): Promise<{ status?: boolean; message?: string; data?: any }> {
-    const response = await fetch(`https://api.paystack.co${path}`, { ...init, headers: { authorization: `Bearer ${this.secretKey}`, 'content-type': 'application/json', ...(init.headers ?? {}) } });
+    const response = await fetchWithTimeout(`https://api.paystack.co${path}`, { ...init, headers: { authorization: `Bearer ${this.secretKey}`, 'content-type': 'application/json', ...(init.headers ?? {}) } }, this.config.PAYSTACK_TIMEOUT_MS ?? 15_000);
     const payload = await response.json() as { status?: boolean; message?: string; data?: any };
     if (!response.ok || payload.status !== true) {
       const error = new Error(payload.message ?? 'Bank provider request failed') as Error & {
