@@ -502,6 +502,10 @@ class _SocialPageState extends State<SocialPage> {
               ),
             ),
           ),
+          if (searchingPeople)
+            const SliverToBoxAdapter(
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
           if (newPostsAvailable)
             SliverToBoxAdapter(
               child: Center(
