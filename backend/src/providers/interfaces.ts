@@ -9,7 +9,7 @@ export interface PaymentProvider {
 export interface AIProviderMessage { role: 'system' | 'user' | 'assistant'; content: string; }
 export interface AIProvider {
   getCapabilities(): { available: boolean; providerName: string | null };
-  complete(input: { messages: readonly AIProviderMessage[]; jsonMode: boolean; maxOutputTokens: number }): Promise<{ text: string; providerReference?: string }>;
+  complete(input: { messages: readonly AIProviderMessage[]; jsonMode: boolean; maxOutputTokens: number; signal?: AbortSignal }): Promise<{ text: string; providerReference?: string }>;
 }
 export interface TranslationProvider {
   translate(input: { text: string; source?: string; target: string }): Promise<{ text: string; providerReference?: string }>;
