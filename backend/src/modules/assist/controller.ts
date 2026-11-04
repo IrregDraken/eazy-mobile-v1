@@ -11,5 +11,6 @@ export function createAssistController(service: AssistService) {
   const closeSession: RequestHandler = async (request, response) => sendSuccess(response, await service.closeSession(currentUserId(request), String(request.params.id)));
   const listMessages: RequestHandler = async (request, response) => sendSuccess(response, await service.listMessages(currentUserId(request), String(request.params.id), request.query as never));
   const sendMessage: RequestHandler = async (request, response) => sendSuccess(response, await service.sendMessage(currentUserId(request), String(request.params.id), request.body));
-  return { capabilities, createSession, listSessions, getSession, closeSession, listMessages, sendMessage };
+  const cancelGeneration: RequestHandler = async (request, response) => sendSuccess(response, await service.cancelGeneration(currentUserId(request), String(request.params.id)));
+  return { capabilities, createSession, listSessions, getSession, closeSession, listMessages, sendMessage, cancelGeneration };
 }
