@@ -276,7 +276,12 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       TextButton(
                         onPressed: () {
                           search.clear();
-                          setState(() => selectedParentSlug = null);
+                          minPrice.clear();
+                          maxPrice.clear();
+                          setState(() {
+                            selectedParentSlug = null;
+                            availability = 'all';
+                          });
                           load();
                         },
                         child: const Text('Clear filters'),
