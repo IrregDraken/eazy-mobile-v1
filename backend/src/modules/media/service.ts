@@ -10,7 +10,7 @@ export class MediaService {
 
   capabilities() { return this.storage.getCapabilities(); }
 
-  async createUpload(userId: string, input: { contentType: string; extension?: string; kind: 'avatar'|'post'|'message'|'product' }) {
+  async createUpload(userId: string, input: { contentType: string; extension?: string; kind: 'avatar'|'cover'|'post'|'message'|'product' }) {
     if (!allowedTypes.has(input.contentType)) throw new AppError('BAD_REQUEST', 'Unsupported media type');
     const extension = (input.extension || input.contentType.split('/')[1] || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
     const key = userId + '/' + input.kind + '/' + new Date().toISOString().slice(0,10) + '/' + randomUUID() + '.' + extension;
