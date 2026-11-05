@@ -31,7 +31,7 @@ export const profilePatchSchema = z.object({
   lastName: optionalNameSchema,
   dateOfBirth: dateOfBirthSchema.optional(),
   bio: z.string().max(500).nullable().optional(),
-  avatarUrl: z.string().trim().max(2048).nullable().optional().refine(value => value == null || /^https?:\/\//.test(value) || /^[^/][^?]*\/[^?]+$/.test(value), 'Avatar must be an HTTPS URL or Eazy media storage path')
+  avatarUrl: z.string().trim().max(2048).nullable().optional().refine(value => value == null || /^https?:\/\//.test(value) || /^[^/][^?]*\/[^?]+$/.test(value), 'Avatar must be an HTTPS URL or Eazy media storage path'),
   coverUrl: z.string().trim().max(2048).nullable().optional().refine(value => value == null || /^https?:\/\//.test(value) || /^[^/][^?]*\/[^?]+$/.test(value), 'Cover must be an HTTPS URL or Eazy media storage path')
 }).strict();
 
