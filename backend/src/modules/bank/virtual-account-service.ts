@@ -102,7 +102,7 @@ export class VirtualAccountService {
       }
     }
 
-    if (account.status === 'pending') {
+    if (account.status === 'pending' && account.customerCode) {
       return { virtualAccount: this.safeProjection(account) };
     }
 
