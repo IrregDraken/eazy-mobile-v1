@@ -9,6 +9,12 @@ test('profile patch accepts partial fields and normalizes username', () => {
   assert.equal(parsed.dateOfBirth, '1990-02-28');
 });
 
+test('profile validation accepts a user-owned cover storage path', () => {
+  const parsed = profilePatchSchema.parse({ coverUrl: 'user-id/cover/2026-11-05/banner.jpg' });
+  assert.equal(parsed.coverUrl, 'user-id/cover/2026-11-05/banner.jpg');
+  assert.throws(() => profilePatchSchema.parse({ coverUrl: 'https://example.com/' + 'x'.repeat(2050) }));
+});
+
 test('profile validation accepts empty optional middle and last names as omitted', () => {
   const parsed = profilePatchSchema.parse({ firstName: 'Draken', middleName: '   ', lastName: '' });
   assert.equal(parsed.middleName, undefined);
@@ -22,12 +28,12 @@ test('profile validation rejects invalid usernames and impossible dates', () => 
 
 test('public profile projection excludes date of birth and internal identity', async () => {
   const repository = {
-    getPublicByUsername: async () => ({ username: 'public_user', display_name: 'Public User', first_name: 'Public', last_name: 'User', bio: 'Hello', avatar_url: 'https://cdn.example/avatar.png', onboarding_status: 'onboarding_complete' as const }),
+    getPublicByUsername: async () => ({ username: 'public_user', display_name: 'Public User', first_name: 'Public', last_name: 'User', bio: 'Hello', avatar_url: 'https://cdn.example/avatar.png', cover_url: 'https://cdn.example/cover.png', onboarding_status: 'onboarding_complete' as const }),
     usernameAvailable: async () => true
   } as unknown as ProfileRepository;
   const service = new ProfileService({} as never, repository);
   const result = await service.getPublic('PUBLIC_USER');
-  assert.deepEqual(result, { username: 'public_user', displayName: 'Public User', firstName: 'Public', lastName: 'User', bio: 'Hello', avatarUrl: 'https://cdn.example/avatar.png' });
+  assert.deepEqual(result, { username: 'public_user', displayName: 'Public User', firstName: 'Public', lastName: 'User', bio: 'Hello', avatarUrl: 'https://cdn.example/avatar.png', coverUrl: 'https://cdn.example/cover.png' });
   assert.equal('dateOfBirth' in result, false);
   assert.equal('userId' in result, false);
 });
