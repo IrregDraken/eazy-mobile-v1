@@ -1021,7 +1021,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   Future<void> requestVirtualAccount() async {
     if (busy) return;
     await Navigator.of(context).push<bool>(
-      MaterialPageRoute<void>(
+      MaterialPageRoute<bool>(
         builder: (_) => const WalletActivationPage(),
       ),
     );
