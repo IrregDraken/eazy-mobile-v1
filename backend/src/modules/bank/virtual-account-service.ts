@@ -4,6 +4,7 @@ import { withTransaction, type DbClient } from '../../database/client.js';
 import { AppError } from '../../middleware/errors.js';
 import type { BankProvider } from '../../providers/interfaces.js';
 import type { LedgerService } from '../ledger/service.js';
+import type { NotificationService } from '../notifications/service.js';
 import { amountToMinorUnits, minorUnitsToAmount } from '../wallet/schemas.js';
 import { VirtualAccountRepository } from './virtual-account-repository.js';
 import type { VirtualAccountAssignmentInput, VirtualAccountRecord } from './virtual-account-types.js';
@@ -11,7 +12,12 @@ import type { VirtualAccountAssignmentInput, VirtualAccountRecord } from './virt
 export class VirtualAccountService {
   private readonly repository: VirtualAccountRepository;
 
-  constructor(private readonly pool: Pool, private readonly provider: BankProvider, private readonly ledger: LedgerService) {
+  constructor(
+    private readonly pool: Pool,
+    private readonly provider: BankProvider,
+    private readonly ledger: LedgerService,
+    private readonly notifications?: NotificationService
+  ) {
     this.repository = new VirtualAccountRepository(pool);
   }
 
@@ -31,6 +37,7 @@ export class VirtualAccountService {
         const current = await this.provider.getVirtualAccount({ customerCode: account.customerCode });
         if (current) {
           const saved = await withTransaction(this.pool, client => this.repository.saveProviderState(client, userId, current));
+          await this.notifyActivationTransition(account, saved);
           account = saved ?? account;
         }
       } catch {
@@ -73,7 +80,7 @@ export class VirtualAccountService {
     let account = await this.repository.findByUser(userId);
     if (account?.status === 'active' && account.accountNumber) return { virtualAccount: this.safeProjection(account) };
 
-    if (!account) {
+    if (!account || account.status === 'failed') {
       account = await withTransaction(this.pool, client =>
         this.repository.createPending(client, { userId, walletId: wallet.id, provider: capabilities.providerName!, currency: 'NGN', providerEmail: user.email! })
       );
@@ -86,6 +93,7 @@ export class VirtualAccountService {
           const saved = await withTransaction(this.pool, client =>
             this.repository.saveProviderState(client, userId, current)
           );
+          await this.notifyActivationTransition(account, saved);
           if (saved?.status === 'active') return { virtualAccount: this.safeProjection(saved) };
           account = saved ?? account;
         }
@@ -115,14 +123,16 @@ export class VirtualAccountService {
       const saved = await withTransaction(this.pool, client =>
         this.repository.saveProviderState(client, userId, state)
       );
+      await this.notifyActivationTransition(account, saved);
       return { virtualAccount: saved ? this.safeProjection(saved) : this.safeProjection(account) };
     } catch {
-      await withTransaction(this.pool, client =>
+      const failed = await withTransaction(this.pool, client =>
         this.repository.saveProviderState(client, userId, {
           status: 'failed',
           failureReason: 'Virtual bank account assignment could not be completed'
         })
       );
+      await this.notifyActivationTransition(account, failed);
       throw new AppError('SERVICE_UNAVAILABLE', 'Bank receiving account could not be created. Provider configuration or account eligibility may be required.');
     }
   }
@@ -133,7 +143,8 @@ export class VirtualAccountService {
       const account = customerCode ? await this.readByCustomerCode(customerCode) : await this.readByEmail(this.emailFrom(data));
       if (!account) return { handled: false };
       const state = this.providerPayloadFromWebhook(data, customerCode ?? undefined);
-      await withTransaction(this.pool, client => this.repository.saveProviderState(client, account.userId, state));
+      const saved = await withTransaction(this.pool, client => this.repository.saveProviderState(client, account.userId, state));
+      await this.notifyActivationTransition(account, saved);
       return { handled: true, type: 'assignment', userId: account.userId };
     }
 
@@ -141,11 +152,12 @@ export class VirtualAccountService {
       const customerCode = this.customerCodeFrom(data);
       const account = customerCode ? await this.readByCustomerCode(customerCode) : await this.readByEmail(this.emailFrom(data));
       if (!account) return { handled: false };
-      await withTransaction(this.pool, client => this.repository.saveProviderState(client, account.userId, {
+      const failed = await withTransaction(this.pool, client => this.repository.saveProviderState(client, account.userId, {
         status: 'failed',
         customerCode: customerCode ?? undefined,
         failureReason: typeof data.reason === 'string' ? data.reason.slice(0, 500) : 'Virtual account assignment failed'
       }));
+      await this.notifyActivationTransition(account, failed);
       return { handled: true, type: 'assignment_failed', userId: account.userId };
     }
 
@@ -199,6 +211,53 @@ export class VirtualAccountService {
     });
 
     return { handled: true, type: 'deposit', transactionId: transaction.id };
+  }
+
+  private async notifyActivationTransition(
+    previous: VirtualAccountRecord | null,
+    current: VirtualAccountRecord | null
+  ): Promise<void> {
+    if (!this.notifications || !previous || !current) return;
+    if (previous.status === current.status || !current.consentedAt) return;
+    if (current.status !== 'active' && current.status !== 'failed') return;
+
+    try {
+      const notificationId = await withTransaction(this.pool, async client => {
+        const claimed = await client.query(
+          `INSERT INTO wallet_activation_notification_events (user_id, consented_at, result)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (user_id, consented_at, result) DO NOTHING
+           RETURNING user_id`,
+          [current.userId, current.consentedAt, current.status]
+        );
+        if (!claimed.rowCount) return null;
+
+        const approved = current.status === 'active';
+        const id = await this.notifications!.createInTransaction(client, {
+          recipientUserId: current.userId,
+          type: 'system',
+          entityType: 'wallet_activation',
+          entityId: current.userId,
+          title: approved ? 'Your Eazy Wallet is verified' : 'Wallet verification unsuccessful',
+          body: approved
+            ? 'Your virtual account has been approved. Create your payment PIN to get started.'
+            : current.failureReason || 'The payment provider could not approve this wallet activation.'
+        });
+        await client.query(
+          `UPDATE wallet_activation_notification_events
+           SET notification_id = $4
+           WHERE user_id = $1 AND consented_at = $2 AND result = $3`,
+          [current.userId, current.consentedAt, current.status, id]
+        );
+        return id;
+      });
+      if (notificationId) {
+        await this.notifications.publishCreated(current.userId, notificationId);
+      }
+    } catch {
+      // The provider status remains authoritative even if notification delivery
+      // cannot be persisted. The client can still read the account status.
+    }
   }
 
   private async readUser(userId: string) {
