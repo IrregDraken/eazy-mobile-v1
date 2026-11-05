@@ -21,7 +21,18 @@ export class VirtualAccountRepository {
     const result = await client.query<VirtualAccountRecord>(
       `INSERT INTO wallet_virtual_accounts (user_id, wallet_id, provider, currency, provider_email, status, consented_at)
        VALUES ($1, $2, $3, $4, $5, 'pending', now())
-       ON CONFLICT (user_id) DO UPDATE SET provider_email = EXCLUDED.provider_email, consented_at = now(), updated_at = now()
+       ON CONFLICT (user_id) DO UPDATE SET
+         provider_email = EXCLUDED.provider_email,
+         status = 'pending',
+         provider_customer_code = NULL,
+         provider_account_id = NULL,
+         account_number = NULL,
+         account_name = NULL,
+         bank_name = NULL,
+         bank_slug = NULL,
+         failure_reason = NULL,
+         consented_at = now(),
+         updated_at = now()
        RETURNING user_id AS "userId", wallet_id AS "walletId", provider, provider_customer_code AS "customerCode",
          provider_account_id AS "accountId", account_number AS "accountNumber", account_name AS "accountName",
          bank_name AS "bankName", bank_slug AS "bankSlug", trim(currency) AS currency, status,
