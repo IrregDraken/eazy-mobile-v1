@@ -107,6 +107,24 @@ abstract final class EazyTheme {
           side: const BorderSide(color: _DarkColors.border),
         ),
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: _DarkColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(EazyRadius.lg),
+          side: const BorderSide(color: _DarkColors.border),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: _DarkColors.surface,
+        modalBackgroundColor: _DarkColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(EazyRadius.lg),
+          ),
+        ),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
           minimumSize: const WidgetStatePropertyAll(Size.fromHeight(54)),
@@ -147,6 +165,7 @@ abstract final class EazyTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: _DarkColors.surfaceRaised,
+        contentTextStyle: const TextStyle(color: _DarkColors.ink),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       dividerTheme: const DividerThemeData(color: _DarkColors.border),
@@ -226,6 +245,24 @@ abstract final class EazyTheme {
           side: const BorderSide(color: Color(0xFFDDEBE2)),
         ),
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(EazyRadius.lg),
+          side: const BorderSide(color: Color(0xFFDDEBE2)),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: Colors.white,
+        modalBackgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(EazyRadius.lg),
+          ),
+        ),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
           minimumSize: const WidgetStatePropertyAll(Size.fromHeight(54)),
@@ -266,6 +303,7 @@ abstract final class EazyTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: const Color(0xFF173D29),
+        contentTextStyle: const TextStyle(color: Colors.white),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       dividerTheme: const DividerThemeData(color: Color(0xFFDDEBE2)),

@@ -57,6 +57,37 @@ class _AssistPageState extends State<AssistPage> {
     }
   }
 
+  Future<void> _newChat() async {
+    if (sending || loading) return;
+    setState(() {
+      loading = true;
+      error = null;
+      messages.clear();
+      sessionId = null;
+    });
+    try {
+      final created = await api.post('assist/sessions', auth: true);
+      final session = created['session'];
+      final id = session is Map ? session['id']?.toString() : null;
+      if (id == null || id.isEmpty) {
+        throw const ApiException('Eazy could not start a new Assist chat.');
+      }
+      if (mounted) {
+        setState(() {
+          sessionId = id;
+          loading = false;
+        });
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          error = _friendlyError(e);
+          loading = false;
+        });
+      }
+    }
+  }
+
   Future<void> _loadMessages() async {
     final id = sessionId;
     if (id == null) return;
@@ -65,14 +96,24 @@ class _AssistPageState extends State<AssistPage> {
       auth: true,
     );
     final items = result['items'] as List? ?? const [];
+    final ordered = items
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList()
+      ..sort((a, b) {
+        final aSequence = int.tryParse(a['sequenceId']?.toString() ?? '');
+        final bSequence = int.tryParse(b['sequenceId']?.toString() ?? '');
+        if (aSequence != null && bSequence != null) {
+          return aSequence.compareTo(bSequence);
+        }
+        final byTime = DateTime.tryParse(a['createdAt']?.toString() ?? '')
+                ?.compareTo(DateTime.tryParse(b['createdAt']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0)) ??
+            0;
+        return byTime != 0 ? byTime : (a['id']?.toString() ?? '').compareTo(b['id']?.toString() ?? '');
+      });
     messages
       ..clear()
-      ..addAll(
-        items
-            .whereType<Map>()
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList(),
-      );
+      ..addAll(ordered);
   }
 
   Future<void> _send() async {
@@ -102,6 +143,17 @@ class _AssistPageState extends State<AssistPage> {
       messages.removeWhere((message) => message['id'] == pendingId);
       if (user is Map) messages.add(Map<String, dynamic>.from(user));
       if (assistant is Map) messages.add(Map<String, dynamic>.from(assistant));
+      messages.sort((a, b) {
+        final aSequence = int.tryParse(a['sequenceId']?.toString() ?? '');
+        final bSequence = int.tryParse(b['sequenceId']?.toString() ?? '');
+        if (aSequence != null && bSequence != null) {
+          return aSequence.compareTo(bSequence);
+        }
+        final aTime = DateTime.tryParse(a['createdAt']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bTime = DateTime.tryParse(b['createdAt']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final byTime = aTime.compareTo(bTime);
+        return byTime != 0 ? byTime : (a['id']?.toString() ?? '').compareTo(b['id']?.toString() ?? '');
+      });
       _scrollToEnd();
     } on ApiException catch (e) {
       messages.removeWhere((message) => message['id'] == pendingId);
@@ -156,6 +208,12 @@ class _AssistPageState extends State<AssistPage> {
         ),
         actions: [
           IconButton(
+            tooltip: 'New chat',
+            onPressed: loading || sending ? null : _newChat,
+            icon: const Icon(Icons.add_comment_outlined),
+          ),
+          IconButton(
+            tooltip: 'Refresh chat',
             onPressed: loading ? null : _bootstrap,
             icon: const Icon(Icons.refresh_rounded),
           ),

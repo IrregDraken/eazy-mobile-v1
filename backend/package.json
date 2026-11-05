@@ -14,7 +14,8 @@
     "test": "tsx --test test/**/*.test.ts",
     "test:storage-integration": "tsx test/supabase_storage.integration.ts",
     "lint": "tsc --noEmit -p tsconfig.json",
-    "db:migrate": "tsx src/database/migrate.ts"
+    "db:migrate": "tsx src/database/migrate.ts",
+    "escrow:release-due": "node dist/src/jobs/release-due-escrow.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

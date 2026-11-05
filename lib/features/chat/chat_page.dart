@@ -17,13 +17,64 @@ import 'chat_home_screen.dart';
 const _reactions = <String>['👍', '❤️', '😂', '😮', '😢', '🙏', '👏', '🔥'];
 
 class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
+  const ChatPage({super.key, this.initialUsername, this.initialConversationId});
+  final String? initialUsername;
+  final String? initialConversationId;
   @override
   State<ChatPage> createState() => _ChatPageState();
 }
 
 class _ChatPageState extends State<ChatPage> {
   final api = ApiClient();
+  bool _openingInitialConversation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final conversationId = widget.initialConversationId?.trim();
+    final username = widget.initialUsername?.trim();
+    if (conversationId != null && conversationId.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openById(conversationId));
+    } else if (username != null && username.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openByUsername(username));
+    }
+  }
+
+  Future<void> _openById(String conversationId) async {
+    if (_openingInitialConversation || !mounted) return;
+    _openingInitialConversation = true;
+    try {
+      final result = await api.get('chat/conversations/$conversationId', auth: true);
+      final conversation = result['conversation'];
+      if (conversation is Map && mounted) await _openConversation(Map<String, dynamic>.from(conversation));
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      _openingInitialConversation = false;
+    }
+  }
+
+  Future<void> _openByUsername(String username) async {
+    if (_openingInitialConversation || !mounted) return;
+    _openingInitialConversation = true;
+    try {
+      final result = await api.post(
+        'chat/conversations',
+        auth: true,
+        body: {'username': username},
+      );
+      final conversation = result['conversation'];
+      if (conversation is Map && mounted) {
+        await _openConversation(Map<String, dynamic>.from(conversation));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      _openingInitialConversation = false;
+    }
+  }
 
   Future<void> _openConversation(Map<String, dynamic> conversation) async {
     await Navigator.of(context).push(
@@ -57,6 +108,10 @@ class _ConversationPageState extends State<ConversationPage> {
   final scroll = ScrollController();
   late final EazyMediaService media;
   final List<MediaUpload> pendingAttachments = [];
+  bool uploadingAttachment = false;
+  double? uploadProgress;
+  MediaUploadDraft? failedAttachmentDraft;
+  final Map<String, Future<String>> _attachmentUrlCache = {};
   List<Map<String, dynamic>> messages = [];
   Map<String, dynamic>? replying, editing;
   bool loading = true, sending = false;
@@ -507,7 +562,7 @@ class _ConversationPageState extends State<ConversationPage> {
 
   Future<void> send() async {
     final body = draft.text.trim();
-    if ((body.isEmpty && pendingAttachments.isEmpty) || sending) return;
+    if ((body.isEmpty && pendingAttachments.isEmpty) || sending || uploadingAttachment) return;
     final pendingId = 'pending-${DateTime.now().microsecondsSinceEpoch}';
     final isEditing = editing != null;
     if (!isEditing && body.isNotEmpty) {
@@ -728,36 +783,75 @@ class _ConversationPageState extends State<ConversationPage> {
           ),
     );
     if (choice == null || !mounted) return;
+    await _uploadAttachment(choice);
+  }
+
+  Future<void> _uploadAttachment(String choice, {MediaUploadDraft? retryDraft}) async {
+    if (uploadingAttachment || sending) return;
+    if (retryDraft == null) failedAttachmentDraft = null;
+    setState(() {
+      uploadingAttachment = true;
+      uploadProgress = 0;
+    });
     try {
-      final upload = switch (choice) {
-        'photo' => await media.pickAndUpload(kind: 'message'),
-        'video' => await media.pickAndUploadVideo(kind: 'message'),
-        _ => await media.pickAndUploadDocument(kind: 'message'),
+      void reportProgress(double value) {
+        if (mounted) setState(() => uploadProgress = value.clamp(0.0, 1.0).toDouble());
+      }
+
+      final draft = retryDraft ?? switch (choice) {
+        'photo' => await media.pickImageDraft(kind: 'message'),
+        'video' => await media.pickVideoDraft(kind: 'message'),
+        _ => await media.pickDocumentDraft(kind: 'message'),
       };
-      if (upload != null && mounted) {
-        setState(() => pendingAttachments.add(upload));
+      if (draft == null) return;
+      failedAttachmentDraft = draft;
+      final upload = await media.uploadDraft(draft, onProgress: reportProgress);
+      if (mounted) {
+        setState(() {
+          pendingAttachments.add(upload);
+          failedAttachmentDraft = null;
+        });
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${e.message} Your selected file is retained. Retry the upload.'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _uploadAttachment(choice, retryDraft: failedAttachmentDraft),
+            ),
+          ),
+        );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not attach that file. Please try again.'),
+          SnackBar(
+            content: const Text('Could not attach that file. Your selected file is retained for retry.'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _uploadAttachment(choice, retryDraft: failedAttachmentDraft),
+            ),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          uploadingAttachment = false;
+          uploadProgress = null;
+        });
       }
     }
   }
 
-  Future<void> _openAttachment(Map<String, dynamic> attachment) async {
+  Future<String> _signedAttachmentUrl(Map<String, dynamic> attachment) {
     final path = attachment['storageKey']?.toString();
-    if (path == null || path.isEmpty) return;
-    try {
+    if (path == null || path.isEmpty) {
+      return Future.error(const ApiException('The attachment could not be opened.'));
+    }
+    return _attachmentUrlCache.putIfAbsent(path, () async {
       final result = await widget.api.post(
         'media/signed-message-attachment-url',
         auth: true,
@@ -767,6 +861,13 @@ class _ConversationPageState extends State<ConversationPage> {
       if (url == null || url.isEmpty) {
         throw const ApiException('The attachment could not be opened.');
       }
+      return url;
+    });
+  }
+
+  Future<void> _openAttachment(Map<String, dynamic> attachment) async {
+    try {
+      final url = await _signedAttachmentUrl(attachment);
       final type = attachment['contentType']?.toString() ?? '';
       if (type.startsWith('image/')) {
         if (!mounted) return;
@@ -1092,22 +1193,57 @@ class _ConversationPageState extends State<ConversationPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-              ),
+            CircleAvatar(
+              radius: 17,
+              backgroundColor: context.eazyAccent.withValues(alpha: .12),
+              backgroundImage: (_otherParticipant['avatarUrl'] ??
+                          _otherParticipant['avatar_url']) is String &&
+                      (_otherParticipant['avatarUrl'] ??
+                              _otherParticipant['avatar_url'])
+                          .toString()
+                          .isNotEmpty
+                  ? NetworkImage(
+                      (_otherParticipant['avatarUrl'] ??
+                              _otherParticipant['avatar_url'])
+                          .toString(),
+                    )
+                  : null,
+              child: (_otherParticipant['avatarUrl'] ??
+                              _otherParticipant['avatar_url'])
+                          ?.toString()
+                          .isNotEmpty !=
+                      true
+                  ? Icon(Icons.person_rounded, color: context.eazyAccent, size: 18)
+                  : null,
             ),
-            Text(
-              _conversationUsername,
-              style: TextStyle(
-                fontSize: 11,
-                color: context.eazyMuted,
-                fontWeight: FontWeight.w600,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    _conversationUsername,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.eazyMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1190,10 +1326,26 @@ class _ConversationPageState extends State<ConversationPage> {
                             onReaction: (r) => reactTo(messages[i], r),
                             onTranslate: () => translate(messages[i]),
                             onOpenAttachment: _openAttachment,
+                            onLoadAttachmentUrl: _signedAttachmentUrl,
                           );
                         },
                       ),
             ),
+            if (uploadingAttachment)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Uploading attachment ${((uploadProgress ?? 0) * 100).round()}%',
+                      style: TextStyle(fontSize: 11, color: context.eazyMuted),
+                    ),
+                    const SizedBox(height: 5),
+                    LinearProgressIndicator(value: uploadProgress),
+                  ],
+                ),
+              ),
             if (pendingAttachments.isNotEmpty)
               SizedBox(
                 height: 54,
@@ -1217,19 +1369,31 @@ class _ConversationPageState extends State<ConversationPage> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            item.contentType.startsWith('image/')
-                                ? Icons.image_outlined
-                                : item.contentType.startsWith('video/')
-                                ? Icons.video_file_outlined
-                                : Icons.description_outlined,
-                            color: context.eazyAccent,
-                            size: 18,
-                          ),
+                          if (item.contentType.startsWith('image/') && item.localPath != null)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(7),
+                              child: Image.file(
+                                File(item.localPath!),
+                                width: 38,
+                                height: 38,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const Icon(Icons.image_outlined, size: 20),
+                              ),
+                            )
+                          else
+                            Icon(
+                              item.contentType.startsWith('image/')
+                                  ? Icons.image_outlined
+                                  : item.contentType.startsWith('video/')
+                                  ? Icons.video_file_outlined
+                                  : Icons.description_outlined,
+                              color: context.eazyAccent,
+                              size: 18,
+                            ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              item.fileName,
+                              item.contentType.startsWith('image/') ? 'Photo' : item.fileName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontSize: 11),
@@ -1279,7 +1443,7 @@ class _ConversationPageState extends State<ConversationPage> {
                     children: [
                       IconButton(
                         tooltip: 'Attach photo, video or document',
-                        onPressed: sending ? null : _pickAttachment,
+                        onPressed: sending || uploadingAttachment ? null : _pickAttachment,
                         visualDensity: VisualDensity.compact,
                         style: IconButton.styleFrom(
                           foregroundColor: context.eazyAccent,
@@ -1466,6 +1630,7 @@ class _MessageBubble extends StatelessWidget {
     required this.onReaction,
     required this.onTranslate,
     required this.onOpenAttachment,
+    required this.onLoadAttachmentUrl,
   });
   final Map<String, dynamic> message;
   final bool isMine;
@@ -1473,6 +1638,7 @@ class _MessageBubble extends StatelessWidget {
   final ValueChanged<String> onReaction;
   final VoidCallback onTranslate;
   final ValueChanged<Map<String, dynamic>> onOpenAttachment;
+  final Future<String> Function(Map<String, dynamic>) onLoadAttachmentUrl;
   @override
   Widget build(BuildContext context) {
     final sender =
@@ -1532,10 +1698,12 @@ class _MessageBubble extends StatelessWidget {
                       ),
                     ),
                   ),
-                Text(
+                if (deleted ||
+                    (message['body']?.toString().trim().isNotEmpty ?? false))
+                  Text(
                   deleted
                       ? 'Message deleted'
-                      : (message['body']?.toString() ?? ''),
+                      : message['body'].toString(),
                   style: TextStyle(
                     color:
                         deleted
@@ -1591,53 +1759,90 @@ class _MessageBubble extends StatelessWidget {
                                 bytes >= 1024 * 1024
                                     ? '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB'
                                     : '${(bytes / 1024).round()} KB';
+                            if (type.startsWith('image/')) {
+                              return FutureBuilder<String>(
+                                future: onLoadAttachmentUrl(attachment),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasError) {
+                                    return InkWell(
+                                      onTap: () => onOpenAttachment(attachment),
+                                      child: Container(
+                                        width: 220,
+                                        height: 110,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(Icons.broken_image_outlined),
+                                      ),
+                                    );
+                                  }
+                                  if (!snapshot.hasData) {
+                                    return Container(
+                                      width: 220,
+                                      height: 110,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      ),
+                                    );
+                                  }
+                                  return InkWell(
+                                    onTap: () => onOpenAttachment(attachment),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.network(
+                                        snapshot.data!,
+                                        width: 240,
+                                        height: 180,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Container(
+                                          width: 220,
+                                          height: 110,
+                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                          alignment: Alignment.center,
+                                          child: const Icon(Icons.broken_image_outlined),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }
                             return InkWell(
                               onTap: () => onOpenAttachment(attachment),
                               borderRadius: BorderRadius.circular(11),
                               child: Container(
                                 margin: const EdgeInsets.only(bottom: 5),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color:
-                                      Theme.of(
-                                        context,
-                                      ).colorScheme.surfaceContainerHighest,
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(11),
-                                  border: Border.all(
-                                    color: Theme.of(context).dividerColor,
-                                  ),
+                                  border: Border.all(color: Theme.of(context).dividerColor),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      type.startsWith('image/')
-                                          ? Icons.image_outlined
-                                          : type.startsWith('video/')
-                                          ? Icons.video_file_outlined
-                                          : Icons.description_outlined,
+                                      type.startsWith('video/') ? Icons.video_file_outlined : Icons.description_outlined,
                                       color: context.eazyAccent,
                                       size: 18,
                                     ),
                                     const SizedBox(width: 7),
                                     Text(
                                       '$label attachment',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                      ),
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
                                     ),
                                     const SizedBox(width: 7),
-                                    Text(
-                                      size,
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: context.eazyMuted,
-                                      ),
-                                    ),
+                                    Text(size, style: TextStyle(fontSize: 10, color: context.eazyMuted)),
                                   ],
                                 ),
                               ),
@@ -1704,8 +1909,11 @@ class _MessageBubble extends StatelessWidget {
                       child: Text(
                         _time(message['createdAt'] ?? message['created_at']),
                         style: TextStyle(
-                          color: context.eazyMuted,
-                          fontSize: 9,
+                          color: isMine
+                              ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: .82)
+                              : context.eazyMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),

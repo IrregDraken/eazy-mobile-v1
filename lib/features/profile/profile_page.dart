@@ -1051,7 +1051,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 Icons.ios_share_rounded,
                                 size: 17,
                               ),
-                              label: const Text('Copy profile link'),
+                              label: const Text('Copy profile link', maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis),
                             ),
                           ),
                           const SizedBox(width: 8),

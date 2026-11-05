@@ -21,12 +21,152 @@ class MediaUpload {
   final String? localPath;
 }
 
+class MediaUploadDraft {
+  const MediaUploadDraft({
+    required this.bytes,
+    required this.fileName,
+    required this.extension,
+    required this.contentType,
+    required this.kind,
+    this.localPath,
+  });
+
+  final Uint8List bytes;
+  final String fileName;
+  final String extension;
+  final String contentType;
+  final String kind;
+  final String? localPath;
+}
+
 class EazyMediaService {
   EazyMediaService(this.api);
   final ApiClient api;
   final ImagePicker picker = ImagePicker();
 
-  Future<MediaUpload?> pickAndUploadVideo({required String kind}) async {
+  Future<MediaUploadDraft?> pickImageDraft({required String kind}) async {
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+      maxWidth: 2400,
+    );
+    if (file == null) return null;
+    final extension = file.name.split('.').last.toLowerCase();
+    final contentType = switch (extension) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      _ => '',
+    };
+    if (contentType.isEmpty) {
+      throw const ApiException('Choose a JPG, PNG, WebP or GIF image.', kind: ApiErrorKind.validation);
+    }
+    final bytes = await file.readAsBytes();
+    if (bytes.length > 25 * 1024 * 1024) {
+      throw const ApiException('Choose a file smaller than 25 MB.', kind: ApiErrorKind.validation);
+    }
+    return MediaUploadDraft(
+      bytes: bytes,
+      fileName: file.name,
+      extension: extension,
+      contentType: contentType,
+      kind: kind,
+      localPath: file.path,
+    );
+  }
+
+  Future<MediaUploadDraft?> pickVideoDraft({required String kind}) async {
+    final file = await picker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: const Duration(seconds: 60),
+    );
+    if (file == null) return null;
+    final extension = file.name.split('.').last.toLowerCase();
+    final contentType = switch (extension) {
+      'mov' => 'video/quicktime',
+      'mp4' || 'm4v' => 'video/mp4',
+      _ => '',
+    };
+    if (contentType.isEmpty) {
+      throw const ApiException('Choose an MP4 or MOV video.', kind: ApiErrorKind.validation);
+    }
+    final bytes = await file.readAsBytes();
+    if (bytes.length > 25 * 1024 * 1024) {
+      throw const ApiException('Choose a file smaller than 25 MB.', kind: ApiErrorKind.validation);
+    }
+    return MediaUploadDraft(
+      bytes: bytes,
+      fileName: file.name,
+      extension: extension,
+      contentType: contentType,
+      kind: kind,
+      localPath: file.path,
+    );
+  }
+
+  Future<MediaUploadDraft?> pickDocumentDraft({required String kind}) async {
+    const group = XTypeGroup(
+      label: 'Documents and files',
+      extensions: ['pdf', 'txt', 'csv', 'doc', 'docx'],
+    );
+    final file = await openFile(acceptedTypeGroups: [group]);
+    if (file == null) return null;
+    final extension = file.name.split('.').last.toLowerCase();
+    final contentType = switch (extension) {
+      'pdf' => 'application/pdf',
+      'txt' => 'text/plain',
+      'csv' => 'text/csv',
+      'doc' => 'application/msword',
+      'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      _ => '',
+    };
+    if (contentType.isEmpty) {
+      throw const ApiException('Choose a PDF, TXT, CSV, DOC or DOCX file.', kind: ApiErrorKind.validation);
+    }
+    final bytes = await file.readAsBytes();
+    if (bytes.length > 25 * 1024 * 1024) {
+      throw const ApiException('Choose a file smaller than 25 MB.', kind: ApiErrorKind.validation);
+    }
+    return MediaUploadDraft(
+      bytes: bytes,
+      fileName: file.name,
+      extension: extension,
+      contentType: contentType,
+      kind: kind,
+    );
+  }
+
+  Future<MediaUpload> uploadDraft(
+    MediaUploadDraft draft, {
+    void Function(double progress)? onProgress,
+  }) async {
+    final result = await api.post(
+      'media/upload-url',
+      auth: true,
+      body: {
+        'contentType': draft.contentType,
+        'extension': draft.extension,
+        'kind': draft.kind,
+      },
+    );
+    final signedUrl = result['signedUrl']?.toString();
+    final path = result['path']?.toString();
+    if (signedUrl == null || path == null || signedUrl.isEmpty || path.isEmpty) {
+      throw const ApiException('Eazy could not prepare media storage.', kind: ApiErrorKind.provider);
+    }
+    await api.uploadBytes(signedUrl, draft.bytes, draft.contentType, onProgress: onProgress);
+    return MediaUpload(
+      path: path,
+      contentType: draft.contentType,
+      kind: draft.kind,
+      byteSize: draft.bytes.length,
+      fileName: draft.fileName,
+      localPath: draft.localPath,
+    );
+  }
+
+  Future<MediaUpload?> pickAndUploadVideo({required String kind, void Function(double progress)? onProgress}) async {
     final file = await picker.pickVideo(
       source: ImageSource.gallery,
       maxDuration: const Duration(seconds: 60),
@@ -67,7 +207,7 @@ class EazyMediaService {
         kind: ApiErrorKind.validation,
       );
     }
-    await api.uploadBytes(signedUrl, bytes, contentType);
+    await api.uploadBytes(signedUrl, bytes, contentType, onProgress: onProgress);
     return MediaUpload(
       path: path,
       contentType: contentType,
@@ -77,7 +217,7 @@ class EazyMediaService {
     );
   }
 
-  Future<MediaUpload?> pickAndUpload({required String kind, ImageSource source = ImageSource.gallery}) async {
+  Future<MediaUpload?> pickAndUpload({required String kind, ImageSource source = ImageSource.gallery, void Function(double progress)? onProgress}) async {
     final file = await picker.pickImage(
       source: source,
       imageQuality: 88,
@@ -134,7 +274,7 @@ class EazyMediaService {
     );
   }
 
-  Future<MediaUpload?> pickAndUploadDocument({required String kind}) async {
+  Future<MediaUpload?> pickAndUploadDocument({required String kind, void Function(double progress)? onProgress}) async {
     const group = XTypeGroup(
       label: 'Documents and files',
       extensions: ['pdf', 'txt', 'csv', 'doc', 'docx'],

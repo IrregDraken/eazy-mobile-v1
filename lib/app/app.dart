@@ -28,7 +28,14 @@ class _EazyAppState extends State<EazyApp> {
   void initState() {
     super.initState();
     restoreEazyThemeMode();
-    _router = buildRouter(widget.auth);
+    _router = buildRouter(
+      widget.auth,
+      observers: [
+        _SnackBarNavigationObserver(
+          () => _messengerKey.currentState?.removeCurrentSnackBar(),
+        ),
+      ],
+    );
     widget.auth.addListener(_attachMessagingListeners);
     _attachMessagingListeners();
   }
@@ -52,19 +59,26 @@ class _EazyAppState extends State<EazyApp> {
             ),
             action: SnackBarAction(
               label: 'View',
-              onPressed: () => _router.push('/notifications'),
+              onPressed: () => _openNotificationMessage(message),
             ),
           ),
         );
     });
-    _openedMessages = FirebaseMessaging.onMessageOpenedApp.listen((_) {
-      _router.push('/notifications');
-    });
+    _openedMessages = FirebaseMessaging.onMessageOpenedApp.listen(_openNotificationMessage);
     unawaited(
       FirebaseMessaging.instance.getInitialMessage().then((message) {
-        if (message != null) _router.go('/notifications');
+        if (message != null) _openNotificationMessage(message);
       }).catchError((_) {}),
     );
+  }
+
+  void _openNotificationMessage(RemoteMessage message) {
+    final deepLink = message.data['deepLink']?.toString();
+    if (deepLink != null && deepLink.isNotEmpty) {
+      _router.go('/notifications?deepLink=${Uri.encodeQueryComponent(deepLink)}');
+    } else {
+      _router.push('/notifications');
+    }
   }
 
   @override
@@ -91,5 +105,29 @@ class _EazyAppState extends State<EazyApp> {
             scaffoldMessengerKey: _messengerKey,
           ),
     );
+  }
+}
+
+class _SnackBarNavigationObserver extends NavigatorObserver {
+  _SnackBarNavigationObserver(this.onNavigation);
+
+  final VoidCallback onNavigation;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    onNavigation();
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPop(route, previousRoute);
+    onNavigation();
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
+    onNavigation();
   }
 }

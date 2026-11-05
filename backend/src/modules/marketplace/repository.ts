@@ -12,16 +12,26 @@ export interface ProductProjection {
   status: string;
   createdAt: string;
   category: { id: string; name: string; slug: string } | null;
-  seller: { username: string; displayName: string; avatarUrl: string | null };
+  seller: { id: string; username: string; displayName: string; avatarUrl: string | null };
   media: { storageKey: string; position: number }[];
   availability: { inStock: boolean; availableQuantity?: number };
+  ratingAverage: string | null;
+  reviewCount: number;
+  sellerRatingAverage: string | null;
+  sellerReviewCount: number;
 }
 
 const productSelect = `p.id, p.name, p.description, p.price_amount::text AS "priceAmount", trim(p.currency) AS currency, p.status, p.created_at AS "createdAt",
   CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object('id', c.id, 'name', c.name, 'slug', c.slug) END AS category,
-  json_build_object('username', seller.username, 'displayName', seller.display_name, 'avatarUrl', seller.avatar_url) AS seller,
+  json_build_object('id', p.seller_id, 'username', seller.username, 'displayName', seller.display_name, 'avatarUrl', seller.avatar_url,
+    'ratingAverage', (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.seller_id = p.seller_id),
+    'reviewCount', (SELECT count(*)::int FROM order_reviews r WHERE r.seller_id = p.seller_id), 'storeSlug', (SELECT s.slug FROM seller_stores s WHERE s.seller_id = p.seller_id), 'storeName', (SELECT s.store_name FROM seller_stores s WHERE s.seller_id = p.seller_id)) AS seller,
+  (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.product_id = p.id) AS "ratingAverage",
+  (SELECT count(*)::int FROM order_reviews r WHERE r.product_id = p.id) AS "reviewCount",
+  (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.seller_id = p.seller_id) AS "sellerRatingAverage",
+  (SELECT count(*)::int FROM order_reviews r WHERE r.seller_id = p.seller_id) AS "sellerReviewCount",
   COALESCE((SELECT json_agg(json_build_object('storageKey', pm.storage_key, 'position', pm.position) ORDER BY pm.position) FROM product_media pm WHERE pm.product_id = p.id), '[]'::json) AS media,
-  json_build_object('inStock', (COALESCE(i.available_quantity, 0) - COALESCE(i.reserved_quantity, 0) > 0)) AS availability`;
+  json_build_object('inStock', (COALESCE(i.available_quantity, 0) - COALESCE(i.reserved_quantity, 0) > 0), 'availableQuantity', GREATEST(COALESCE(i.available_quantity, 0) - COALESCE(i.reserved_quantity, 0), 0)) AS availability`;
 
 export class MarketplaceRepository {
   constructor(private readonly pool: Pool) {}
@@ -84,6 +94,46 @@ export class MarketplaceRepository {
     return result.rows[0] ?? null;
   }
 
+  async sellerDeliverySettings(sellerId: string) {
+    const result = await this.pool.query<{
+      deliveryEnabled: boolean; pickupEnabled: boolean; deliveryFeeAmount: string;
+      currency: string; pickupInstructions: string | null;
+    }>(
+      `SELECT delivery_enabled AS "deliveryEnabled", pickup_enabled AS "pickupEnabled",
+        (delivery_fee_kobo::numeric / 100)::numeric(20,2)::text AS "deliveryFeeAmount", trim(currency) AS currency,
+        pickup_instructions AS "pickupInstructions"
+       FROM seller_delivery_settings WHERE seller_id = $1 LIMIT 1`,
+      [sellerId]
+    );
+    return result.rows[0] ?? {
+      deliveryEnabled: false,
+      pickupEnabled: true,
+      deliveryFeeAmount: '0.00',
+      currency: 'NGN',
+      pickupInstructions: null
+    };
+  }
+
+  async updateSellerDeliverySettings(sellerId: string, input: {
+    deliveryEnabled: boolean; pickupEnabled: boolean; deliveryFeeAmount: string;
+    currency: string; pickupInstructions?: string | null;
+  }) {
+    const result = await this.pool.query(
+      `INSERT INTO seller_delivery_settings
+        (seller_id, delivery_enabled, pickup_enabled, delivery_fee_kobo, currency, pickup_instructions)
+       VALUES ($1, $2, $3, round($4::numeric * 100)::bigint, $5, $6)
+       ON CONFLICT (seller_id) DO UPDATE SET
+        delivery_enabled = EXCLUDED.delivery_enabled,
+        pickup_enabled = EXCLUDED.pickup_enabled,
+        delivery_fee_kobo = EXCLUDED.delivery_fee_kobo,
+        currency = EXCLUDED.currency,
+        pickup_instructions = EXCLUDED.pickup_instructions,
+        updated_at = now()`,
+      [sellerId, input.deliveryEnabled, input.pickupEnabled, input.deliveryFeeAmount, input.currency, input.pickupInstructions ?? null]
+    );
+    return this.sellerDeliverySettings(sellerId);
+  }
+
   async create(client: DbClient, sellerId: string, input: { name: string; description?: string; categoryId?: string; priceAmount: string; currency: string; status: string; media: ProductMediaInput[]; availableQuantity: number }): Promise<string> {
     const result = await client.query<{ id: string }>('INSERT INTO products (seller_id, category_id, name, description, price_amount, currency, status) VALUES ($1, $2, $3, $4, $5::numeric, $6, $7) RETURNING id', [sellerId, input.categoryId ?? null, input.name, input.description ?? null, input.priceAmount, input.currency, input.status]);
     const productId = result.rows[0]!.id;
@@ -92,16 +142,46 @@ export class MarketplaceRepository {
     return productId;
   }
 
-  async update(client: DbClient, productId: string, sellerId: string, input: { name?: string; description?: string | null; categoryId?: string | null; priceAmount?: string; currency?: string; status?: string }): Promise<boolean> {
+  async update(client: DbClient, productId: string, sellerId: string, input: {
+    name?: string; description?: string | null; categoryId?: string | null;
+    priceAmount?: string; currency?: string; status?: string; media?: ProductMediaInput[];
+  }): Promise<boolean> {
     const fields: string[] = [];
     const values: unknown[] = [];
-    for (const [column, value] of Object.entries({ name: input.name, description: input.description, category_id: input.categoryId, price_amount: input.priceAmount, currency: input.currency, status: input.status })) {
-      if (value !== undefined) { values.push(value); fields.push(`${column} = $${values.length}${column === 'price_amount' ? '::numeric' : ''}`); }
+    for (const [column, value] of Object.entries({
+      name: input.name,
+      description: input.description,
+      category_id: input.categoryId,
+      price_amount: input.priceAmount,
+      currency: input.currency,
+      status: input.status
+    })) {
+      if (value !== undefined) {
+        values.push(value);
+        fields.push(`${column} = $${values.length}${column === 'price_amount' ? '::numeric' : ''}`);
+      }
     }
-    if (!fields.length) return false;
-    values.push(productId, sellerId);
-    const result = await client.query(`UPDATE products SET ${fields.join(', ')}, updated_at = now() WHERE id = $${values.length - 1} AND seller_id = $${values.length} RETURNING id`, values);
-    return Boolean(result.rowCount);
+    let exists = false;
+    if (fields.length) {
+      values.push(productId, sellerId);
+      const updated = await client.query(
+        `UPDATE products SET ${fields.join(', ')}, updated_at = now()
+         WHERE id = $${values.length - 1} AND seller_id = $${values.length} RETURNING id`,
+        values
+      );
+      exists = Boolean(updated.rowCount);
+    } else {
+      const owned = await client.query('SELECT id FROM products WHERE id = $1 AND seller_id = $2 LIMIT 1', [productId, sellerId]);
+      exists = Boolean(owned.rowCount);
+    }
+    if (!exists) return false;
+    if (input.media !== undefined) {
+      await client.query('DELETE FROM product_media WHERE product_id = $1', [productId]);
+      for (const media of input.media) {
+        await client.query('INSERT INTO product_media (product_id, storage_key, position) VALUES ($1,$2,$3)', [productId, media.storageKey, media.position]);
+      }
+    }
+    return true;
   }
 
   async updateInventory(client: DbClient, productId: string, sellerId: string, availableQuantity: number): Promise<boolean> {
@@ -112,4 +192,144 @@ export class MarketplaceRepository {
     );
     return Boolean(result.rowCount);
   }
+  async sellerProducts(sellerId: string, page: number, limit: number) {
+    const count = await this.pool.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM products WHERE seller_id = $1',
+      [sellerId]
+    );
+    const result = await this.pool.query<ProductProjection>(
+      `SELECT ${productSelect}
+       FROM products p
+       JOIN users seller_user ON seller_user.id = p.seller_id
+       LEFT JOIN profiles seller ON seller.user_id = p.seller_id
+       LEFT JOIN categories c ON c.id = p.category_id
+       LEFT JOIN inventory i ON i.product_id = p.id
+       WHERE p.seller_id = $1
+       ORDER BY p.created_at DESC, p.id DESC LIMIT $2 OFFSET $3`,
+      [sellerId, limit, (page - 1) * limit]
+    );
+    return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
+  async productReviews(productId: string, page: number, limit: number) {
+    const count = await this.pool.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM order_reviews WHERE product_id = $1',
+      [productId]
+    );
+    const result = await this.pool.query(
+      `SELECT r.id, r.rating, r.review_text AS "reviewText", r.created_at AS "createdAt",
+        reviewer.username AS "reviewerUsername", reviewer.display_name AS "reviewerDisplayName"
+       FROM order_reviews r JOIN profiles reviewer ON reviewer.user_id = r.buyer_id
+       WHERE r.product_id = $1 ORDER BY r.created_at DESC, r.id DESC
+       LIMIT $2 OFFSET $3`,
+      [productId, limit, (page - 1) * limit]
+    );
+    return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
+  async sellerReviews(username: string, page: number, limit: number) {
+    const count = await this.pool.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM order_reviews r JOIN profiles seller ON seller.user_id = r.seller_id WHERE lower(seller.username) = lower($1)',
+      [username]
+    );
+    const result = await this.pool.query(
+      `SELECT r.id, r.rating, r.review_text AS "reviewText", r.created_at AS "createdAt",
+        reviewer.username AS "reviewerUsername", reviewer.display_name AS "reviewerDisplayName",
+        p.name AS "productName"
+       FROM order_reviews r
+       JOIN profiles seller ON seller.user_id = r.seller_id
+       JOIN profiles reviewer ON reviewer.user_id = r.buyer_id
+       JOIN products p ON p.id = r.product_id
+       WHERE lower(seller.username) = lower($1)
+       ORDER BY r.created_at DESC, r.id DESC LIMIT $2 OFFSET $3`,
+      [username, limit, (page - 1) * limit]
+    );
+    return { items: result.rows, total: Number(count.rows[0]?.count ?? 0) };
+  }
+
+  async searchSellers(query: string, limit: number) {
+    const result = await this.pool.query(
+      `SELECT p.user_id AS id, p.username, p.display_name AS "displayName", COALESCE(store.slug, p.username) AS "storeSlug",
+        (SELECT count(*)::int FROM products pr WHERE pr.seller_id = p.user_id AND pr.status = 'active') AS "productCount",
+        (SELECT round(avg(r.rating)::numeric, 1)::text FROM order_reviews r WHERE r.seller_id = p.user_id) AS "ratingAverage",
+        (SELECT count(*)::int FROM order_reviews r WHERE r.seller_id = p.user_id) AS "reviewCount"
+       FROM profiles p
+       JOIN users u ON u.id = p.user_id
+       LEFT JOIN seller_stores store ON store.seller_id = p.user_id
+       WHERE u.status = 'active'
+         AND (p.username ILIKE $1 OR p.display_name ILIKE $1)
+         AND EXISTS (SELECT 1 FROM products pr WHERE pr.seller_id = p.user_id AND pr.status = 'active')
+       ORDER BY "productCount" DESC, p.username ASC
+       LIMIT $2`,
+      ['%' + query + '%', limit]
+    );
+    return result.rows;
+  }
+
+  async searchCategories(query: string, limit: number) {
+    const result = await this.pool.query(
+      `SELECT id, name, slug FROM categories
+       WHERE name ILIKE $1 OR slug ILIKE $1
+       ORDER BY name ASC, id ASC LIMIT $2`,
+      ['%' + query + '%', limit]
+    );
+    return result.rows;
+  }
+
+  async hasAcceptedSellerAgreement(sellerId: string, version: string) {
+    const result = await this.pool.query('SELECT 1 FROM seller_agreement_acceptances WHERE seller_id = $1 AND agreement_version = $2 LIMIT 1', [sellerId, version]);
+    return Boolean(result.rowCount);
+  }
+
+  async acceptSellerAgreement(client: DbClient, sellerId: string, version: string) {
+    await client.query('INSERT INTO seller_agreement_acceptances (seller_id, agreement_version) VALUES ($1,$2) ON CONFLICT (seller_id, agreement_version) DO NOTHING', [sellerId, version]);
+    return { accepted: true, version };
+  }
+
+  async sellerStoreBySeller(sellerId: string) {
+    const result = await this.pool.query(
+      `SELECT seller_id AS "sellerId", store_name AS "storeName", slug, description,
+        support_phone AS "supportPhone", status, created_at AS "createdAt", updated_at AS "updatedAt"
+       FROM seller_stores WHERE seller_id = $1 LIMIT 1`,
+      [sellerId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async sellerStoreByUsername(username: string) {
+    const result = await this.pool.query(
+      `SELECT s.seller_id AS "sellerId", s.store_name AS "storeName", s.slug, s.description,
+        s.support_phone AS "supportPhone", s.status, p.username, p.avatar_url AS "avatarUrl"
+       FROM seller_stores s JOIN profiles p ON p.user_id = s.seller_id
+       WHERE lower(p.username) = lower($1) AND s.status = 'active' LIMIT 1`,
+      [username]
+    );
+    return result.rows[0] ?? null;
+  }
+  async sellerStoreBySlug(slug: string) {
+    const result = await this.pool.query(
+      `SELECT p.user_id AS "sellerId", COALESCE(s.store_name, p.display_name) AS "storeName", COALESCE(s.slug, p.username) AS slug, COALESCE(s.description, '') AS description, s.support_phone AS "supportPhone", COALESCE(s.status, 'active') AS status, p.username, p.avatar_url AS "avatarUrl" FROM profiles p LEFT JOIN seller_stores s ON s.seller_id = p.user_id WHERE COALESCE(s.slug, p.username) = $1 AND (s.status = 'active' OR s.seller_id IS NULL) LIMIT 1`,
+      [slug]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async upsertSellerStore(client: DbClient, sellerId: string, input: {
+    storeName: string; slug: string; description: string; supportPhone?: string | null;
+  }) {
+    const result = await client.query(
+      `INSERT INTO seller_stores (seller_id, store_name, slug, description, support_phone)
+       VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (seller_id) DO UPDATE SET
+         store_name = EXCLUDED.store_name, slug = EXCLUDED.slug,
+         description = EXCLUDED.description, support_phone = EXCLUDED.support_phone,
+         updated_at = now()
+       RETURNING seller_id AS "sellerId", store_name AS "storeName", slug,
+         description, support_phone AS "supportPhone", status,
+         created_at AS "createdAt", updated_at AS "updatedAt"`,
+      [sellerId, input.storeName, input.slug, input.description, input.supportPhone ?? null]
+    );
+    return result.rows[0];
+  }
+
 }

@@ -3,7 +3,6 @@ import 'package:geolocator/geolocator.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
-import '../../core/ui/eazy_assist_fab.dart';
 
 class LocationPage extends StatefulWidget {
   const LocationPage({super.key});
@@ -66,14 +65,15 @@ class _LocationPageState extends State<LocationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: const EazyAssistFab(),
       appBar: AppBar(
         title: const Text(
           'Location',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
-      body: Padding(
+      body: SafeArea(
+        top: false,
+        child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
@@ -99,6 +99,7 @@ class _LocationPageState extends State<LocationPage> {
               style: TextStyle(color: context.eazyMuted),
             ),
           ],
+        ),
         ),
       ),
     );

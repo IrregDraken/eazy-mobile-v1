@@ -14,6 +14,30 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   final api = ApiClient();
   int quantity = 1;
   bool busy = false;
+  bool loadingReviews = true;
+  String? reviewError;
+  List<Map<String, dynamic>> reviews = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadReviews();
+  }
+
+  Future<void> loadReviews() async {
+    try {
+      final result = await api.get('marketplace/products/${widget.product['id']}/reviews?page=1&limit=10');
+      if (!mounted) return;
+      setState(() {
+        reviews = (result['items'] as List? ?? const []).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+        reviewError = null;
+      });
+    } on ApiException catch (e) {
+      if (mounted) setState(() => reviewError = e.message);
+    } finally {
+      if (mounted) setState(() => loadingReviews = false);
+    }
+  }
   Future<void> add() async {
     setState(() => busy = true);
     try {
@@ -90,6 +114,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               fontWeight: FontWeight.w900,
             ),
           ),
+          if (p['ratingAverage'] != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text('★ ${p['ratingAverage']} · ${p['reviewCount'] ?? 0} reviews', style: TextStyle(color: Theme.of(context).colorScheme.secondary, fontWeight: FontWeight.w700)),
+            ),
           const SizedBox(height: 16),
           Text(
             p['description']?.toString() ?? 'No description provided.',
@@ -112,13 +141,28 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 subtitle: Text(
-                  '@${(p['seller'] as Map)['username'] ?? ''}',
+                  '@${(p['seller'] as Map)['username'] ?? ''} · ${(p['seller'] as Map)['ratingAverage'] ?? 'No rating'} · ${(p['seller'] as Map)['reviewCount'] ?? 0} reviews',
                   style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 onTap: () {
                   final username = (p['seller'] as Map)['username']?.toString() ?? '';
-                  if (username.isNotEmpty) context.push('/u/' + Uri.encodeComponent(username));
+                  final storeSlug = (p['seller'] as Map)['storeSlug']?.toString() ?? username;
+                  if (storeSlug.isNotEmpty) context.push('/store/' + Uri.encodeComponent(storeSlug));
                 },
+              ),
+            ),
+          if (p['seller'] is Map && (p['seller'] as Map)['username'] != null)
+            Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => context.push('/seller-reviews/' + Uri.encodeComponent((p['seller'] as Map)['username'].toString())), child: const Text('View seller reviews'))),
+          if (p['seller'] is Map && (p['seller'] as Map)['username'] != null)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  final username = (p['seller'] as Map)['username'].toString();
+                  context.go('/home?tab=chat&username=${Uri.encodeComponent(username)}');
+                },
+                icon: const Icon(Icons.chat_bubble_outline_rounded),
+                label: const Text('Message seller'),
               ),
             ),
           const SizedBox(height: 12),
@@ -145,6 +189,25 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ],
           ),
           const SizedBox(height: 12),
+          const SizedBox(height: 28),
+          Row(children: [
+            const Expanded(child: Text('Buyer reviews', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+            TextButton(onPressed: loadingReviews ? null : loadReviews, child: const Text('Refresh')),
+          ]),
+          if (loadingReviews)
+            const LinearProgressIndicator(minHeight: 2)
+          else if (reviewError != null)
+            TextButton.icon(onPressed: loadReviews, icon: const Icon(Icons.refresh), label: Text(reviewError!))
+          else if (reviews.isEmpty)
+            const Text('No reviews yet.')
+          else
+            for (final review in reviews)
+              Card(
+                child: ListTile(
+                  title: Text('${review['reviewerDisplayName'] ?? review['reviewerUsername'] ?? 'Buyer'} · ★ ${review['rating']}'),
+                  subtitle: Text(review['reviewText']?.toString() ?? ''),
+                ),
+              ),
           SizedBox(
             height: 56,
             child: FilledButton(

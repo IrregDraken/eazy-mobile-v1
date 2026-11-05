@@ -12,6 +12,20 @@ export interface VirtualAccountRecord {
   status: 'pending' | 'active' | 'failed' | 'suspended';
   consentedAt: string | null;
   failureReason: string | null;
+  providerEmail: string | null;
+}
+
+export interface VirtualAccountAssignmentInput {
+  consent: true;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  phone: string;
+  preferredBank: string;
+  country: 'NG';
+  accountNumber: string;
+  bvn: string;
+  bankCode: string;
 }
 
 export interface VirtualAccountProviderPayload {

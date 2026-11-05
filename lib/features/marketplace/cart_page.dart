@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
@@ -22,7 +22,10 @@ class _CartPageState extends State<CartPage> {
   }
 
   Future<void> load() async {
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
       cart = await api.get('cart', auth: true);
     } on ApiException catch (e) {
@@ -68,61 +71,6 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
-  Future<void> checkout() async {
-    setState(() => busy = true);
-    try {
-      final order = await api.post(
-        'orders',
-        auth: true,
-        headers: {
-          'Idempotency-Key': 'order-${DateTime.now().microsecondsSinceEpoch}',
-        },
-      );
-      final record =
-          order['order'] is Map
-              ? Map<String, dynamic>.from(order['order'] as Map)
-              : const <String, dynamic>{};
-      final id = record['id']?.toString();
-      if (id == null) {
-        throw const ApiException('We could not create your order.');
-      }
-      final payment = await api.post(
-        'payments/initialize',
-        auth: true,
-        headers: {
-          'Idempotency-Key': 'payment-${DateTime.now().microsecondsSinceEpoch}',
-        },
-        body: {'purpose': 'order_purchase', 'orderId': id},
-      );
-      final checkoutUrl =
-          payment['payment'] is Map
-              ? (payment['payment'] as Map)['authorizationUrl']?.toString()
-              : null;
-      if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
-        await launchUrl(
-          Uri.parse(checkoutUrl),
-          mode: LaunchMode.externalApplication,
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Order created. Payment provider is not currently available.',
-            ),
-          ),
-        );
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    } finally {
-      if (mounted) setState(() => busy = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final items =
@@ -133,7 +81,10 @@ class _CartPageState extends State<CartPage> {
     final subtotal = cart['subtotal']?.toString() ?? '0.00';
     final currency = cart['currency']?.toString() ?? 'NGN';
     return Scaffold(
-      appBar: AppBar(title: const Text('Your bag')),
+      appBar: AppBar(
+        title: const Text('Your bag'),
+        actions: [IconButton(tooltip: 'My orders', onPressed: () => context.push('/orders'), icon: const Icon(Icons.receipt_long_rounded))],
+      ),
       body:
           loading
               ? const Center(child: CircularProgressIndicator())
@@ -141,7 +92,18 @@ class _CartPageState extends State<CartPage> {
               ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(error!, textAlign: TextAlign.center),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 14),
+                      OutlinedButton.icon(
+                        onPressed: loading ? null : load,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Try again'),
+                      ),
+                    ],
+                  ),
                 ),
               )
               : items.isEmpty
@@ -307,7 +269,7 @@ class _CartPageState extends State<CartPage> {
                           width: double.infinity,
                           height: 54,
                           child: FilledButton(
-                            onPressed: busy ? null : checkout,
+                            onPressed: busy ? null : () => context.push('/checkout'),
                             child:
                                 busy
                                     ? const SizedBox(

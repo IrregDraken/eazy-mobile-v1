@@ -233,8 +233,17 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     final raw = c['latestMessage'];
     if (raw is! Map) return 'Start a conversation';
     if (raw['status'] == 'deleted') return '🚫 This message was deleted';
-    final body = raw['body']?.toString();
-    return body == null || body.isEmpty ? 'Start a conversation' : body;
+    final body = raw['body']?.toString().trim() ?? '';
+    if (body.isNotEmpty) return body;
+    final attachments = raw['attachments'];
+    if (attachments is List && attachments.isNotEmpty) {
+      final first = attachments.first;
+      final type = first is Map ? first['contentType']?.toString() ?? '' : '';
+      if (type.startsWith('image/')) return '📷 Photo';
+      if (type.startsWith('video/')) return '🎬 Video';
+      return '📎 Attachment';
+    }
+    return 'Message';
   }
 
   int _unread(Map<String, dynamic> c) =>
@@ -338,7 +347,10 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
                             unread: unread,
                             timestamp: _time(_activity(c)),
                             avatarUrl: p['avatarUrl']?.toString(),
-                            onTap: () => widget.onOpen(c),
+                            onTap: () async {
+                              await widget.onOpen(c);
+                              if (mounted) await _load(quiet: true);
+                            },
                             onLongPress: () {},
                           );
                         },
@@ -486,10 +498,12 @@ class _NewChatScreenState extends State<_NewChatScreen> {
       title: Text('Find people on Eazy'),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     ),
-    body: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
+    body: SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
           child: TextField(
             controller: _query,
             autofocus: true,
@@ -558,8 +572,9 @@ class _NewChatScreenState extends State<_NewChatScreen> {
                       );
                     },
                   ),
-        ),
-      ],
+          ),
+        ],
+      ),
     ),
   );
 }

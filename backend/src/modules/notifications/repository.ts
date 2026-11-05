@@ -3,7 +3,7 @@ import type { DbClient } from '../../database/client.js';
 
 export type NotificationType = 'follow' | 'like' | 'comment' | 'message' | 'order' | 'payment' | 'system';
 export interface NotificationInput { recipientUserId: string; actorUserId?: string; type: NotificationType; entityType?: string; entityId?: string; title?: string; body?: string; deepLink?: string; }
-export interface NotificationProjection { id: string; type: NotificationType; actor: { username: string; displayName: string; avatarUrl: string | null } | null; title: string | null; body: string | null; entityType: string | null; entityId: string | null; isRead: boolean; createdAt: string; }
+export interface NotificationProjection { id: string; type: NotificationType; actor: { username: string; displayName: string; avatarUrl: string | null } | null; title: string | null; body: string | null; entityType: string | null; entityId: string | null; isRead: boolean; createdAt: string; deepLink: string | null; }
 
 export class NotificationRepository {
   constructor(private readonly pool: Pool) {}
@@ -39,7 +39,7 @@ export class NotificationRepository {
     ))`;
     const count = await this.pool.query<{ count: string }>(`SELECT count(*)::text AS count FROM notifications n WHERE ${visible}`, [userId]);
     const result = await this.pool.query<NotificationProjection>(
-      `SELECT n.id, n.type, n.title, n.body, n.target_type AS "entityType", n.target_id AS "entityId", n.is_read AS "isRead", n.created_at AS "createdAt",
+      `SELECT n.id, n.type, n.title, n.body, n.target_type AS "entityType", n.target_id AS "entityId", n.is_read AS "isRead", n.created_at AS "createdAt", n.deep_link AS "deepLink",
         CASE WHEN p.user_id IS NULL THEN NULL ELSE json_build_object('username', p.username, 'displayName', p.display_name, 'avatarUrl', p.avatar_url) END AS actor
        FROM notifications n LEFT JOIN profiles p ON p.user_id = n.actor_user_id
        WHERE ${visible} ORDER BY n.created_at DESC, n.id DESC LIMIT $2 OFFSET $3`, [userId, limit, (page - 1) * limit]
@@ -49,7 +49,7 @@ export class NotificationRepository {
 
   async get(userId: string, id: string): Promise<NotificationProjection | null> {
     const result = await this.pool.query<NotificationProjection>(
-      `SELECT n.id, n.type, n.title, n.body, n.target_type AS "entityType", n.target_id AS "entityId", n.is_read AS "isRead", n.created_at AS "createdAt",
+      `SELECT n.id, n.type, n.title, n.body, n.target_type AS "entityType", n.target_id AS "entityId", n.is_read AS "isRead", n.created_at AS "createdAt", n.deep_link AS "deepLink",
         CASE WHEN p.user_id IS NULL THEN NULL ELSE json_build_object('username', p.username, 'displayName', p.display_name, 'avatarUrl', p.avatar_url) END AS actor
        FROM notifications n LEFT JOIN profiles p ON p.user_id = n.actor_user_id
        WHERE n.id = $1 AND n.user_id = $2

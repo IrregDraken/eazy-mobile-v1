@@ -77,6 +77,9 @@ import { closeDbPool } from './database/client.js';
 import { SettingsRepository } from './modules/settings/repository.js';
 import { SettingsService } from './modules/settings/service.js';
 import { createSettingsRouter } from './modules/settings/routes.js';
+import { SupportRepository } from './modules/support/repository.js';
+import { SupportService } from './modules/support/service.js';
+import { createSupportRouter } from './modules/support/routes.js';
 import { createBlockRouter } from './modules/blocks/routes.js';
 import { safeErrorSummary } from './config/redaction.js';
 import { ResendEmailProvider, UnavailableEmailProvider } from './providers/resend-email.js';
@@ -115,6 +118,7 @@ if (pool) {
   }
 
   authOptions.settingsRouter = createSettingsRouter(new SettingsService(new SettingsRepository(pool)));
+  authOptions.supportRouter = createSupportRouter(new SupportService(new SupportRepository(pool), config.SUPPORT_EMAIL));
 
   if (storageProvider) {
     authOptions.mediaRouter = createMediaRouter(new MediaService(storageProvider, pool));
@@ -135,7 +139,7 @@ if (pool) {
   authOptions.postRouter = createPostRouter(postService);
   authOptions.homeRouter = createHomeRouter(postService);
   authOptions.engagementRouter = createEngagementRouter(new EngagementService(pool, undefined, notificationService));
-  const marketplaceService = new MarketplaceService(pool, undefined, storageProvider);
+  const marketplaceService = new MarketplaceService(pool, undefined, storageProvider, { version: config.SELLER_AGREEMENT_VERSION, text: config.SELLER_AGREEMENT_TEXT });
   authOptions.marketplaceRouter = createMarketplaceRouter(marketplaceService);
   authOptions.marketplaceCategoryRouter = createCategoryRouter(marketplaceService);
   authOptions.discoverRouter = createDiscoverRouter(new DiscoverService(marketplaceService, socialService));
@@ -157,7 +161,7 @@ if (pool) {
   authOptions.locationRouter = createLocationRouter(new LocationService(locationProvider, new LocationRepository()));
   const walletRepository = new WalletRepository(pool);
   const walletService = new WalletService(pool, walletRepository, new LedgerService(new LedgerRepository()));
-  const paymentPinService = new PaymentPinService(pool);
+  const paymentPinService = new PaymentPinService(pool, emailProvider, config);
   authOptions.walletRouter = createWalletRouter(walletService, paymentPinService);
   authOptions.qrRouter = createQrRouter(new QrService(pool, new QrRepository(pool)), walletService, paymentPinService);
   const bankProvider = config.PAYSTACK_ENABLED && config.PAYSTACK_SECRET_KEY ? new PaystackBankProvider(config) : new UnavailableBankProvider();

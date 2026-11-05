@@ -189,7 +189,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.paddingOf(context).bottom + 24),
         children: [
           _sectionTitle(context, 'Email address'),
           Card(

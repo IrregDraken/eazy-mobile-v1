@@ -102,6 +102,8 @@ export class AccountDeletionService {
       await client.query('DELETE FROM translation_requests WHERE user_id = $1', [userId]);
       await client.query('DELETE FROM user_settings WHERE user_id = $1', [userId]);
       await client.query('DELETE FROM verification_codes WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM payment_pin_verification_challenges WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM wallet_payment_pins WHERE user_id = $1', [userId]);
       if (user.email) await client.query('DELETE FROM email_verification_challenges WHERE lower(email) = lower($1)', [user.email]);
       await client.query('UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL', [userId]);
 
@@ -196,9 +198,9 @@ export class AccountDeletionService {
                    FROM ledger_entries le JOIN wallets w ON w.id = le.wallet_id WHERE w.user_id = $1), 0)::text AS balance,
          (SELECT count(*) FROM transactions t WHERE t.user_id = $1 AND t.status = 'pending'
             AND (t.type <> 'deposit' OR t.created_at > now() - interval '24 hours'))::text AS pending,
-         (SELECT count(*) FROM orders o WHERE o.buyer_id = $1 AND o.status IN ('paid', 'processing', 'shipped'))::text AS orders,
+         (SELECT count(*) FROM orders o WHERE o.buyer_id = $1 AND o.status IN ('paid', 'processing', 'shipped', 'disputed'))::text AS orders,
          (SELECT count(DISTINCT oi.order_id) FROM order_items oi JOIN orders o ON o.id = oi.order_id
-            WHERE oi.seller_id = $1 AND o.status IN ('paid', 'processing', 'shipped'))::text AS sales`, [userId]
+            WHERE oi.seller_id = $1 AND o.status IN ('paid', 'processing', 'shipped', 'disputed'))::text AS sales`, [userId]
     );
     const row = result.rows[0];
     const blockers: DeletionBlocker[] = [];

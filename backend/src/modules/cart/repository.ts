@@ -7,7 +7,7 @@ export interface CartProjection {
   items: {
     productId: string;
     name: string;
-    seller: { username: string; displayName: string; avatarUrl: string | null };
+    seller: { id: string; username: string; displayName: string; avatarUrl: string | null };
     quantity: number;
     unitPrice: string;
     currency: string;
@@ -56,7 +56,7 @@ export class CartRepository {
   async readCart(client: Pool | DbClient, cartId: string): Promise<CartProjection> {
     const result = await client.query<CartProjection['items'][number] & { cartId: string; subtotal: string; cartCurrency: string | null; currencyCount: number }>(
       `SELECT c.id AS "cartId", ci.product_id AS "productId", p.name,
-        json_build_object('username', seller.username, 'displayName', seller.display_name, 'avatarUrl', seller.avatar_url) AS seller,
+        json_build_object('id', p.seller_id, 'username', seller.username, 'displayName', seller.display_name, 'avatarUrl', seller.avatar_url) AS seller,
         ci.quantity, p.price_amount::text AS "unitPrice", trim(p.currency) AS currency,
         (p.price_amount * ci.quantity)::text AS "lineTotal",
         (p.status = 'active' AND COALESCE(i.available_quantity, 0) - COALESCE(i.reserved_quantity, 0) >= ci.quantity) AS available,

@@ -192,6 +192,7 @@ class _SocialPageState extends State<SocialPage> {
 
     final body = await showModalBottomSheet<String>(
       context: context,
+      useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: true,
       builder:
@@ -413,8 +414,9 @@ class _SocialPageState extends State<SocialPage> {
             SliverFillRemaining(
               hasScrollBody: false,
               child: _State(
-                'Nothing here yet. Follow people or publish the first post.',
+                'No posts yet',
                 compose,
+                actionLabel: 'Create post',
               ),
             ),
           if (loading && posts.isNotEmpty)
@@ -1768,9 +1770,10 @@ class _FeedLoadingSkeleton extends StatelessWidget {
 }
 
 class _State extends StatelessWidget {
-  const _State(this.text, this.action);
+  const _State(this.text, this.action, {this.actionLabel = 'Try again'});
   final String text;
   final VoidCallback? action;
+  final String actionLabel;
   @override
   Widget build(BuildContext context) => Center(
     child: Padding(
@@ -1791,7 +1794,7 @@ class _State extends StatelessWidget {
           ),
           if (action != null) ...[
             const SizedBox(height: 16),
-            OutlinedButton(onPressed: action, child: const Text('Try again')),
+            OutlinedButton(onPressed: action, child: Text(actionLabel)),
           ],
         ],
       ),

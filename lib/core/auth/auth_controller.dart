@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -333,6 +334,29 @@ class AuthController extends ChangeNotifier {
   }
 
 
+  Future<void> reauthenticateWithPassword(String password) async {
+    _requireFirebase();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null || !hasPasswordProvider) {
+      throw const ApiException('This account uses a different sign-in method. Sign out and sign back in to confirm your identity.');
+    }
+    if (password.isEmpty) throw const ApiException('Enter your current password to continue.');
+    try {
+      await user.reauthenticateWithCredential(
+        EmailAuthProvider.credential(email: user.email!, password: password),
+      );
+      final token = await user.getIdToken(true);
+      if (token == null || token.isEmpty) {
+        throw const ApiException('Could not refresh your secure session. Sign in again.');
+      }
+      await api.saveToken(token);
+      _firebaseUser = user;
+      notifyListeners();
+    } on FirebaseAuthException catch (error) {
+      throw ApiException(_firebaseMessage(error));
+    }
+  }
+
   Future<void> requestEmailChange(
     String newEmail, {
     String? currentPassword,
@@ -647,14 +671,48 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> signOut() async {
-    await PushRegistrationService.instance.unregister(api);
-    if (firebaseReady) await FirebaseAuth.instance.signOut();
+  Future<void> signOut({bool revokeAllSessions = false}) async {
+    // Revoke push registration and the server session while the bearer token
+    // is still available. Sign-out must still complete when the network is down.
     try {
-      await GoogleSignIn.instance.signOut();
+      await PushRegistrationService.instance
+          .unregister(api)
+          .timeout(const Duration(seconds: 3));
     } catch (_) {}
-    await api.clearToken();
-    await api.clearProfileSnapshot();
+    try {
+      await api
+          .post(
+            revokeAllSessions ? 'auth/sessions/revoke-all' : 'auth/logout',
+            auth: true,
+          )
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {}
+
+    try {
+      if (firebaseReady) {
+        await FirebaseAuth.instance.signOut().timeout(const Duration(seconds: 3));
+      }
+    } catch (_) {}
+    try {
+      await GoogleSignIn.instance.signOut().timeout(const Duration(seconds: 3));
+    } catch (_) {}
+
+    const secureStorage = FlutterSecureStorage();
+    for (final key in const [
+      'eazy.wallet.biometricShortcutEnabled',
+      'eazy.wallet.biometricPaymentPin',
+      'eazy.pendingPayment',
+    ]) {
+      try {
+        await secureStorage.delete(key: key);
+      } catch (_) {}
+    }
+    try {
+      await api.clearToken();
+    } catch (_) {}
+    try {
+      await api.clearProfileSnapshot();
+    } catch (_) {}
     _firebaseUser = null;
     _profile = null;
     notifyListeners();

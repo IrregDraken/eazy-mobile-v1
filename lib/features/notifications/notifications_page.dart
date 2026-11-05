@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter/rendering.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:io';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/ui/eazy_assist_fab.dart';
 
 class NotificationsPage extends StatefulWidget {
-  const NotificationsPage({super.key});
+  const NotificationsPage({super.key, this.initialDeepLink});
+  final String? initialDeepLink;
   @override
   State<NotificationsPage> createState() => _NotificationsPageState();
 }
@@ -19,12 +23,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
   int unread = 0;
   String error = '';
   bool loading = true, pushBusy = false;
+  bool assistVisible = true;
+  final _assistStorage = const FlutterSecureStorage();
+  double? _assistLeft;
+  double? _assistTop;
   String filter = 'all';
   StreamSubscription<String>? _tokenRefreshSubscription;
   @override
   void initState() {
     super.initState();
     load();
+    _restoreAssistPosition();
     _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen((token) {
       _registerDeviceToken(token).catchError((error) {
         if (!mounted) return;
@@ -34,12 +43,38 @@ class _NotificationsPageState extends State<NotificationsPage> {
       });
     });
     _registerExistingTokenIfAuthorized();
+    final initialLink = widget.initialDeepLink?.trim();
+    if (initialLink != null && initialLink.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => resolveDeepLink(initialLink));
+    }
   }
 
   @override
   void dispose() {
     _tokenRefreshSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _restoreAssistPosition() async {
+    try {
+      final left = double.tryParse(await _assistStorage.read(key: 'eazy.assist.left') ?? '');
+      final top = double.tryParse(await _assistStorage.read(key: 'eazy.assist.top') ?? '');
+      if (mounted && left != null && top != null) {
+        setState(() {
+          _assistLeft = left;
+          _assistTop = top;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveAssistPosition() async {
+    try {
+      if (_assistLeft != null && _assistTop != null) {
+        await _assistStorage.write(key: 'eazy.assist.left', value: _assistLeft.toString());
+        await _assistStorage.write(key: 'eazy.assist.top', value: _assistTop.toString());
+      }
+    } catch (_) {}
   }
 
   Future<void> _registerExistingTokenIfAuthorized() async {
@@ -165,6 +200,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
+  Future<void> resolveDeepLink(String link) async {
+    try {
+      final result = await api.get('deep-links/resolve?path=${Uri.encodeQueryComponent(link)}', auth: true);
+      final destination = result['destination']?.toString();
+      if (destination != null && destination.isNotEmpty && mounted) {
+        if (destination.startsWith('/home?')) {
+          context.go(destination);
+        } else {
+          context.push(destination);
+        }
+      }
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Future<void> openNotification(Map<String, dynamic> notification) async {
+    final id = notification['id']?.toString();
+    if (id != null && id.isNotEmpty) {
+      try { await api.post('notifications/$id/read', auth: true); } catch (_) {}
+    }
+    final link = notification['deepLink']?.toString();
+    if (link == null || link.isEmpty || !mounted) {
+      await load();
+      return;
+    }
+    await resolveDeepLink(link);
+    if (mounted) await load();
+  }
+
   Future<void> read(String id) async {
     try {
       await api.post('notifications/$id/read', auth: true);
@@ -187,7 +252,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
   };
   @override
   Widget build(BuildContext context) => Scaffold(
-    floatingActionButton: const EazyAssistFab(),
     appBar: AppBar(
       title: Text(
         unread > 0 ? 'Notifications ($unread)' : 'Notifications',
@@ -204,7 +268,27 @@ class _NotificationsPageState extends State<NotificationsPage> {
         ),
       ],
     ),
-    body: RefreshIndicator(
+    body: LayoutBuilder(
+      builder: (context, constraints) {
+        final defaultLeft = (constraints.maxWidth - 88).clamp(8.0, constraints.maxWidth - 80).toDouble();
+        final defaultTop = (constraints.maxHeight - 170).clamp(8.0, constraints.maxHeight - 160).toDouble();
+        final left = (_assistLeft ?? defaultLeft).clamp(8.0, constraints.maxWidth - 80).toDouble();
+        final top = (_assistTop ?? defaultTop).clamp(8.0, constraints.maxHeight - 160).toDouble();
+        final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+        return Stack(
+          children: [
+            Positioned.fill(child: NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is UserScrollNotification &&
+            notification.direction != ScrollDirection.idle) {
+          final shouldShow = notification.direction == ScrollDirection.forward;
+          if (assistVisible != shouldShow) {
+            setState(() => assistVisible = shouldShow);
+          }
+        }
+        return false;
+      },
+      child: RefreshIndicator(
       onRefresh: load,
       child:
           loading
@@ -223,7 +307,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               )
               : ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.fromLTRB(12, 12, 12, MediaQuery.paddingOf(context).bottom + 24),
                 itemCount: _filteredItems.isEmpty ? 2 : _filteredItems.length + 1,
                 itemBuilder: (_, i) {
                   if (i == 0) {
@@ -252,7 +336,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   final n = _filteredItems[i - 1];
                   return Card(
                     child: ListTile(
-                      onTap: () => read(n['id'].toString()),
+                      onTap: () => openNotification(Map<String, dynamic>.from(n)),
                       leading: CircleAvatar(
                         child: Icon(icon(n['type']?.toString())),
                       ),
@@ -273,6 +357,26 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   );
                 },
               )
+      ),
+    ),),
+            if (assistVisible && !keyboardOpen)
+              Positioned(
+                left: left,
+                top: top,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _assistLeft = (left + details.delta.dx).clamp(8.0, constraints.maxWidth - 80).toDouble();
+                      _assistTop = (top + details.delta.dy).clamp(8.0, constraints.maxHeight - 160).toDouble();
+                    });
+                  },
+                  onPanEnd: (_) => _saveAssistPosition(),
+                  child: const EazyAssistFab(),
+                ),
+              ),
+          ],
+        );
+      },
     ),
   );
 }

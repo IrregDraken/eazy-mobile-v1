@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -12,6 +13,7 @@ import '../../app/theme/eazy_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import 'wallet_amount_input.dart';
+import '../../core/formatters/money_formatter.dart';
 
 class WalletPage extends StatefulWidget {
   const WalletPage({super.key});
@@ -27,6 +29,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   bool busy = false;
   bool balanceVisible = true;
   bool paymentPinConfigured = false;
+  int paymentPinLength = 4;
   bool reconcilingPayment = false;
   String? error;
   Map<String, dynamic>? wallet;
@@ -115,7 +118,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         auth: true,
       );
       try {
-        final pinStatus = await api.get('wallet/payment-pin/status', auth: true);
+        final pinStatus = await api.get(
+          'wallet/payment-pin/status',
+          auth: true,
+        );
         paymentPinConfigured = pinStatus['configured'] == true;
       } on ApiException {
         paymentPinConfigured = false;
@@ -133,7 +139,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       pendingDeposit = pendingEntries.isEmpty ? null : pendingEntries.first;
       final pendingDepositId = pendingDeposit?['id']?.toString();
       if (pendingDepositId != null && pendingDepositId.isNotEmpty) {
-        await storage.write(key: 'eazy.pendingPayment', value: pendingDepositId);
+        await storage.write(
+          key: 'eazy.pendingPayment',
+          value: pendingDepositId,
+        );
       } else {
         await storage.delete(key: 'eazy.pendingPayment');
       }
@@ -142,14 +151,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
           'notifications?page=1&limit=50',
           auth: true,
         );
-        walletAlerts = (alertResult['items'] as List? ?? const [])
-            .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
-            .where((entry) {
-              final type = entry['type']?.toString().toLowerCase();
-              return type == 'payment' || type == 'order';
-            })
-            .toList();
+        walletAlerts =
+            (alertResult['items'] as List? ?? const [])
+                .whereType<Map>()
+                .map((entry) => Map<String, dynamic>.from(entry))
+                .where((entry) {
+                  final type = entry['type']?.toString().toLowerCase();
+                  return type == 'payment' || type == 'order';
+                })
+                .toList();
       } catch (_) {
         walletAlerts = [];
       }
@@ -176,7 +186,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
 
   Future<void> deposit() async {
     if (pendingDeposit != null) {
-      _showError('You already have a deposit awaiting confirmation. Check its status before starting another one.');
+      _showError(
+        'You already have a deposit awaiting confirmation. Check its status before starting another one.',
+      );
       return;
     }
     final amount = await _amountDialog(title: 'Add money', action: 'Continue');
@@ -255,10 +267,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       }
     } on ApiException catch (e) {
       if (!silent) {
-        if (e.statusCode == 409 && e.message.toLowerCase().contains('not confirmed')) {
-          _showMessage('This deposit is still awaiting provider confirmation. No wallet credit has been posted. Do not start another deposit yet.');
+        if (e.statusCode == 409 &&
+            e.message.toLowerCase().contains('not confirmed')) {
+          _showMessage(
+            'This deposit is still awaiting provider confirmation. No wallet credit has been posted. Do not start another deposit yet.',
+          );
         } else if (e.statusCode == 503) {
-          _showMessage('We could not check this deposit right now. It remains pending. Do not start another deposit yet.');
+          _showMessage(
+            'We could not check this deposit right now. It remains pending. Do not start another deposit yet.',
+          );
         } else {
           _showError(e.message);
         }
@@ -284,6 +301,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 hintText: 'e.g. Ada Okafor or ada_okafor',
                 prefixIcon: Icon(Icons.search_rounded),
                 helperText: 'Search by the person’s name or Eazy username.',
+                helperMaxLines: 2,
               ),
             ),
             actions: [
@@ -332,7 +350,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       return;
     }
 
-    final recipient = await showDialog<Map<String, dynamic>>(
+    final recipient = matches.length == 1
+        ? matches.single
+        : await showDialog<Map<String, dynamic>>(
       context: context,
       builder:
           (dialogContext) => AlertDialog(
@@ -398,6 +418,17 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     );
     if (amount == null || !mounted) return;
 
+    final requestedKobo = walletAmountToMinorUnits(amount);
+    final availableKobo = walletAmountToMinorUnits(_balance);
+    if (requestedKobo == null || requestedKobo <= BigInt.zero) {
+      _showError('Enter a valid amount greater than ₦0.00.');
+      return;
+    }
+    if (availableKobo == null || requestedKobo > availableKobo) {
+      _showError('Insufficient funds. Your available balance is ${formatEazyMoney(_balance, currency: _currency)}.');
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -421,11 +452,11 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   subtitle: Text('@$handle'),
                 ),
                 const Divider(),
-                _Info('Amount', '$_currency $amount'),
-                _Info('Available balance', '$_currency $_balance'),
+                _Info('Amount', formatEazyMoney(amount, currency: _currency)),
+                _Info('Available balance', formatEazyMoney(_balance, currency: _currency)),
                 const SizedBox(height: 10),
                 const Text(
-                  'Your device will ask you to authenticate before this transfer is submitted.',
+                  'Confirm with your Eazy payment PIN. Eazy never asks you to share it.',
                   style: TextStyle(
                     color: EazyColors.muted,
                     fontSize: 12,
@@ -450,13 +481,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
 
     setState(() => busy = true);
     try {
-      final authenticated = await _authenticateTransfer(
-        'Authorize sending $_currency $amount to @$handle',
-      );
-      if (!authenticated) return;
       final paymentPin = await _requestPaymentPin();
       if (paymentPin == null || !mounted) return;
-      await api.post(
+      final transferResult = await api.post(
         'wallet/transfers',
         auth: true,
         headers: {
@@ -469,10 +496,13 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
           'currency': _currency,
         },
       );
+      final transaction = _map(transferResult['transaction']);
       await load();
-      _showMessage(
-        'Transfer submitted. Check wallet activity for its confirmed status.',
-      );
+      if (transaction['status']?.toString().toLowerCase() == 'succeeded') {
+        _showMessage('Transfer successful. ${formatEazyMoney(amount, currency: _currency)} sent to @$handle.');
+      } else {
+        _showError('The transfer was not confirmed. Check wallet activity before trying again.');
+      }
     } on ApiException catch (e) {
       _showError(e.message);
     } catch (_) {
@@ -489,164 +519,230 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     final newPin = TextEditingController();
     final confirmation = TextEditingController();
     final changing = paymentPinConfigured;
-    final action = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(changing ? 'Change payment PIN' : 'Create payment PIN'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (changing) ...[
+    try {
+      final action = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(changing ? 'Change payment PIN' : 'Create payment PIN'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (changing) ...[
+                TextField(
+                  controller: currentPin,
+                  obscureText: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: paymentPinLength,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(labelText: 'Current $paymentPinLength-digit PIN'),
+                ),
+                const SizedBox(height: 8),
+              ],
               TextField(
-                controller: currentPin,
+                controller: newPin,
                 obscureText: true,
                 keyboardType: TextInputType.number,
-                maxLength: 6,
+                maxLength: 4,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(labelText: 'Current 6-digit PIN'),
+                decoration: InputDecoration(labelText: changing ? 'New 4-digit PIN' : '4-digit PIN'),
               ),
               const SizedBox(height: 8),
+              TextField(
+                controller: confirmation,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(labelText: 'Confirm 4-digit PIN'),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'A verification code will be sent to your verified email before this change is saved.',
+                style: TextStyle(color: context.eazyMuted, fontSize: 12),
+              ),
             ],
-            TextField(
-              controller: newPin,
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(labelText: changing ? 'New 6-digit PIN' : '6-digit PIN'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: confirmation,
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(labelText: 'Confirm PIN'),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Use a PIN you do not use for your bank card or other accounts.',
-              style: TextStyle(color: context.eazyMuted, fontSize: 12),
+          ),
+          actions: [
+            if (changing)
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, 'reset'),
+                child: const Text('Forgot PIN?'),
+              ),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, 'save'),
+              child: Text(changing ? 'Continue' : 'Create PIN'),
             ),
           ],
         ),
-        actions: [
-          if (changing)
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, 'reset'),
-              child: const Text('Forgot PIN?'),
-            ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, 'save'),
-            child: Text(changing ? 'Save new PIN' : 'Create PIN'),
-          ),
-        ],
-      ),
-    );
-    if (action != null && mounted) {
-      try {
-        if (action == 'reset') {
-          await api.post(
-            'wallet/payment-pin/reset',
-            auth: true,
-            body: {'pin': newPin.text, 'confirmation': confirmation.text},
-          );
-        } else if (changing) {
-          await api.post(
-            'wallet/payment-pin/change',
-            auth: true,
-            body: {
-              'currentPin': currentPin.text,
-              'newPin': newPin.text,
-              'confirmation': confirmation.text,
-            },
-          );
-        } else {
-          await api.post(
-            'wallet/payment-pin/setup',
-            auth: true,
-            body: {'pin': newPin.text, 'confirmation': confirmation.text},
-          );
-        }
-        if (mounted) {
-          setState(() => paymentPinConfigured = true);
-          _showMessage(action == 'reset' ? 'Payment PIN reset.' : changing ? 'Payment PIN updated.' : 'Payment PIN created.');
-        }
-      } on ApiException catch (e) {
-        _showError(e.message);
+      );
+      if (action == null || !mounted) return;
+      if (newPin.text.length != 4 ||
+          confirmation.text.length != 4 ||
+          (action == 'save' && changing && currentPin.text.length != paymentPinLength)) {
+        _showError('Enter a valid 4-digit new PIN and complete the required current PIN fields.');
+        return;
       }
+
+      final codeRequest = await api.post(
+        'wallet/payment-pin/request-code',
+        auth: true,
+        body: const {},
+      );
+      final challengeId = codeRequest['challengeId']?.toString();
+      if (challengeId == null || challengeId.isEmpty) {
+        throw const ApiException('Eazy could not start PIN verification. Try again.');
+      }
+      final codeController = TextEditingController();
+      String? code;
+      try {
+        code = await showDialog<String>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Verify payment PIN change'),
+            content: TextField(
+              controller: codeController,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: '6-digit email verification code',
+                counterText: '',
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () {
+                  if (codeController.text.length == 6) {
+                    Navigator.pop(dialogContext, codeController.text);
+                  }
+                },
+                child: const Text('Verify'),
+              ),
+            ],
+          ),
+        );
+      } finally {
+        codeController.dispose();
+      }
+      if (code == null || !mounted) return;
+
+      final body = <String, dynamic>{
+        'pin': newPin.text,
+        'confirmation': confirmation.text,
+        'challengeId': challengeId,
+        'code': code,
+      };
+      if (action == 'reset') {
+        await api.post('wallet/payment-pin/reset', auth: true, body: body);
+      } else if (changing) {
+        body
+          ..remove('pin')
+          ..remove('confirmation')
+          ..addAll({
+            'currentPin': currentPin.text,
+            'newPin': newPin.text,
+            'confirmation': confirmation.text,
+          });
+        await api.post('wallet/payment-pin/change', auth: true, body: body);
+      } else {
+        await api.post('wallet/payment-pin/setup', auth: true, body: body);
+      }
+      paymentPinConfigured = true;
+      paymentPinLength = 4;
+      if (await storage.read(key: 'eazy.wallet.biometricShortcutEnabled') == 'true') {
+        await storage.write(key: 'eazy.wallet.biometricPaymentPin', value: newPin.text);
+      }
+      if (mounted) {
+        setState(() {});
+        _showMessage(
+          action == 'reset'
+              ? 'Payment PIN reset.'
+              : changing
+                  ? 'Payment PIN updated.'
+                  : 'Payment PIN created.',
+        );
+      }
+    } on ApiException catch (e) {
+      _showError(e.message);
+    } finally {
+      currentPin.dispose();
+      newPin.dispose();
+      confirmation.dispose();
     }
-    currentPin.dispose();
-    newPin.dispose();
-    confirmation.dispose();
   }
 
   Future<String?> _requestPaymentPin() async {
     if (!paymentPinConfigured) {
-      _showError('Create a payment PIN in Wallet settings before sending money.');
-      return null;
+      await _managePaymentPin();
+      if (!paymentPinConfigured || !mounted) return null;
     }
-    final controller = TextEditingController();
-    final pin = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Enter payment PIN'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            labelText: '6-digit payment PIN',
-            counterText: '',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (controller.text.length == 6) {
-                Navigator.pop(dialogContext, controller.text);
-              }
-            },
-            child: const Text('Authorize'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    return pin;
-  }
 
-  Future<bool> _authenticateTransfer(String reason) async {
-    final localAuth = LocalAuthentication();
-    final supported = await localAuth.isDeviceSupported();
-    final canCheck = await localAuth.canCheckBiometrics;
-    if (!supported && !canCheck) {
-      throw const ApiException(
-        'Set up a device screen lock or biometric authentication before sending money.',
-        kind: ApiErrorKind.validation,
-      );
+    final biometricEnabled =
+        await storage.read(key: 'eazy.wallet.biometricShortcutEnabled') == 'true';
+    final savedPin = await storage.read(key: 'eazy.wallet.biometricPaymentPin');
+    if (biometricEnabled && savedPin != null) {
+      try {
+        final localAuth = LocalAuthentication();
+        if (await localAuth.canCheckBiometrics) {
+          final authenticated = await localAuth.authenticate(
+            localizedReason: 'Confirm your identity to authorize this Eazy payment',
+            options: const AuthenticationOptions(
+              biometricOnly: true,
+              stickyAuth: true,
+            ),
+          );
+          if (authenticated) {
+            try {
+              await api.post('wallet/payment-pin/verify', auth: true, body: {'pin': savedPin});
+              return savedPin;
+            } on ApiException {
+              await storage.delete(key: 'eazy.wallet.biometricShortcutEnabled');
+              await storage.delete(key: 'eazy.wallet.biometricPaymentPin');
+            }
+          }
+        }
+      } catch (_) {
+        // Fall back to the payment PIN prompt if biometrics are unavailable.
+      }
     }
-    final authenticated = await localAuth.authenticate(
-      localizedReason: reason,
-      options: const AuthenticationOptions(
-        biometricOnly: false,
-        stickyAuth: true,
-      ),
-    );
-    if (!authenticated) return false;
-    return true;
+
+    final controller = TextEditingController();
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Enter payment PIN'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: paymentPinLength,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: paymentPinLength == 6 ? 'Current 6-digit PIN' : '4-digit payment PIN',
+              counterText: '',
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                if (controller.text.length == paymentPinLength) {
+                  Navigator.pop(dialogContext, controller.text);
+                }
+              },
+              child: const Text('Authorize'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   Future<void> sendToExternalBank() async {
@@ -816,8 +912,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   subtitle: Text('$selectedBank · $number'),
                 ),
                 const Divider(),
-                _Info('Amount', '$_currency $amount'),
-                _Info('Available balance', '$_currency $_balance'),
+                _Info('Amount', formatEazyMoney(amount, currency: _currency)),
+                _Info('Available balance', formatEazyMoney(_balance, currency: _currency)),
                 const SizedBox(height: 10),
                 const Text(
                   'Authenticate on this device before submitting the transfer.',
@@ -845,10 +941,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
 
     setState(() => busy = true);
     try {
-      final authenticated = await _authenticateTransfer(
-        'Authorize sending $_currency $amount to $accountName',
-      );
-      if (!authenticated) return;
       final paymentPin = await _requestPaymentPin();
       if (paymentPin == null || !mounted) return;
       await api.post(
@@ -907,10 +999,17 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> receiveFromExternalBank() async {
-    if (virtualAccount == null) {
+    if (!_walletActivated) {
       await requestVirtualAccount();
     }
-    if (!mounted || virtualAccount == null) return;
+    if (!mounted || !_walletActivated) {
+      if (virtualAccount?['status']?.toString().toLowerCase() == 'pending') {
+        _showMessage(
+          'Your dedicated bank account is still being assigned. Refresh later.',
+        );
+      }
+      return;
+    }
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -919,37 +1018,215 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   }
 
   Future<void> requestVirtualAccount() async {
-    if (virtualAccount != null || busy) return;
-    final consent = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Create your dedicated bank account?'),
-        content: const Text(
-          'Eazy will ask its bank provider to assign a dedicated NGN account '
-          'for receiving transfers. Your account name, email address and phone '
-          'number from your Eazy profile will be shared with the provider for '
-          'this purpose. Account assignment depends on provider approval. '
-          'You can cancel without creating an account.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Not now'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('I agree, continue'),
-          ),
-        ],
-      ),
+    if (virtualAccount?['status'] == 'active' || busy) return;
+    Map<String, dynamic> profile = const {};
+    Map<String, dynamic> user = const {};
+    List<Map<String, dynamic>> banks = const [];
+    try {
+      final results = await Future.wait([
+        api.get('profiles/me', auth: true),
+        api.get('auth/me', auth: true),
+        api.get('banks?currency=NGN', auth: true),
+      ]);
+      profile = _map(results[0]['profile']);
+      user = _map(results[1]['user']);
+      banks =
+          (results[2]['banks'] as List? ?? const [])
+              .whereType<Map>()
+              .map((entry) => Map<String, dynamic>.from(entry))
+              .where((entry) => entry['code'] != null && entry['name'] != null)
+              .toList();
+    } on ApiException catch (e) {
+      _showError(e.message);
+      return;
+    }
+    if (!mounted) return;
+    final displayName = profile['displayName']?.toString() ?? '';
+    final nameParts = displayName.trim().split(RegExp(r'\s+'));
+    final first = TextEditingController(
+      text:
+          profile['firstName']?.toString() ??
+          (nameParts.isEmpty ? '' : nameParts.first),
     );
-    if (consent != true || !mounted) return;
+    final middle = TextEditingController(
+      text: profile['middleName']?.toString() ?? '',
+    );
+    final last = TextEditingController(
+      text:
+          profile['lastName']?.toString() ??
+          (nameParts.length > 1 ? nameParts.sublist(1).join(' ') : ''),
+    );
+    final phone = TextEditingController(text: user['phone']?.toString() ?? '');
+    final account = TextEditingController();
+    final bvn = TextEditingController();
+    String? bankCode;
+    String? bankName;
+    final form = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (dialogContext, setDialogState) => AlertDialog(
+                  title: const Text('Activate your wallet'),
+                  content: SizedBox(
+                    width: 460,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'To receive money from external banks, Eazy needs to assign a dedicated NGN account. Your BVN and bank details are sent securely to Paystack for identity validation.',
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: first,
+                            decoration: const InputDecoration(
+                              labelText: 'First name',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: middle,
+                            decoration: const InputDecoration(
+                              labelText: 'Middle name (optional)',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: last,
+                            decoration: const InputDecoration(
+                              labelText: 'Last name',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: phone,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                              labelText: 'Verified phone number',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          DropdownMenu<String>(
+                            width: min(
+                              420,
+                              MediaQuery.sizeOf(context).width - 80,
+                            ),
+                            enableFilter: true,
+                            enableSearch: true,
+                            label: const Text('Preferred bank'),
+                            initialSelection: bankCode,
+                            dropdownMenuEntries: [
+                              for (final bank in banks)
+                                DropdownMenuEntry<String>(
+                                  value: bank['code'].toString(),
+                                  label: bank['name'].toString(),
+                                ),
+                            ],
+                            onSelected: (value) {
+                              bankCode = value;
+                              bankName =
+                                  banks
+                                      .firstWhere(
+                                        (entry) =>
+                                            entry['code'].toString() == value,
+                                        orElse: () => const {},
+                                      )['name']
+                                      ?.toString();
+                              setDialogState(() {});
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: account,
+                            keyboardType: TextInputType.number,
+                            maxLength: 10,
+                            decoration: const InputDecoration(
+                              labelText: 'Bank account number',
+                              counterText: '',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: bvn,
+                            keyboardType: TextInputType.number,
+                            obscureText: true,
+                            maxLength: 11,
+                            decoration: const InputDecoration(
+                              labelText: 'BVN',
+                              counterText: '',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'By continuing, you consent to Eazy sharing these details with its regulated payment provider for wallet activation.',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () {
+                        if (first.text.trim().isEmpty ||
+                            last.text.trim().isEmpty ||
+                            phone.text.trim().isEmpty ||
+                            bankCode == null ||
+                            account.text.trim().length != 10 ||
+                            bvn.text.trim().length != 11) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Complete every activation field with valid details.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.pop(dialogContext, {
+                          'consent': true,
+                          'firstName': first.text.trim(),
+                          'middleName':
+                              middle.text.trim().isEmpty
+                                  ? null
+                                  : middle.text.trim(),
+                          'lastName': last.text.trim(),
+                          'phone': phone.text.trim(),
+                          'preferredBank': bankCode,
+                          'bankName': bankName,
+                          'country': 'NG',
+                          'accountNumber': account.text.trim(),
+                          'bvn': bvn.text.trim(),
+                          'bankCode': bankCode,
+                        });
+                      },
+                      child: const Text('Activate wallet'),
+                    ),
+                  ],
+                ),
+          ),
+    );
+    first.dispose();
+    middle.dispose();
+    last.dispose();
+    phone.dispose();
+    account.dispose();
+    bvn.dispose();
+    if (form == null || !mounted) return;
     setState(() => busy = true);
     try {
       final result = await api.post(
         'wallet/virtual-account',
         auth: true,
-        body: {'consent': true},
+        body: form,
       );
       virtualAccount = _map(result['virtualAccount']);
     } on ApiException catch (e) {
@@ -982,7 +1259,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       await _confirmAndRun(
         title: 'Confirm QR payment',
         message:
-            'Pay $_currency $amount to ${recipient['displayName'] ?? recipient['username'] ?? 'this Eazy user'}?',
+            'Pay ${formatEazyMoney(amount, currency: _currency)} to ${recipient['displayName'] ?? recipient['username'] ?? 'this Eazy user'}?',
         action: (paymentPin) => api.post(
           'wallet/qr/pay',
           auth: true,
@@ -1030,13 +1307,11 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                           decimal: true,
                         ),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'[0-9,.]'),
-                          ),
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
                         ],
                         decoration: InputDecoration(
                           labelText: 'Amount',
-                          prefixText: '$_currency ',
+                          prefixText: _currency == 'NGN' ? '₦ ' : '$_currency ',
                           hintText: '5000',
                         ),
                       ),
@@ -1057,10 +1332,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                                 onPressed: () {
                                   setDialogState(() {
                                     controller.text = suggestion.value;
-                                    controller.selection =
-                                        TextSelection.collapsed(
-                                          offset: controller.text.length,
-                                        );
+                                    controller
+                                        .selection = TextSelection.collapsed(
+                                      offset: controller.text.length,
+                                    );
                                   });
                                 },
                               ),
@@ -1122,8 +1397,6 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     if (confirmed != true) return;
     setState(() => busy = true);
     try {
-      final authenticated = await _authenticateTransfer('Authorize this QR payment');
-      if (!authenticated) return;
       final paymentPin = await _requestPaymentPin();
       if (paymentPin == null || !mounted) return;
       await action(paymentPin);
@@ -1132,7 +1405,9 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     } on ApiException catch (e) {
       _showError(e.message);
     } catch (_) {
-      _showError('Payment authorization could not be completed. No payment was submitted.');
+      _showError(
+        'Payment authorization could not be completed. No payment was submitted.',
+      );
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -1158,6 +1433,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   String get _username =>
       username ?? wallet?['username']?.toString() ?? 'your Eazy username';
   String get _balance => wallet?['balance']?.toString() ?? '0.00';
+  String get _maskedBalance => '${_currency == 'NGN' ? '₦' : '$_currency '}••••••';
+  bool get _walletActivated =>
+      virtualAccount?['status']?.toString().toLowerCase() == 'active';
+
   bool _validUsername(String value) =>
       RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(value);
   Map<String, dynamic> _map(dynamic value) =>
@@ -1259,11 +1538,15 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       ),
                       ListTile(
                         leading: const Icon(Icons.password_rounded),
-                        title: Text(paymentPinConfigured ? 'Change payment PIN' : 'Create payment PIN'),
+                        title: Text(
+                          paymentPinConfigured
+                              ? 'Change payment PIN'
+                              : 'Create payment PIN',
+                        ),
                         subtitle: Text(
                           paymentPinConfigured
-                              ? 'Update the 6-digit PIN used to authorize payments.'
-                              : 'Create a 6-digit PIN required before sending money.',
+                              ? 'Update the 4-digit PIN used to authorize payments.'
+                              : 'Create a 4-digit PIN required before sending money.',
                         ),
                         onTap: () {
                           Navigator.pop(sheetContext);
@@ -1352,7 +1635,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                               '${order['status'] ?? 'pending'} · ${order['createdAt'] ?? ''}',
                             ),
                             trailing: Text(
-                              '${order['currency'] ?? _currency} ${order['total'] ?? order['amount'] ?? '0.00'}',
+                              formatEazyMoney(order['total'] ?? order['amount'] ?? '0.00', currency: (order['currency'] ?? _currency).toString()),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
                               ),
@@ -1368,24 +1651,44 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _readWalletAlert(String id) async {
-    try {
-      await api.post('notifications/$id/read', auth: true);
-      await load();
-    } catch (_) {}
+  Future<void> _openWalletAlert(Map<String, dynamic> alert) async {
+    final id = alert['id']?.toString();
+    if (id != null && id.isNotEmpty) {
+      try { await api.post('notifications/$id/read', auth: true); } catch (_) {}
+    }
+    final link = alert['deepLink']?.toString();
+    if (link != null && link.isNotEmpty && mounted) {
+      try {
+        final result = await api.get('deep-links/resolve?path=${Uri.encodeQueryComponent(link)}', auth: true);
+        final destination = result['destination']?.toString();
+        if (destination != null && destination.isNotEmpty && mounted) {
+          if (destination.startsWith('/home?')) {
+            context.go(destination);
+          } else {
+            context.push(destination);
+          }
+          return;
+        }
+      } on ApiException catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+    await load();
   }
+
 
   Future<void> _showAllTransactions() async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _TransactionHistorySheet(
-        api: api,
-        currency: _currency,
-        balanceVisible: balanceVisible,
-        onOpenTransaction: _showTransactionDetails,
-      ),
+      builder:
+          (_) => _TransactionHistorySheet(
+            api: api,
+            currency: _currency,
+            balanceVisible: balanceVisible,
+            onOpenTransaction: _showTransactionDetails,
+          ),
     );
   }
 
@@ -1416,7 +1719,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 _Info(
                   'Amount',
                   balanceVisible
-                      ? '${detail['currency'] ?? _currency} ${detail['amount'] ?? '0.00'}'
+                      ? formatEazyMoney(detail['amount'] ?? '0.00', currency: (detail['currency'] ?? _currency).toString())
                       : '••••••',
                 ),
                 _Info(
@@ -1620,8 +1923,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                 const SizedBox(height: 3),
                 Text(
                   loading || !balanceVisible
-                      ? '$_currency ••••••'
-                      : '$_currency $_balance',
+                      ? _maskedBalance
+                      : formatEazyMoney(_balance, currency: _currency),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 38,
@@ -1645,7 +1948,8 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       child: _WalletAction(
                         icon: Icons.arrow_upward_rounded,
                         label: 'Send',
-                        onTap: busy ? null : _showSendOptions,
+                        onTap:
+                            busy || !_walletActivated ? null : _showSendOptions,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1653,7 +1957,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       child: _WalletAction(
                         icon: Icons.arrow_downward_rounded,
                         label: 'Receive',
-                        onTap: busy ? null : _showReceiveOptions,
+                        onTap:
+                            busy || !_walletActivated
+                                ? null
+                                : _showReceiveOptions,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1661,7 +1968,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                       child: _WalletAction(
                         icon: Icons.qr_code_scanner_rounded,
                         label: 'Scan QR',
-                        onTap: busy ? null : scanQr,
+                        onTap: busy || !_walletActivated ? null : scanQr,
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -1681,6 +1988,68 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             const SizedBox(height: 12),
             Text(error!, style: const TextStyle(color: EazyColors.red)),
           ],
+          if (!_walletActivated) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.lock_outline_rounded),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Activate your wallet',
+                            style: TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      virtualAccount?['status']?.toString().toLowerCase() ==
+                              'pending'
+                          ? 'Your activation is being reviewed. Refresh this page after Paystack confirms your dedicated account.'
+                          : 'Complete identity and bank validation before sending or receiving wallet money.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed:
+                            busy ||
+                                    virtualAccount?['status']
+                                            ?.toString()
+                                            .toLowerCase() ==
+                                        'pending'
+                                ? load
+                                : requestVirtualAccount,
+                        icon: Icon(
+                          virtualAccount?['status']?.toString().toLowerCase() ==
+                                  'pending'
+                              ? Icons.sync_rounded
+                              : Icons.verified_user_outlined,
+                        ),
+                        label: Text(
+                          virtualAccount?['status']?.toString().toLowerCase() ==
+                                  'pending'
+                              ? 'Refresh activation status'
+                              : 'Activate wallet',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           if (pendingDeposit != null) ...[
             const SizedBox(height: 12),
             Card(
@@ -1691,7 +2060,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.hourglass_top_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        Icon(
+                          Icons.hourglass_top_rounded,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
@@ -1700,10 +2072,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                           ),
                         ),
                         Text(
-                          (pendingDeposit?['currency']?.toString() == 'NGN'
-                                  ? '₦'
-                                  : (pendingDeposit?['currency']?.toString() ?? _currency) + ' ') +
-                              (pendingDeposit?['amount']?.toString() ?? '0.00'),
+                          formatEazyMoney(
+                            pendingDeposit?['amount'] ?? '0.00',
+                            currency: pendingDeposit?['currency']?.toString() ?? _currency,
+                          ),
                           style: const TextStyle(fontWeight: FontWeight.w900),
                         ),
                       ],
@@ -1711,7 +2083,10 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                     const SizedBox(height: 8),
                     Text(
                       'This deposit has not been credited yet. Check its status before starting another funding attempt.',
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -1764,13 +2139,13 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   trailing: isRead
                       ? null
                       : const Icon(Icons.circle, size: 9, color: EazyColors.green),
-                  onTap: id == null ? null : () => _readWalletAlert(id),
+                  onTap: id == null ? null : () => _openWalletAlert(alert),
                 ),
               );
             }),
             const SizedBox(height: 14),
           ],
-                    const SizedBox(height: 22),
+          const SizedBox(height: 22),
           Row(
             children: [
               const Expanded(
@@ -1819,7 +2194,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   ),
                   trailing: Text(
                     balanceVisible
-                        ? '${entry['currency'] ?? _currency} ${entry['amount'] ?? '0.00'}'
+                        ? formatEazyMoney(entry['amount'] ?? '0.00', currency: (entry['currency'] ?? _currency).toString())
                         : '••••••',
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
@@ -1847,7 +2222,8 @@ class _TransactionHistorySheet extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> entry) onOpenTransaction;
 
   @override
-  State<_TransactionHistorySheet> createState() => _TransactionHistorySheetState();
+  State<_TransactionHistorySheet> createState() =>
+      _TransactionHistorySheetState();
 }
 
 class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
@@ -1877,31 +2253,39 @@ class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
         'wallet/transactions?page=$nextPage&limit=$_pageSize',
         auth: true,
       );
-      final entries = (result['items'] as List? ?? const [])
-          .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
-      final meta = result['meta'] is Map
-          ? Map<String, dynamic>.from(result['meta'] as Map)
-          : <String, dynamic>{};
+      final entries =
+          (result['items'] as List? ?? const [])
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList();
+      final meta =
+          result['meta'] is Map
+              ? Map<String, dynamic>.from(result['meta'] as Map)
+              : <String, dynamic>{};
       final totalPages = int.tryParse(meta['pages']?.toString() ?? '');
       if (!mounted) return;
       setState(() {
         if (refresh) _items.clear();
-        final existingIds = _items.map((item) => item['id']?.toString()).toSet();
-        _items.addAll(entries.where(
-          (item) => !existingIds.contains(item['id']?.toString()),
-        ));
+        final existingIds =
+            _items.map((item) => item['id']?.toString()).toSet();
+        _items.addAll(
+          entries.where(
+            (item) => !existingIds.contains(item['id']?.toString()),
+          ),
+        );
         _page = nextPage;
-        _hasMore = totalPages != null
-            ? nextPage < totalPages
-            : entries.length == _pageSize;
+        _hasMore =
+            totalPages != null
+                ? nextPage < totalPages
+                : entries.length == _pageSize;
       });
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Could not load transaction history. Try again.');
+        setState(
+          () => _error = 'Could not load transaction history. Try again.',
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -1969,12 +2353,15 @@ class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Center(
-                          child: _loading
-                              ? const CircularProgressIndicator(strokeWidth: 2)
-                              : OutlinedButton(
-                                  onPressed: _loadPage,
-                                  child: const Text('Load more'),
-                                ),
+                          child:
+                              _loading
+                                  ? const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  )
+                                  : OutlinedButton(
+                                    onPressed: _loadPage,
+                                    child: const Text('Load more'),
+                                  ),
                         ),
                       );
                     }
@@ -1994,7 +2381,7 @@ class _TransactionHistorySheetState extends State<_TransactionHistorySheet> {
                       ),
                       trailing: Text(
                         widget.balanceVisible
-                            ? '${entry['currency'] ?? widget.currency} ${entry['amount'] ?? '0.00'}'
+                            ? formatEazyMoney(entry['amount'] ?? '0.00', currency: (entry['currency'] ?? widget.currency).toString())
                             : '••••••',
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),

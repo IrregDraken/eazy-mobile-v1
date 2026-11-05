@@ -17,11 +17,20 @@ export function createWalletRouter(service: WalletService, paymentPin?: PaymentP
   const controller = createWalletController(service);
   const rateLimit = createRateLimiter({ name: 'wallet-transfer', windowMs: 60_000, max: 10 });
   const pinMutationLimit = createRateLimiter({ name: 'wallet-payment-pin', windowMs: 10 * 60_000, max: 5 });
-  const setupPinSchema = z.object({ pin: z.string().regex(/^\d{6}$/), confirmation: z.string().regex(/^\d{6}$/) }).strict();
+  const setupPinSchema = z.object({
+    pin: z.string().regex(/^\d{4}$/),
+    confirmation: z.string().regex(/^\d{4}$/),
+    challengeId: z.string().uuid(),
+    code: z.string().regex(/^\d{6}$/)
+  }).strict();
+  const resetPinSchema = setupPinSchema;
+  const verifyPinSchema = z.object({ pin: z.string().regex(/^(?:\d{4}|\d{6})$/) }).strict();
   const changePinSchema = z.object({
-    currentPin: z.string().regex(/^\d{6}$/),
-    newPin: z.string().regex(/^\d{6}$/),
-    confirmation: z.string().regex(/^\d{6}$/)
+    currentPin: z.string().regex(/^(?:\d{4}|\d{6})$/),
+    newPin: z.string().regex(/^\d{4}$/),
+    confirmation: z.string().regex(/^\d{4}$/),
+    challengeId: z.string().uuid(),
+    code: z.string().regex(/^\d{6}$/)
   }).strict();
   router.use(requireAuth);
   router.get('/', controller.getWallet);
@@ -29,6 +38,17 @@ export function createWalletRouter(service: WalletService, paymentPin?: PaymentP
   router.get('/transactions', validate('query', walletPaginationSchema), controller.listTransactions);
   router.get('/transactions/:id', validate('params', walletTransactionParamsSchema), controller.getTransaction);
   if (paymentPin) {
+    router.post('/payment-pin/request-code', pinMutationLimit, validate('body', z.object({}).strict()), async (request, response, next) => {
+      try { sendSuccess(response, await paymentPin.requestVerificationCode(currentUserId(request))); }
+      catch (error) { next(error); }
+    });
+    router.post('/payment-pin/verify', pinMutationLimit, validate('body', verifyPinSchema), async (request, response, next) => {
+      try {
+        const body = request.body as { pin: string };
+        await paymentPin.verify(currentUserId(request), body.pin);
+        sendSuccess(response, { verified: true });
+      } catch (error) { next(error); }
+    });
     router.get('/payment-pin/status', async (request, response, next) => {
       try { sendSuccess(response, await paymentPin.status(currentUserId(request))); }
       catch (error) { next(error); }
@@ -36,22 +56,21 @@ export function createWalletRouter(service: WalletService, paymentPin?: PaymentP
     router.post('/payment-pin/setup', pinMutationLimit, validate('body', setupPinSchema), async (request, response, next) => {
       try {
         requireRecentAuthentication(request);
-        const body = request.body as { pin: string; confirmation: string };
-        sendSuccess(response, await paymentPin.setup(currentUserId(request), body.pin, body.confirmation));
+        const body = request.body as { pin: string; confirmation: string; challengeId: string; code: string };
+        sendSuccess(response, await paymentPin.setup(currentUserId(request), body.pin, body.confirmation, body.challengeId, body.code));
       } catch (error) { next(error); }
     });
     router.post('/payment-pin/change', pinMutationLimit, validate('body', changePinSchema), async (request, response, next) => {
       try {
         requireRecentAuthentication(request);
-        const body = request.body as { currentPin: string; newPin: string; confirmation: string };
-        sendSuccess(response, await paymentPin.change(currentUserId(request), body.currentPin, body.newPin, body.confirmation));
+        const body = request.body as { currentPin: string; newPin: string; confirmation: string; challengeId: string; code: string };
+        sendSuccess(response, await paymentPin.change(currentUserId(request), body.currentPin, body.newPin, body.confirmation, body.challengeId, body.code));
       } catch (error) { next(error); }
     });
-    router.post('/payment-pin/reset', pinMutationLimit, validate('body', setupPinSchema), async (request, response, next) => {
+    router.post('/payment-pin/reset', pinMutationLimit, validate('body', resetPinSchema), async (request, response, next) => {
       try {
-        requireRecentAuthentication(request);
-        const body = request.body as { pin: string; confirmation: string };
-        sendSuccess(response, await paymentPin.reset(currentUserId(request), body.pin, body.confirmation));
+        const body = request.body as { pin: string; confirmation: string; challengeId: string; code: string };
+        sendSuccess(response, await paymentPin.reset(currentUserId(request), body.pin, body.confirmation, body.challengeId, body.code));
       } catch (error) { next(error); }
     });
     router.post('/transfers', rateLimit, requireIdempotencyKey, validate('body', transferSchema), requirePaymentPin(paymentPin), controller.transfer);

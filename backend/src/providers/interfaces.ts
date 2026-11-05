@@ -32,7 +32,7 @@ export interface LocationProvider {
   search(input: { query: string; limit: number }): Promise<ProviderLocationResult[]>;
   getCapabilities(): LocationProviderCapabilities;
 }
-export interface NotificationProvider { notify(input: { userId: string; title: string; body: string }): Promise<void>; }
+export interface NotificationProvider { notify(input: { userId: string; title: string; body: string; deepLink?: string | null }): Promise<void>; }
 export interface StorageProvider { put(input: { key: string; contentType: string; bytes: Uint8Array }): Promise<{ url: string }>; }
 
 export interface BankProvider {
@@ -43,6 +43,6 @@ export interface BankProvider {
   initiateTransfer(input: { recipientCode: string; amount: string; currency: string; reference: string; reason?: string }): Promise<{ providerReference: string; status: 'pending' | 'success' | 'failed' }>;
   verifyTransfer(providerReference: string): Promise<{ providerReference: string; amount: string; currency: string; status: 'pending' | 'success' | 'failed' | 'reversed' } | null>;
   verifyWebhookSignature(rawBody: string, signature: string | undefined): boolean;
-  assignVirtualAccount(input: { email: string; firstName: string; lastName: string; phone: string; currency: string }): Promise<{ customerCode?: string; accountId?: string; accountNumber?: string; accountName?: string; bankName?: string; bankSlug?: string; status: 'pending' | 'active' | 'failed'; failureReason?: string }>;
+  assignVirtualAccount(input: { email: string; firstName: string; middleName?: string; lastName: string; phone: string; preferredBank: string; country: string; accountNumber?: string; bvn?: string; bankCode?: string; currency: string }): Promise<{ customerCode?: string; accountId?: string; accountNumber?: string; accountName?: string; bankName?: string; bankSlug?: string; status: 'pending' | 'active' | 'failed'; failureReason?: string }>;
   getVirtualAccount(input: { customerCode?: string; accountNumber?: string }): Promise<{ customerCode?: string; accountId?: string; accountNumber?: string; accountName?: string; bankName?: string; bankSlug?: string; status: 'pending' | 'active' | 'failed'; failureReason?: string } | null>;
 }

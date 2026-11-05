@@ -16,6 +16,9 @@ class MarketplacePage extends StatefulWidget {
 class _MarketplacePageState extends State<MarketplacePage> {
   final api = ApiClient();
   final search = TextEditingController();
+  final minPrice = TextEditingController();
+  final maxPrice = TextEditingController();
+  String availability = 'all';
   bool loading = true;
   String? error;
   String? selectedParentSlug;
@@ -33,6 +36,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
   @override
   void dispose() {
     search.dispose();
+    minPrice.dispose();
+    maxPrice.dispose();
     super.dispose();
   }
 
@@ -76,6 +81,9 @@ class _MarketplacePageState extends State<MarketplacePage> {
         params['categoryIds'] = categoryIds.join(',');
       }
       if (search.text.trim().length >= 2) params['q'] = search.text.trim();
+      if (minPrice.text.trim().isNotEmpty) params['minPrice'] = minPrice.text.trim();
+      if (maxPrice.text.trim().isNotEmpty) params['maxPrice'] = maxPrice.text.trim();
+      if (availability != 'all') params['availability'] = availability;
       final qs = params.entries
           .map(
             (e) =>
@@ -97,8 +105,25 @@ class _MarketplacePageState extends State<MarketplacePage> {
     }
   }
 
+  Future<void> showFilters() async {
+    var selectedAvailability = availability;
+    final applied = await showDialog<bool>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, update) => AlertDialog(
+      title: const Text('Filter products'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: minPrice, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Minimum price (₦)')),
+        TextField(controller: maxPrice, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Maximum price (₦)')),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(value: selectedAvailability, decoration: const InputDecoration(labelText: 'Availability'), items: const [DropdownMenuItem(value: 'all', child: Text('All products')), DropdownMenuItem(value: 'in_stock', child: Text('In stock')), DropdownMenuItem(value: 'out_of_stock', child: Text('Out of stock'))], onChanged: (value) { if (value != null) update(() => selectedAvailability = value); }),
+      ]),
+      actions: [TextButton(onPressed: () { minPrice.clear(); maxPrice.clear(); update(() => selectedAvailability = 'all'); }, child: const Text('Clear')), TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Apply'))],
+    )));
+    if (applied == true && mounted) { setState(() => availability = selectedAvailability); load(); }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hasActiveFilters =
+        search.text.trim().length >= 2 || selectedParentSlug != null;
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: load,
@@ -163,13 +188,20 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                 child: TextField(
                   controller: search,
-                  onSubmitted: (_) => load(),
+                  onSubmitted: (_) {
+                    final query = search.text.trim();
+                    if (query.length >= 2) context.push('/marketplace/search?q=${Uri.encodeQueryComponent(query)}');
+                  },
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.search_rounded),
                     hintText: 'Search products, brands...',
                     suffixIcon: IconButton(
-                      onPressed: load,
-                      icon: const Icon(Icons.tune_rounded),
+                      onPressed: () {
+                        final query = search.text.trim();
+                        if (query.length >= 2) context.push('/marketplace/search?q=${Uri.encodeQueryComponent(query)}');
+                        else load();
+                      },
+                      icon: const Icon(Icons.search_rounded),
                     ),
                   ),
                 ),
@@ -211,6 +243,42 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 ),
               ),
             ),
+            if (hasActiveFilters)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          [
+                            if (search.text.trim().length >= 2)
+                              'Search: “${search.text.trim()}”',
+                            if (selectedParentSlug != null)
+                              discoverParentCategories
+                                  .firstWhere((item) => item.slug == selectedParentSlug)
+                                  .name,
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: context.eazyMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          search.clear();
+                          setState(() => selectedParentSlug = null);
+                          load();
+                        },
+                        child: const Text('Clear filters'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
@@ -224,6 +292,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       ),
                     ),
                     const Spacer(),
+                    IconButton(tooltip: 'Filter products', onPressed: showFilters, icon: const Icon(Icons.tune_rounded)),
                     PopupMenuButton<String>(
                       initialValue: sort,
                       onSelected: (v) {
@@ -311,9 +380,14 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 ),
               ),
             if (!loading && error == null && products.isEmpty)
-              const SliverFillRemaining(
+              SliverFillRemaining(
                 hasScrollBody: false,
-                child: _State('No products match your search.', null),
+                child: _State(
+                  hasActiveFilters
+                      ? 'No products match your search.'
+                      : 'No products yet.',
+                  null,
+                ),
               ),
             if (products.isNotEmpty)
               SliverPadding(

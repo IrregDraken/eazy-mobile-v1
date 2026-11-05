@@ -6,7 +6,7 @@ const projection = `user_id AS "userId", wallet_id AS "walletId", provider,
   provider_customer_code AS "customerCode", provider_account_id AS "accountId",
   account_number AS "accountNumber", account_name AS "accountName", bank_name AS "bankName",
   bank_slug AS "bankSlug", trim(currency) AS currency, status, consented_at AS "consentedAt",
-  failure_reason AS "failureReason"
+  failure_reason AS "failureReason", provider_email AS "providerEmail"
   FROM wallet_virtual_accounts`;
 
 export class VirtualAccountRepository {
@@ -17,16 +17,16 @@ export class VirtualAccountRepository {
     return result.rows[0] ?? null;
   }
 
-  async createPending(client: DbClient, input: { userId: string; walletId: string; provider: string; currency: string }): Promise<VirtualAccountRecord> {
+  async createPending(client: DbClient, input: { userId: string; walletId: string; provider: string; currency: string; providerEmail: string }): Promise<VirtualAccountRecord> {
     const result = await client.query<VirtualAccountRecord>(
-      `INSERT INTO wallet_virtual_accounts (user_id, wallet_id, provider, currency, status, consented_at)
-       VALUES ($1, $2, $3, $4, 'pending', now())
-       ON CONFLICT (user_id) DO UPDATE SET consented_at = now(), updated_at = now()
+      `INSERT INTO wallet_virtual_accounts (user_id, wallet_id, provider, currency, provider_email, status, consented_at)
+       VALUES ($1, $2, $3, $4, $5, 'pending', now())
+       ON CONFLICT (user_id) DO UPDATE SET provider_email = EXCLUDED.provider_email, consented_at = now(), updated_at = now()
        RETURNING user_id AS "userId", wallet_id AS "walletId", provider, provider_customer_code AS "customerCode",
          provider_account_id AS "accountId", account_number AS "accountNumber", account_name AS "accountName",
          bank_name AS "bankName", bank_slug AS "bankSlug", trim(currency) AS currency, status,
-         consented_at AS "consentedAt", failure_reason AS "failureReason"`,
-      [input.userId, input.walletId, input.provider, input.currency]
+         consented_at AS "consentedAt", failure_reason AS "failureReason", provider_email AS "providerEmail"`,
+      [input.userId, input.walletId, input.provider, input.currency, input.providerEmail]
     );
     return result.rows[0]!;
   }
@@ -47,7 +47,7 @@ export class VirtualAccountRepository {
        RETURNING user_id AS "userId", wallet_id AS "walletId", provider, provider_customer_code AS "customerCode",
          provider_account_id AS "accountId", account_number AS "accountNumber", account_name AS "accountName",
          bank_name AS "bankName", bank_slug AS "bankSlug", trim(currency) AS currency, status,
-         consented_at AS "consentedAt", failure_reason AS "failureReason"`,
+         consented_at AS "consentedAt", failure_reason AS "failureReason", provider_email AS "providerEmail"`,
       [userId, state.customerCode ?? null, state.accountId ?? null, state.accountNumber ?? null, state.accountName ?? null, state.bankName ?? null, state.bankSlug ?? null, state.status, state.failureReason ?? null]
     );
     return result.rows[0] ?? null;
@@ -60,6 +60,11 @@ export class VirtualAccountRepository {
 
   async findByAccountNumber(client: DbClient, provider: string, accountNumber: string): Promise<VirtualAccountRecord | null> {
     const result = await client.query<VirtualAccountRecord>(`SELECT ${projection} WHERE provider = $1 AND account_number = $2 LIMIT 1`, [provider, accountNumber]);
+    return result.rows[0] ?? null;
+  }
+
+  async findByEmail(client: DbClient, provider: string, email: string): Promise<VirtualAccountRecord | null> {
+    const result = await client.query<VirtualAccountRecord>(`SELECT ${projection} WHERE provider = $1 AND lower(provider_email) = lower($2) LIMIT 1`, [provider, email]);
     return result.rows[0] ?? null;
   }
 

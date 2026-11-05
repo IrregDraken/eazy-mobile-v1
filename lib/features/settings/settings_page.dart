@@ -14,10 +14,11 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final api = ApiClient();
-  String theme = 'light';
+  String theme = 'system';
   bool follows = true, likes = true, comments = true;
   bool loading = true;
   bool deleting = false;
+  bool signingOut = false;
   String error = '';
   @override
   void initState() {
@@ -32,15 +33,20 @@ class _SettingsPageState extends State<SettingsPage> {
           n = Map<String, dynamic>.from((s['notifications'] as Map?) ?? {});
       if (mounted) {
         setState(() {
-          theme = s['theme']?.toString() == 'dark' ? 'dark' : 'light';
+          final savedTheme = s['theme']?.toString();
+          theme = ['system', 'light', 'dark'].contains(savedTheme)
+              ? savedTheme!
+              : 'system';
           follows = n['follows'] != false;
           likes = n['likes'] != false;
           comments = n['comments'] != false;
         });
       }
-      await setEazyThemeMode(
-        theme == 'dark' ? ThemeMode.dark : ThemeMode.light,
-      );
+      await setEazyThemeMode(switch (theme) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      });
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
     } finally {
@@ -48,7 +54,58 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> signOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign out of Eazy?'),
+        content: const Text('You will need to sign in again to access your account on this device.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Sign out')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => signingOut = true);
+    await widget.auth.signOut();
+    if (mounted) context.go('/welcome');
+  }
+
   Future<void> deleteAccount() async {
+    if (widget.auth.hasPasswordProvider) {
+      final password = TextEditingController();
+      try {
+        final entered = await showDialog<String>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Confirm your identity'),
+            content: TextField(
+              controller: password,
+              autofocus: true,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Current password'),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () {
+                  if (password.text.isNotEmpty) Navigator.pop(dialogContext, password.text);
+                },
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        );
+        if (entered == null || !mounted) return;
+        await widget.auth.reauthenticateWithPassword(entered);
+      } on ApiException catch (e) {
+        if (mounted) setState(() => error = e.message);
+        return;
+      } finally {
+        password.dispose();
+      }
+    }
     setState(() {
       deleting = true;
       error = '';
@@ -141,11 +198,28 @@ class _SettingsPageState extends State<SettingsPage> {
       confirmation.dispose();
       if (confirmed != true) return;
 
-      await api.post(
+      final deletion = await api.post(
         'auth/delete-account',
         body: {'confirmation': 'DELETE'},
         auth: true,
       );
+      if (deletion['cleanupPending'] == true && mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Account deletion recorded'),
+            content: const Text(
+              'Your account is disabled and personal data has been removed from Eazy. Some external media or sign-in cleanup is still processing. The cleanup job has been recorded; contact privacy@eazy.name.ng if you need assistance.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        );
+      }
       await widget.auth.signOut();
       if (mounted) context.go('/welcome');
     } on ApiException catch (e) {
@@ -175,11 +249,10 @@ class _SettingsPageState extends State<SettingsPage> {
     appBar: AppBar(
       title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w900)),
     ),
-    body: loading
-        ? const Center(child: CircularProgressIndicator())
-        : ListView(
-            padding: const EdgeInsets.all(16),
+    body: ListView(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.paddingOf(context).bottom + 24),
             children: [
+              if (loading) const LinearProgressIndicator(minHeight: 2),
               if (error.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -204,6 +277,16 @@ class _SettingsPageState extends State<SettingsPage> {
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () => context.push('/account-settings'),
                     ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ListTile(
+                      leading: const Icon(Icons.logout_rounded),
+                      title: const Text('Sign out'),
+                      subtitle: const Text('Sign out of this device securely'),
+                      trailing: signingOut
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.chevron_right_rounded),
+                      onTap: signingOut ? null : signOut,
+                    ),
                   ],
                 ),
               ),
@@ -227,6 +310,14 @@ class _SettingsPageState extends State<SettingsPage> {
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () => context.push('/blocks'),
                     ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ListTile(
+                      leading: const Icon(Icons.support_agent_rounded),
+                      title: const Text('Help & support'),
+                      subtitle: const Text('Contact support or report a problem'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => context.push('/support'),
+                    ),
                   ],
                 ),
               ),
@@ -239,15 +330,18 @@ class _SettingsPageState extends State<SettingsPage> {
                     initialValue: theme,
                     decoration: const InputDecoration(labelText: 'Appearance'),
                     items: const [
+                      DropdownMenuItem(value: 'system', child: Text('System')),
                       DropdownMenuItem(value: 'light', child: Text('Light')),
                       DropdownMenuItem(value: 'dark', child: Text('Dark')),
                     ],
                     onChanged: (value) {
                       if (value == null) return;
                       setState(() => theme = value);
-                      setEazyThemeMode(
-                        value == 'dark' ? ThemeMode.dark : ThemeMode.light,
-                      );
+                      setEazyThemeMode(switch (value) {
+                        'light' => ThemeMode.light,
+                        'dark' => ThemeMode.dark,
+                        _ => ThemeMode.system,
+                      });
                       save({'theme': value});
                     },
                   ),
@@ -256,9 +350,9 @@ class _SettingsPageState extends State<SettingsPage> {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.translate_rounded),
-                  title: const Text('App language'),
+                  title: const Text('Interface language'),
                   subtitle: const Text(
-                    'English. Use Translator to translate messages and content into other supported languages.',
+                    'The Eazy interface is currently available in English. Use Translator for supported content languages.',
                   ),
                 ),
               ),

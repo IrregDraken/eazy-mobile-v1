@@ -32,14 +32,31 @@ export const productUpdateSchema = z.object({
   categoryId: z.string().guid().nullable().optional(),
   priceAmount: priceSchema.optional(),
   currency: currencySchema.optional(),
-  status: statusSchema.optional()
+  status: statusSchema.optional(),
+  media: z.array(mediaSchema).max(12).optional()
 }).strict().refine(value => Object.keys(value).length > 0, 'At least one product field is required');
 
+export const sellerDeliverySettingsSchema = z.object({
+  deliveryEnabled: z.boolean(),
+  pickupEnabled: z.boolean(),
+  deliveryFeeAmount: priceSchema,
+  currency: currencySchema.default('NGN'),
+  pickupInstructions: z.string().trim().max(500).nullable().optional()
+}).strict().refine(value => value.deliveryEnabled || value.pickupEnabled, 'Enable delivery, pickup or both');
+export const sellerAgreementAcceptSchema = z.object({ accepted: z.literal(true) }).strict();
+export const sellerStoreSlugSchema = z.object({ slug: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9-]{2,59}$/) }).strict();
+export const sellerStoreSchema = z.object({
+  storeName: z.string().trim().min(3).max(100),
+  slug: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9-]{2,59}$/),
+  description: z.string().trim().max(1500).default(''),
+  supportPhone: z.string().trim().regex(/^\+?[0-9 ()-]{7,24}$/).nullable().optional()
+}).strict();
 export const inventorySchema = z.object({ availableQuantity: z.number().int().min(0).max(1_000_000) }).strict();
 export const productIdSchema = z.object({ id: z.string().guid() });
 export const sellerUsernameSchema = z.object({
   username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9_.]+$/)
 }).strict();
+export const marketplaceSearchSchema = z.object({ q: z.string().trim().min(2).max(80) }).strict();
 export const productSearchSchema = z.object({
   q: z.string().trim().min(2).max(80).optional(),
   categoryId: z.string().guid().optional(),
@@ -59,7 +76,12 @@ export const productSearchSchema = z.object({
 });
 
 export class MarketplaceService {
-  constructor(private readonly pool: Pool, private readonly repository = new MarketplaceRepository(pool), private readonly storage?: SupabaseStorageProvider) {}
+  constructor(
+    private readonly pool: Pool,
+    private readonly repository = new MarketplaceRepository(pool),
+    private readonly storage?: SupabaseStorageProvider,
+    private readonly sellerAgreementConfig: { version?: string; text?: string } = {}
+  ) {}
 
   async categories(page = 1, limit = 20) {
     const result = await this.repository.categories(page, limit);
@@ -85,7 +107,100 @@ export class MarketplaceService {
     return { product: await this.attachMediaUrls(product) };
   }
 
+  async searchAll(query: string, viewerId?: string) {
+    const [products, sellers, categories] = await Promise.all([
+      this.search({ q: query, status: 'active', sort: 'newest', page: 1, limit: 10 }, viewerId),
+      this.repository.searchSellers(query, 10),
+      this.repository.searchCategories(query, 10)
+    ]);
+    return { products: products.items, sellers, categories };
+  }
+
+  async myProducts(sellerId: string, pagination: Pagination) {
+    const result = await this.repository.sellerProducts(sellerId, pagination.page, pagination.limit);
+    const items = await Promise.all(result.items.map(item => this.attachMediaUrls(item)));
+    return { items, meta: paginationMeta(pagination, result.total) };
+  }
+
+  async productReviews(productId: string, pagination: Pagination) {
+    const product = await this.repository.getById(productId);
+    if (!product) throw new AppError('NOT_FOUND', 'Product not found');
+    const result = await this.repository.productReviews(productId, pagination.page, pagination.limit);
+    return { items: result.items, meta: paginationMeta(pagination, result.total) };
+  }
+
+  async sellerReviews(username: string, pagination: Pagination) {
+    if (!await this.repository.userIdByUsername(username)) throw new AppError('NOT_FOUND', 'Seller not found');
+    const result = await this.repository.sellerReviews(username, pagination.page, pagination.limit);
+    return { items: result.items, meta: paginationMeta(pagination, result.total) };
+  }
+
+  async sellerAgreement(sellerId: string) {
+    const version = this.sellerAgreementConfig.version?.trim() ?? '';
+    const text = this.sellerAgreementConfig.text?.trim() ?? '';
+    const configured = version.length > 0 && text.length >= 50;
+    return { configured, version: configured ? version : null, text: configured ? text : null, accepted: configured ? await this.repository.hasAcceptedSellerAgreement(sellerId, version) : false };
+  }
+
+  async acceptSellerAgreement(sellerId: string) {
+    const agreement = await this.sellerAgreement(sellerId);
+    if (!agreement.configured || !agreement.version) throw new AppError('SERVICE_UNAVAILABLE', 'Seller agreement has not been configured by Eazy yet');
+    const accepted = await withTransaction(this.pool, client => this.repository.acceptSellerAgreement(client, sellerId, agreement.version!));
+    return accepted;
+  }
+
+  async sellerStore(sellerId: string) {
+    return { store: await this.repository.sellerStoreBySeller(sellerId) };
+  }
+
+  async publicSellerStoreByUsername(username: string) {
+    const store = await this.repository.sellerStoreByUsername(username);
+    if (!store) throw new AppError('NOT_FOUND', 'Seller store not found');
+    return { store };
+  }
+
+  async publicSellerStore(slug: string) {
+    const store = await this.repository.sellerStoreBySlug(slug);
+    if (!store) throw new AppError('NOT_FOUND', 'Seller store not found');
+    return { store };
+  }
+
+  async updateSellerStore(sellerId: string, input: z.infer<typeof sellerStoreSchema>) {
+    try {
+      const store = await withTransaction(this.pool, client => this.repository.upsertSellerStore(client, sellerId, {
+        storeName: input.storeName,
+        slug: input.slug,
+        description: input.description ?? '',
+        supportPhone: input.supportPhone?.trim() || null
+      }));
+      return { store };
+    } catch (error) {
+      if ((error as { code?: string })?.code === '23505') throw new AppError('CONFLICT', 'That store URL is already in use');
+      throw error;
+    }
+  }
+
+  async sellerDeliverySettings(sellerId: string) {
+    return { settings: await this.repository.sellerDeliverySettings(sellerId) };
+  }
+
+  async updateSellerDeliverySettings(sellerId: string, input: z.infer<typeof sellerDeliverySettingsSchema>) {
+    const fee = Number(input.deliveryFeeAmount);
+    if (!Number.isFinite(fee) || fee < 0) throw new AppError('VALIDATION_ERROR', 'Delivery fee must be zero or greater');
+    return {
+      settings: await this.repository.updateSellerDeliverySettings(sellerId, {
+        ...input,
+        deliveryFeeAmount: input.deliveryFeeAmount,
+        pickupInstructions: input.pickupInstructions?.trim() || null
+      })
+    };
+  }
+
   async create(sellerId: string, input: z.infer<typeof productCreateSchema>) {
+    if (!await this.repository.sellerStoreBySeller(sellerId)) throw new AppError('CONFLICT', 'Create your seller store profile before publishing products');
+    const agreement = await this.sellerAgreement(sellerId);
+    if (!agreement.configured) throw new AppError('SERVICE_UNAVAILABLE', 'Seller agreement has not been configured by Eazy yet');
+    if (!agreement.accepted) throw new AppError('CONFLICT', 'Accept the current seller agreement before publishing products');
     const positions = input.media.map(media => media.position);
     if (new Set(positions).size !== positions.length) throw new AppError('VALIDATION_ERROR', 'Media positions must be unique');
     const productId = await withTransaction(this.pool, client => this.repository.create(client, sellerId, input));

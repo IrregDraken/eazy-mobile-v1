@@ -13,3 +13,22 @@ String? normalizeWalletAmountInput(String input) {
   if (normalized == '0.00') return null;
   return normalized;
 }
+
+/// Converts a major-unit amount to integer minor units without floating-point math.
+BigInt? walletAmountToMinorUnits(String value) {
+  final parts = value.trim().replaceAll(',', '').split('.');
+  if (parts.length > 2 || parts.first.isEmpty) return null;
+  if (!RegExp(r'^[0-9]+$').hasMatch(parts.first)) return null;
+  if (parts.length == 2 &&
+      (parts[1].isEmpty ||
+          parts[1].length > 2 ||
+          !RegExp(r'^[0-9]+$').hasMatch(parts[1]))) {
+    return null;
+  }
+  final whole = BigInt.tryParse(parts.first);
+  final fraction = BigInt.tryParse(
+    (parts.length == 2 ? parts[1] : '').padRight(2, '0'),
+  );
+  if (whole == null || fraction == null) return null;
+  return whole * BigInt.from(100) + fraction;
+}

@@ -37,7 +37,7 @@ export class NotificationService {
 
     if (!walletOnly && this.push && notification.title && notification.body) {
       try {
-        await this.push.notify({ userId, title: notification.title, body: notification.body });
+        await this.push.notify({ userId, title: notification.title, body: notification.body, ...(notification.deepLink ? { deepLink: notification.deepLink } : {}) });
       } catch (error) {
         this.logger?.warn(
           {

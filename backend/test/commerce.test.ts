@@ -5,6 +5,8 @@ import { CartService, cartItemSchema, cartQuantitySchema } from '../src/modules/
 import type { CartRepository } from '../src/modules/cart/repository.js';
 import { OrderService } from '../src/modules/orders/service.js';
 import type { OrderRepository } from '../src/modules/orders/repository.js';
+import { disputeSchema, orderCreateSchema, orderReviewSchema } from '../src/modules/orders/schemas.js';
+import { productUpdateSchema, sellerAgreementAcceptSchema, sellerStoreSchema } from '../src/modules/marketplace/service.js';
 
 function fakePool() {
   const client = { query: async () => undefined, release: () => undefined };
@@ -48,4 +50,104 @@ test('empty-cart, inventory, and idempotency failures are mapped consistently', 
     const service = new OrderService(fakePool(), repository);
     await assert.rejects(() => service.create('buyer-id', 'idempotency-key-123'), (error: unknown) => error instanceof AppError && error.code === code);
   }
+});
+
+test('checkout schema requires one unique fulfillment choice for every seller', () => {
+  const valid = {
+    fulfillments: [
+      { sellerId: '00000000-0000-0000-0000-000000000001', method: 'pickup' },
+      { sellerId: '00000000-0000-0000-0000-000000000002', method: 'delivery', addressId: '00000000-0000-0000-0000-000000000003' }
+    ]
+  };
+  assert.equal(orderCreateSchema.parse(valid).fulfillments.length, 2);
+  assert.throws(() => orderCreateSchema.parse({ fulfillments: [valid.fulfillments[0], valid.fulfillments[0]] }));
+  assert.throws(() => orderCreateSchema.parse({ fulfillments: [{ ...valid.fulfillments[0], clientPrice: '1.00' }] }));
+});
+
+test('dispute and review schemas enforce bounded evidence and rating inputs', () => {
+  assert.equal(disputeSchema.parse({
+    reason: 'damaged',
+    description: 'The item arrived damaged and cannot be used.',
+    photoStorageKeys: []
+  }).reason, 'damaged');
+  assert.throws(() => disputeSchema.parse({ reason: 'damaged', description: 'short' }));
+  assert.equal(orderReviewSchema.parse({ rating: 5, reviewText: 'Exactly as described.' }).rating, 5);
+  assert.throws(() => orderReviewSchema.parse({ rating: 6, reviewText: 'Not a valid rating.' }));
+});
+
+test('checkout passes server-selected seller fulfilments into the transactional order repository', async () => {
+  const choices = [{ sellerId: 'seller-id', method: 'pickup' as const }];
+  let received: unknown;
+  const order = { id: 'order-id', status: 'pending', currency: 'NGN', subtotal: '20.50', total: '20.50', createdAt: '2026-01-01T00:00:00Z', items: [] };
+  const repository = {
+    createFromCart: async (_client: unknown, _buyer: string, _key: string, selected: unknown) => { received = selected; return 'order-id'; },
+    get: async () => order
+  } as unknown as OrderRepository;
+  const service = new OrderService(fakePool(), repository);
+  await service.create('buyer-id', 'idempotency-key-123', choices);
+  assert.deepEqual(received, choices);
+});
+
+test('buyer dispute photos must be scoped to the authenticated buyer', async () => {
+  const repository = {
+    createDispute: async () => ({ error: null, disputeId: 'dispute-id' })
+  } as unknown as OrderRepository;
+  const service = new OrderService(fakePool(), repository);
+  await assert.rejects(
+    () => service.createDispute('buyer-id', 'order-id', 'fulfillment-id', {
+      reason: 'damaged',
+      description: 'The item arrived damaged and is unusable.',
+      photoStorageKeys: ['another-user/private-photo.jpg']
+    }),
+    (error: unknown) => error instanceof AppError && error.code === 'FORBIDDEN'
+  );
+});
+
+test('automatic escrow release only releases due delivered fulfillments using integer kobo', async () => {
+  const calls: string[] = [];
+  const client = {
+    query: async (sql: string) => {
+      calls.push(sql);
+      if (sql.includes('FROM order_fulfillments f') && sql.includes('release_after <= now()')) {
+        return { rows: [{
+          id: 'fulfillment-id',
+          order_id: 'order-id',
+          seller_id: 'seller-id',
+          buyer_id: 'buyer-id',
+          currency: 'NGN',
+          amountKobo: '125000'
+        }], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 1 };
+    }
+  };
+  const repository = new (await import('../src/modules/orders/repository.js')).OrderRepository({} as never);
+  const released = await repository.releaseDueEscrow(client as never, 50);
+  assert.equal(released, 1);
+  const release = calls.find(sql => sql.includes('INSERT INTO seller_payable_ledger'));
+  assert.ok(release);
+  assert.match(release, /amount_kobo/);
+  assert.match(release, /\$4::bigint/);
+  assert.ok(calls.some(sql => sql.includes("status = 'completed'")));
+});
+
+test('seller store and agreement schemas require explicit valid owner data', () => {
+  const store = sellerStoreSchema.parse({
+    storeName: 'Draken Supplies',
+    slug: 'draken-supplies',
+    description: 'A verified store profile.',
+    supportPhone: '+2348012345678'
+  });
+  assert.equal(store.slug, 'draken-supplies');
+  assert.throws(() => sellerStoreSchema.parse({ storeName: 'Bad', slug: 'not valid slug' }));
+  assert.equal(sellerAgreementAcceptSchema.parse({ accepted: true }).accepted, true);
+  assert.throws(() => sellerAgreementAcceptSchema.parse({ accepted: false }));
+});
+
+test('product edit schema permits owned listing media replacement but rejects unknown fields', () => {
+  assert.equal(productUpdateSchema.parse({
+    name: 'Updated listing',
+    media: [{ storageKey: 'buyer-owned/product-image.webp', position: 0 }]
+  }).media?.length, 1);
+  assert.throws(() => productUpdateSchema.parse({ priceAmount: '100.00', sellerId: 'client-controlled' }));
 });

@@ -8,7 +8,7 @@ test('delete-account route requires auth, the DELETE confirmation, and calls the
   const calls: string[] = [];
   const deletion = { preflight: async () => ({ canDelete: true, blockers: [] }), deleteAccount: async (id: string) => { calls.push(id); return { deleted: true as const }; } };
   const app = express(); app.use(express.json());
-  app.use((req, _res, next) => { if (req.header('x-test-user')) req.auth = { userId: req.header('x-test-user')!, provider: 'firebase', claims: {}, sessionId: 's', firebaseUid: 'f' } as never; next(); });
+  app.use((req, _res, next) => { if (req.header('x-test-user')) req.auth = { userId: req.header('x-test-user')!, provider: 'firebase', claims: { auth_time: Math.floor(Date.now() / 1000) }, sessionId: 's', firebaseUid: 'f' } as never; next(); });
   app.use('/v1/auth', createAuthRouter({} as never, deletion as never));
   app.use(errorHandler({ error: () => undefined }));
   const server = app.listen(0); const port = (server.address() as { port: number }).port;

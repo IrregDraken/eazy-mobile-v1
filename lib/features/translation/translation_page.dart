@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/ui/eazy_assist_fab.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 
@@ -107,7 +106,6 @@ class _TranslationPageState extends State<TranslationPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        floatingActionButton: const EazyAssistFab(),
         appBar: AppBar(
           title: const Text('Translation', style: TextStyle(fontWeight: FontWeight.w900)),
           actions: [
@@ -121,7 +119,7 @@ class _TranslationPageState extends State<TranslationPage> {
           ],
         ),
         body: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.paddingOf(context).bottom + 28),
           children: [
             const Text(
               'Translate naturally',

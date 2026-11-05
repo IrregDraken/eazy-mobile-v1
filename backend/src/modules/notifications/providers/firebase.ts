@@ -14,14 +14,15 @@ export class FirebaseNotificationProvider implements NotificationProvider {
     this.messaging = getAdminMessaging(firebaseApp);
   }
 
-  async notify(input: { userId: string; title: string; body: string }): Promise<void> {
+  async notify(input: { userId: string; title: string; body: string; deepLink?: string | null }): Promise<void> {
     const devices = await this.pool.query<{ id: string; device_token: string }>(
       'SELECT id, device_token FROM push_devices WHERE user_id = $1 AND is_active = true', [input.userId]
     );
     if (!devices.rows.length) return;
     const result = await this.messaging.sendEachForMulticast({
       tokens: devices.rows.map(device => device.device_token),
-      notification: { title: input.title, body: input.body }
+      notification: { title: input.title, body: input.body },
+      data: input.deepLink ? { deepLink: input.deepLink } : undefined
     });
     const stale = result.responses.flatMap((response, index) => {
       const code = response.error?.code;
