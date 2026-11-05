@@ -38,6 +38,10 @@ class _HomeShellState extends State<HomeShell> {
   double? _assistTop;
   bool _assistParked = true;
   bool _assistDockedRight = true;
+  int unreadChats = 0;
+  int unreadWallet = 0;
+  int unreadNotifications = 0;
+  bool loadingBadges = false;
 
   @override
   void initState() {
@@ -50,6 +54,82 @@ class _HomeShellState extends State<HomeShell> {
       _ => 0,
     };
     _restoreAssistPosition();
+    _loadBadgeCounts();
+  }
+
+  Future<void> _loadBadgeCounts() async {
+    if (loadingBadges) return;
+    loadingBadges = true;
+    try {
+      final results = await Future.wait([
+        widget.auth.api.get('chat/conversations?page=1&limit=50', auth: true),
+        widget.auth.api.get('notifications?page=1&limit=100', auth: true),
+      ]);
+      final chats = (results[0]['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry));
+      final notifications = (results[1]['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
+      final chatCount = chats.fold<int>(
+        0,
+        (total, chat) =>
+            total + (int.tryParse((chat['unreadCount'] ?? 0).toString()) ?? 0),
+      );
+      final walletCount = notifications.where((item) {
+        final type = item['type']?.toString().toLowerCase() ?? '';
+        return item['isRead'] != true &&
+            const {'payment', 'order'}.contains(type);
+      }).length;
+      final notificationCount = notifications
+          .where((item) => item['isRead'] != true)
+          .length;
+      if (mounted) {
+        setState(() {
+          unreadChats = chatCount;
+          unreadWallet = walletCount;
+          unreadNotifications = notificationCount;
+        });
+      }
+    } catch (_) {
+      // Badge counters are supplemental; never block the primary navigation.
+    } finally {
+      loadingBadges = false;
+    }
+  }
+
+  int _badgeForDestination(int destinationIndex) => switch (destinationIndex) {
+        2 => unreadWallet,
+        3 => unreadChats,
+        _ => 0,
+      };
+
+  Widget _notificationCountBadge(int count) {
+    if (count <= 0) return const SizedBox.shrink();
+    return Positioned(
+      right: -7,
+      top: -6,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE53935),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Theme.of(context).colorScheme.surface, width: 1.5),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          count > 99 ? '99+' : count.toString(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            height: 1,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _restoreAssistPosition() async {
@@ -125,7 +205,10 @@ class _HomeShellState extends State<HomeShell> {
         label: label,
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
-          onTap: () => setState(() => index = destinationIndex),
+          onTap: () {
+            setState(() => index = destinationIndex);
+            _loadBadgeCounts();
+          },
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 7),
             child: Column(
@@ -152,16 +235,22 @@ class _HomeShellState extends State<HomeShell> {
                         : const [],
                   ),
                   child: Center(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      transitionBuilder: (child, animation) =>
-                          ScaleTransition(scale: animation, child: child),
-                      child: Icon(
-                        selected ? selectedIcon : icon,
-                        key: ValueKey<bool>(selected),
-                        size: selected ? 23 : 22,
-                        color: textColor,
-                      ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          transitionBuilder: (child, animation) =>
+                              ScaleTransition(scale: animation, child: child),
+                          child: Icon(
+                            selected ? selectedIcon : icon,
+                            key: ValueKey<bool>(selected),
+                            size: selected ? 23 : 22,
+                            color: textColor,
+                          ),
+                        ),
+                        _notificationCountBadge(_badgeForDestination(destinationIndex)),
+                      ],
                     ),
                   ),
                 ),
@@ -312,7 +401,9 @@ class _HomeShellState extends State<HomeShell> {
                   onPanStart: (_) {
                     setState(() {
                       _assistParked = false;
-                      _assistLeft = parkedLeft;
+                      _assistLeft = _assistDockedRight
+                          ? constraints.maxWidth - 64
+                          : 0;
                       _assistTop = top;
                     });
                   },
