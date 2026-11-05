@@ -1578,7 +1578,7 @@ class _SkeletonMessage extends StatelessWidget {
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: context.eazyBorder),
+
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
