@@ -7,6 +7,7 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/media/media_service.dart';
+import '../../core/media/profile_image_editor.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({super.key, required this.auth});
@@ -24,6 +25,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   DateTime? dob;
   bool busy = false, checking = false, usernameManuallyEdited = false;
   bool avatarBusy = false;
+  double? avatarUploadProgress;
+  MediaUploadDraft? pendingAvatarDraft;
+  MediaUpload? pendingAvatarUpload;
   String? avatarPath;
   String? avatarLocalPath;
   bool? available;
@@ -128,20 +132,40 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   }
 
   Future<void> pickAvatar() async {
+    if (avatarBusy) return;
     setState(() {
       avatarBusy = true;
       error = null;
     });
     try {
-      final upload = await EazyMediaService(ApiClient()).pickAndUpload(kind: 'avatar');
-      if (upload != null && mounted) {
-        setState(() {
-          avatarPath = upload.path;
-          avatarLocalPath = upload.localPath;
-        });
-      }
+      pendingAvatarDraft ??= await EazyProfileImageEditor.pickAndCrop(
+        context: context,
+        kind: 'avatar',
+        title: 'Crop profile photo',
+        cropStyle: CropStyle.circle,
+        aspectRatio: 1,
+      );
+      final draft = pendingAvatarDraft;
+      if (draft == null) return;
+      if (mounted) setState(() => avatarLocalPath = draft.localPath);
+      pendingAvatarUpload ??= await EazyMediaService(ApiClient()).uploadDraft(
+        draft,
+        onProgress: (progress) {
+          if (mounted) setState(() => avatarUploadProgress = progress);
+        },
+      );
+      if (!mounted || pendingAvatarUpload == null) return;
+      setState(() {
+        avatarPath = pendingAvatarUpload!.path;
+        avatarUploadProgress = 1;
+        error = null;
+      });
     } on ApiException catch (e) {
       if (mounted) setState(() => error = e.message);
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = e.toString().replaceFirst('Bad state: ', ''));
+      }
     } finally {
       if (mounted) setState(() => avatarBusy = false);
     }
@@ -279,7 +303,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   icon: avatarBusy
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                       : Icon(Icons.add_a_photo_outlined),
-                  label: Text(avatarBusy ? 'Uploading photo…' : avatarPath != null ? 'Photo uploaded' : 'Add profile photo'),
+                  label: Text(avatarBusy ? 'Uploading ${((avatarUploadProgress ?? 0) * 100).round()}%' : avatarPath != null ? 'Photo uploaded' : pendingAvatarDraft != null ? 'Retry photo upload' : 'Add profile photo'),
                 ),
                 Text(
                   'Add a clear photo so people can recognise you.',
