@@ -146,6 +146,184 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
     return value == null || value.trim().isEmpty ? null : value;
   }
 
+  Future<void> _showProfilePreview(Map<String, dynamic> person) async {
+    final username = _username(person);
+    if (username.isEmpty) return;
+    var details = Map<String, dynamic>.from(person);
+    try {
+      final response = await api.get(
+        'profiles/' + Uri.encodeComponent(username),
+        auth: true,
+      );
+      if (response['profile'] is Map) {
+        details = {
+          ...details,
+          ...Map<String, dynamic>.from(response['profile'] as Map),
+        };
+      }
+    } on ApiException {
+      // The search result remains useful when the public profile read fails.
+    }
+    if (!mounted) return;
+
+    final isFollowing = followed.contains(username.toLowerCase()) ||
+        person['isFollowing'] == true ||
+        person['is_following'] == true;
+    final displayName = _name(details);
+    final avatar = _avatar(details);
+    final cover = (details['coverUrl'] ?? details['cover_url'])?.toString();
+    final bio = (details['bio'] ?? '').toString().trim();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: false,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: SizedBox(
+          height: MediaQuery.sizeOf(sheetContext).height * .58,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 2, 18, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: SizedBox(
+                    height: 112,
+                    width: double.infinity,
+                    child: cover != null && cover.isNotEmpty
+                        ? Image.network(
+                            cover,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _previewCoverPlaceholder(sheetContext),
+                          )
+                        : _previewCoverPlaceholder(sheetContext),
+                  ),
+                ),
+                Transform.translate(
+                  offset: const Offset(0, -30),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(sheetContext).colorScheme.surface,
+                          shape: BoxShape.circle,
+                        ),
+                        child: CircleAvatar(
+                          radius: 38,
+                          backgroundColor: context.eazyAccent.withValues(alpha: .12),
+                          backgroundImage: avatar == null ? null : NetworkImage(avatar),
+                          child: avatar == null
+                              ? Text(
+                                  displayName.isEmpty ? '?' : displayName.characters.first.toUpperCase(),
+                                  style: TextStyle(
+                                    color: context.eazyAccent,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 23,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              Text(
+                                '@' + username,
+                                style: TextStyle(color: context.eazyMuted, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Transform.translate(
+                  offset: const Offset(0, -20),
+                  child: Text(
+                    bio.isEmpty ? 'An Eazy member.' : bio,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(height: 1.4),
+                  ),
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: isFollowing
+                            ? null
+                            : () {
+                                Navigator.of(sheetContext).pop();
+                                unawaited(follow(details));
+                              },
+                        icon: Icon(isFollowing ? Icons.check_rounded : Icons.person_add_alt_1_rounded),
+                        label: Text(isFollowing ? 'Following' : 'Follow'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                          unawaited(message(details));
+                        },
+                        icon: const Icon(Icons.chat_bubble_outline_rounded),
+                        label: const Text('Message'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      context.push('/profile/' + Uri.encodeComponent(username));
+                    },
+                    child: const Text('View full profile'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _previewCoverPlaceholder(BuildContext context) => Container(
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF0B4D2D), Color(0xFF13834C), Color(0xFF63BC87)],
+      ),
+    ),
+    alignment: Alignment.centerLeft,
+    padding: const EdgeInsets.symmetric(horizontal: 18),
+    child: const Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 26),
+  );
+
   Future<void> follow(Map<String, dynamic> person) async {
     final username = _username(person);
     final key = username.toLowerCase();
@@ -378,11 +556,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
     return Column(
       children: [
         InkWell(
-          onTap:
-              username.isEmpty
-                  ? null
-                  : () =>
-                      context.push('/profile/${Uri.encodeComponent(username)}'),
+          onTap: username.isEmpty ? null : () => _showProfilePreview(person),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
