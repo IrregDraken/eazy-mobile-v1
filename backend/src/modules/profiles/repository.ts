@@ -23,6 +23,7 @@ export interface PublicProfileRecord {
   last_name: string | null;
   bio: string | null;
   avatar_url: string | null;
+  cover_url: string | null;
   onboarding_status: 'profile_incomplete' | 'onboarding_complete';
 }
 
