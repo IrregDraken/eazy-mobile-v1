@@ -332,6 +332,9 @@ class _ConversationPageState extends State<ConversationPage> {
   }
 
   Map<String, dynamic> get _otherParticipant {
+    // Do not guess which participant is the other person before our identity
+    // has loaded; the participant list is sorted independently of the viewer.
+    if (currentUsername == null) return <String, dynamic>{};
     final participants = widget.conversation['participants'];
     if (participants is List) {
       final people =
@@ -381,19 +384,35 @@ class _ConversationPageState extends State<ConversationPage> {
     media = EazyMediaService(widget.api);
     draft.addListener(_scheduleDraftSave);
     unawaited(_restoreDraft());
-    loadMessages();
-    connectRealtime();
-    loadMyProfile();
+    unawaited(_initializeConversation());
   }
 
-  Future<void> loadMyProfile() async {
+  Future<void> _initializeConversation() async {
+    final identityReady = await loadMyProfile();
+    if (!identityReady) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          error = 'Eazy could not confirm your account identity. Retry to open this conversation.';
+        });
+      }
+      return;
+    }
+    await loadMessages();
+    if (mounted) unawaited(connectRealtime());
+  }
+
+  Future<bool> loadMyProfile() async {
     try {
       final result = await widget.api.get('profiles/me', auth: true);
       final profile = result['profile'];
-      if (mounted && profile is Map) {
-        setState(() => currentUsername = profile['username']?.toString());
-      }
-    } catch (_) {}
+      final username = profile is Map ? profile['username']?.toString().trim() : null;
+      if (username == null || username.isEmpty) return false;
+      if (mounted) setState(() => currentUsername = username);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   bool _isMine(Map<String, dynamic> message) {
@@ -993,14 +1012,6 @@ class _ConversationPageState extends State<ConversationPage> {
           (ctx) => SafeArea(
             child: Wrap(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.reply_rounded),
-                  title: const Text('Reply'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    setState(() => replying = m);
-                  },
-                ),
                 if (status != 'deleted')
                   ListTile(
                     leading: const Icon(Icons.add_reaction_outlined),
@@ -1309,7 +1320,7 @@ class _ConversationPageState extends State<ConversationPage> {
                   loading
                       ? const _ConversationSkeleton()
                       : error != null
-                      ? _ChatState(error!, loadMessages)
+                      ? _ChatState(error!, _initializeConversation)
                       : messages.isEmpty
                       ? const _ChatState(
                         'No messages yet. Start the conversation.',
@@ -1323,6 +1334,7 @@ class _ConversationPageState extends State<ConversationPage> {
                             message: messages[i],
                             isMine: _isMine(messages[i]),
                             onLongPress: () => actions(messages[i]),
+                            onSwipeReply: () => setState(() => replying = messages[i]),
                             onReaction: (r) => reactTo(messages[i], r),
                             onTranslate: () => translate(messages[i]),
                             onOpenAttachment: _openAttachment,
@@ -1627,6 +1639,7 @@ class _MessageBubble extends StatelessWidget {
     required this.message,
     required this.isMine,
     required this.onLongPress,
+    required this.onSwipeReply,
     required this.onReaction,
     required this.onTranslate,
     required this.onOpenAttachment,
@@ -1635,6 +1648,7 @@ class _MessageBubble extends StatelessWidget {
   final Map<String, dynamic> message;
   final bool isMine;
   final VoidCallback onLongPress;
+  final VoidCallback onSwipeReply;
   final ValueChanged<String> onReaction;
   final VoidCallback onTranslate;
   final ValueChanged<Map<String, dynamic>> onOpenAttachment;
@@ -1646,6 +1660,16 @@ class _MessageBubble extends StatelessWidget {
             ? Map<String, dynamic>.from(message['sender'] as Map)
             : <String, dynamic>{};
     final deleted = message['status'] == 'deleted';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final incomingBubble = isDark
+        ? const Color(0xFF1D2B23)
+        : const Color(0xFFFFFFFF);
+    final outgoingBubble = isDark
+        ? const Color(0xFF174B34)
+        : const Color(0xFFDDF7E8);
+    final bubbleText = isDark
+        ? const Color(0xFFF2FAF5)
+        : const Color(0xFF173B28);
     final reactions =
         (message['reactions'] as List? ?? const [])
             .whereType<Map>()
@@ -1659,28 +1683,36 @@ class _MessageBubble extends StatelessWidget {
         ),
         child: GestureDetector(
           onLongPress: onLongPress,
+          onHorizontalDragEnd: (details) {
+            // WhatsApp-style right-swipe on a bubble starts a reply.
+            if ((details.primaryVelocity ?? 0) > 260) onSwipeReply();
+          },
           child: Container(
             margin: const EdgeInsets.only(bottom: 9),
             padding: const EdgeInsets.fromLTRB(13, 10, 10, 9),
             decoration: BoxDecoration(
-              color:
-                  deleted
-                      ? Theme.of(context).colorScheme.surfaceContainerHighest
-                      : (isMine
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.surface),
+              color: deleted
+                  ? Theme.of(context).colorScheme.surfaceContainerHighest
+                  : (isMine ? outgoingBubble : incomingBubble),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(20),
                 topRight: const Radius.circular(20),
                 bottomLeft: Radius.circular(isMine ? 20 : 7),
                 bottomRight: Radius.circular(isMine ? 7 : 20),
               ),
-              border: Border.all(
-                color:
-                    isMine
-                        ? context.eazyAccent.withValues(alpha: .24)
-                        : context.eazyBorder,
-              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? .22 : .075),
+                  blurRadius: 9,
+                  offset: const Offset(0, 3),
+                ),
+                if (!isDark)
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: .62),
+                    blurRadius: 1,
+                    offset: const Offset(-1, -1),
+                  ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1708,9 +1740,7 @@ class _MessageBubble extends StatelessWidget {
                     color:
                         deleted
                             ? context.eazyMuted
-                            : (isMine
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Theme.of(context).colorScheme.onSurface),
+                            : bubbleText,
                     fontSize: 14,
                     height: 1.45,
                     fontStyle: deleted ? FontStyle.italic : FontStyle.normal,
@@ -1903,38 +1933,20 @@ class _MessageBubble extends StatelessWidget {
                               .toList(),
                     ),
                   ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _time(message['createdAt'] ?? message['created_at']),
-                        style: TextStyle(
-                          color: isMine
-                              ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: .82)
-                              : context.eazyMuted,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    _time(message['createdAt'] ?? message['created_at']),
+                    style: TextStyle(
+                      color: deleted
+                          ? context.eazyMuted
+                          : (isMine
+                              ? bubbleText.withValues(alpha: .72)
+                              : context.eazyMuted),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
                     ),
-                    if (!deleted)
-                      TextButton.icon(
-                        onPressed: onTranslate,
-                        icon: Icon(Icons.translate_rounded, size: 13),
-                        label: Text(
-                          'Translate',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: context.eazyAccent,
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
               ],
             ),
