@@ -31,7 +31,8 @@ export const profilePatchSchema = z.object({
   lastName: optionalNameSchema,
   dateOfBirth: dateOfBirthSchema.optional(),
   bio: z.string().max(500).nullable().optional(),
-  avatarUrl: z.string().trim().max(2048).nullable().optional().refine(value => value == null || /^https?:\/\//.test(value) || /^[^/][^?]*\/[^?]+$/.test(value), 'Avatar must be an HTTPS URL or Eazy media storage path')
+  avatarUrl: z.string().trim().max(2048).nullable().optional().refine(value => value == null || /^https?:\/\//.test(value) || /^[^/][^?]*\/[^?]+$/.test(value), 'Avatar must be an HTTPS URL or Eazy media storage path'),
+  coverUrl: z.string().trim().max(2048).nullable().optional().refine(value => value == null || /^https?:\/\//.test(value) || /^[^/][^?]*\/[^?]+$/.test(value), 'Cover must be an HTTPS URL or Eazy media storage path')
 }).strict();
 
 export class ProfileService {
@@ -40,7 +41,7 @@ export class ProfileService {
   async getMe(userId: string): Promise<ProfileRecord> {
     const profile = await this.repository.getByUserId(userId);
     if (!profile) throw new AppError('NOT_FOUND', 'Profile not found');
-    return { ...profile, avatar_url: await this.resolveAvatar(profile.user_id, profile.avatar_url) };
+    return { ...profile, avatar_url: await this.resolveAvatar(profile.user_id, profile.avatar_url), cover_url: await this.resolveCover(profile.user_id, profile.cover_url) };
   }
 
   async getPublic(username: string, viewerId?: string) {
@@ -48,7 +49,7 @@ export class ProfileService {
     if (!usernamePattern.test(normalized)) throw new AppError('VALIDATION_ERROR', 'Invalid username');
     const profile = await this.repository.getPublicByUsername(normalized, viewerId);
     if (!profile) throw new AppError('NOT_FOUND', 'Profile not found');
-    return { username: profile.username, displayName: profile.display_name, firstName: profile.first_name, lastName: profile.last_name, bio: profile.bio, avatarUrl: await this.resolveAvatar(profile.user_id, profile.avatar_url) };
+    return { username: profile.username, displayName: profile.display_name, firstName: profile.first_name, lastName: profile.last_name, bio: profile.bio, avatarUrl: await this.resolveAvatar(profile.user_id, profile.avatar_url), coverUrl: await this.resolveCover(profile.user_id, profile.cover_url) };
   }
 
   async searchPublic(query: string, viewerId: string) {
@@ -62,7 +63,8 @@ export class ProfileService {
       displayName: profile.display_name,
       firstName: profile.first_name,
       lastName: profile.last_name,
-      avatarUrl: await this.resolveAvatar(profile.user_id, profile.avatar_url)
+      avatarUrl: await this.resolveAvatar(profile.user_id, profile.avatar_url),
+      coverUrl: await this.resolveCover(profile.user_id, profile.cover_url)
     })));
   }
 
@@ -95,7 +97,14 @@ export class ProfileService {
       throw error;
     }
     if (!profile) throw new AppError('NOT_FOUND', 'Profile not found');
-    return { ...profile, avatar_url: await this.resolveAvatar(profile.user_id, profile.avatar_url) };
+    return { ...profile, avatar_url: await this.resolveAvatar(profile.user_id, profile.avatar_url), cover_url: await this.resolveCover(profile.user_id, profile.cover_url) };
+  }
+
+  private async resolveCover(userId: string, value: string | null): Promise<string | null> {
+    if (!value) return null;
+    if (/^https?:\/\//.test(value)) return value;
+    if (!this.storage || !value.startsWith(userId + '/cover/')) return null;
+    try { return (await this.storage.createSignedUrl(value, 3600)).signedUrl; } catch { return null; }
   }
 
   private async resolveAvatar(userId: string, value: string | null): Promise<string | null> {
@@ -108,7 +117,7 @@ export class ProfileService {
   async completeOnboarding(userId: string): Promise<ProfileRecord> {
     const profile = await withTransaction(this.pool, client => this.repository.completeOnboarding(client, userId));
     if (!profile) throw new AppError('VALIDATION_ERROR', 'Complete username, first name, and date of birth before finishing onboarding');
-    return { ...profile, avatar_url: await this.resolveAvatar(profile.user_id, profile.avatar_url) };
+    return { ...profile, avatar_url: await this.resolveAvatar(profile.user_id, profile.avatar_url), cover_url: await this.resolveCover(profile.user_id, profile.cover_url) };
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme/eazy_theme.dart';
@@ -10,6 +11,7 @@ import '../../core/ui/eazy_assist_fab.dart';
 import '../social/stories_tray.dart';
 import '../social/video_media.dart';
 import '../../core/media/media_service.dart';
+import '../../core/media/profile_image_editor.dart';
 import '../marketplace/product_detail_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -31,6 +33,13 @@ class _ProfilePageState extends State<ProfilePage> {
   List<Map<String, dynamic>> highlights = [];
   List<Map<String, dynamic>> sellerProducts = [];
   bool avatarBusy = false;
+  bool coverBusy = false;
+  double? avatarUploadProgress;
+  double? coverUploadProgress;
+  MediaUploadDraft? pendingAvatarDraft;
+  MediaUploadDraft? pendingCoverDraft;
+  MediaUpload? pendingAvatarUpload;
+  MediaUpload? pendingCoverUpload;
   String? error;
   int contentTab = 0;
   bool isFollowing = false;
@@ -122,6 +131,7 @@ class _ProfilePageState extends State<ProfilePage> {
         nextProfile['displayName'] = composedName;
       }
       nextProfile['avatarUrl'] ??= nextProfile['avatar_url'];
+      nextProfile['coverUrl'] ??= nextProfile['cover_url'];
       nextProfile['userId'] ??= nextProfile['user_id'];
       final actualUsername =
           (nextProfile['username'] ?? nextProfile['user_name'])
@@ -729,13 +739,26 @@ class _ProfilePageState extends State<ProfilePage> {
     if (!isOwnProfile || avatarBusy) return;
     setState(() => avatarBusy = true);
     try {
-      final upload = await EazyMediaService(api).pickAndUpload(kind: 'avatar');
-      if (upload == null) return;
-      await api.patch(
-        'profiles/me',
-        auth: true,
-        body: {'avatarUrl': upload.path},
+      pendingAvatarDraft ??= await EazyProfileImageEditor.pickAndCrop(
+        context: context,
+        kind: 'avatar',
+        title: 'Crop profile photo',
+        cropStyle: CropStyle.circle,
+        aspectRatio: 1,
       );
+      final draft = pendingAvatarDraft;
+      if (draft == null) return;
+      pendingAvatarUpload ??= await EazyMediaService(api).uploadDraft(
+        draft,
+        onProgress: (progress) {
+          if (mounted) setState(() => avatarUploadProgress = progress);
+        },
+      );
+      final upload = pendingAvatarUpload;
+      if (upload == null) return;
+      await api.patch('profiles/me', auth: true, body: {'avatarUrl': upload.path});
+      pendingAvatarDraft = null;
+      pendingAvatarUpload = null;
       await load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -745,17 +768,86 @@ class _ProfilePageState extends State<ProfilePage> {
     } on ApiException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
+          SnackBar(
+            content: Text(error.message),
+            action: SnackBarAction(label: 'Retry', onPressed: _changeAvatar),
+          ),
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('We could not update your profile photo. Try again.')),
+          SnackBar(
+            content: Text('Profile photo upload failed: $error'),
+            action: SnackBarAction(label: 'Retry', onPressed: _changeAvatar),
+          ),
         );
       }
     } finally {
-      if (mounted) setState(() => avatarBusy = false);
+      if (mounted) {
+        setState(() {
+          avatarBusy = false;
+          avatarUploadProgress = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _changeCover() async {
+    if (!isOwnProfile || coverBusy) return;
+    setState(() => coverBusy = true);
+    try {
+      pendingCoverDraft ??= await EazyProfileImageEditor.pickAndCrop(
+        context: context,
+        kind: 'cover',
+        title: 'Adjust your profile cover',
+        cropStyle: CropStyle.rectangle,
+        aspectRatio: 2.3,
+      );
+      final draft = pendingCoverDraft;
+      if (draft == null) return;
+      pendingCoverUpload ??= await EazyMediaService(api).uploadDraft(
+        draft,
+        onProgress: (progress) {
+          if (mounted) setState(() => coverUploadProgress = progress);
+        },
+      );
+      final upload = pendingCoverUpload;
+      if (upload == null) return;
+      await api.patch('profiles/me', auth: true, body: {'coverUrl': upload.path});
+      pendingCoverDraft = null;
+      pendingCoverUpload = null;
+      await load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile cover updated')),
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.message),
+            action: SnackBarAction(label: 'Retry', onPressed: _changeCover),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Profile cover upload failed: $error'),
+            action: SnackBarAction(label: 'Retry', onPressed: _changeCover),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          coverBusy = false;
+          coverUploadProgress = null;
+        });
+      }
     }
   }
 
@@ -836,6 +928,37 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _profileCoverPlaceholder(BuildContext context) => Container(
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF0B4D2D), Color(0xFF13834C), Color(0xFF63BC87)],
+      ),
+    ),
+    alignment: Alignment.centerLeft,
+    padding: const EdgeInsets.symmetric(horizontal: 22),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.auto_awesome_rounded, color: Color(0xBFFFFFFF), size: 26),
+        const SizedBox(height: 8),
+        Text(
+          'Your space on Eazy',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const Text(
+          'Add a cover that feels like you',
+          style: TextStyle(color: Color(0xDDFFFFFF), fontSize: 12),
+        ),
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final username = profile['username']?.toString() ?? '';
@@ -846,6 +969,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 .where((e) => e != null && e.toString().trim().isNotEmpty)
                 .join(' ');
     final avatar = profile['avatarUrl']?.toString();
+    final cover = (profile['coverUrl'] ?? profile['cover_url'])?.toString();
     final bio = profile['bio']?.toString() ?? '';
     final postsCount = stats['posts'] ?? profile['postsCount'] ?? 0;
     final followers = stats['followers'] ?? profile['followersCount'] ?? 0;
@@ -917,85 +1041,134 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.primary.withValues(alpha: .75),
-                              width: 2,
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 184,
+                            child: cover != null && cover.isNotEmpty
+                                ? Image.network(
+                                    cover,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => _profileCoverPlaceholder(context),
+                                  )
+                                : _profileCoverPlaceholder(context),
+                          ),
+                        ),
+                        if (isOwnProfile)
+                          Positioned(
+                            right: 12,
+                            top: 12,
+                            child: FilledButton.tonalIcon(
+                              onPressed: coverBusy ? null : _changeCover,
+                              icon: coverBusy
+                                  ? SizedBox(
+                                      width: 15,
+                                      height: 15,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        value: coverUploadProgress,
+                                        color: context.eazyAccent,
+                                      ),
+                                    )
+                                  : const Icon(Icons.photo_camera_back_outlined, size: 17),
+                              label: Text(
+                                coverBusy
+                                    ? 'Uploading ' + ((coverUploadProgress ?? 0) * 100).round().toString() + '%'
+                                    : cover == null || cover.isEmpty
+                                        ? 'Add cover'
+                                        : 'Change cover',
+                              ),
+                              style: FilledButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                backgroundColor: const Color(0x990D2C1C),
+                              ),
                             ),
                           ),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              CircleAvatar(
-                                radius: 43,
-                                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                backgroundImage:
-                                    avatar != null && avatar.startsWith('http')
-                                        ? NetworkImage(avatar)
-                                        : null,
-                                child:
-                                    avatar == null || !avatar.startsWith('http')
-                                        ? Icon(
-                                            Icons.person_rounded,
-                                            size: 42,
-                                            color: Theme.of(context).colorScheme.primary,
-                                          )
-                                        : null,
-                              ),
-                              if (isOwnProfile)
-                                Positioned(
-                                  right: -3,
-                                  bottom: -3,
-                                  child: Material(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    shape: const CircleBorder(),
-                                    child: InkWell(
-                                      customBorder: const CircleBorder(),
-                                      onTap: avatarBusy ? null : _changeAvatar,
-                                      child: SizedBox(
-                                        width: 30,
-                                        height: 30,
-                                        child: Center(
-                                          child: avatarBusy
-                                              ? SizedBox(
-                                                  width: 14,
-                                                  height: 14,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    color: Theme.of(context).colorScheme.onPrimary,
+                        Positioned(
+                          left: 18,
+                          bottom: -39,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: .16),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                CircleAvatar(
+                                  radius: 43,
+                                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                  backgroundImage: avatar != null && avatar.startsWith('http')
+                                      ? NetworkImage(avatar)
+                                      : null,
+                                  child: avatar == null || !avatar.startsWith('http')
+                                      ? Icon(
+                                          Icons.person_rounded,
+                                          size: 42,
+                                          color: Theme.of(context).colorScheme.primary,
+                                        )
+                                      : null,
+                                ),
+                                if (isOwnProfile)
+                                  Positioned(
+                                    right: -2,
+                                    bottom: -2,
+                                    child: Material(
+                                      color: context.eazyAccent,
+                                      shape: const CircleBorder(),
+                                      child: InkWell(
+                                        customBorder: const CircleBorder(),
+                                        onTap: avatarBusy ? null : _changeAvatar,
+                                        child: SizedBox(
+                                          width: 30,
+                                          height: 30,
+                                          child: Center(
+                                            child: avatarBusy
+                                                ? SizedBox(
+                                                    width: 14,
+                                                    height: 14,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      value: avatarUploadProgress,
+                                                      color: context.eazyOnAccent,
+                                                    ),
+                                                  )
+                                                : Icon(
+                                                    Icons.camera_alt_rounded,
+                                                    size: 15,
+                                                    color: context.eazyOnAccent,
                                                   ),
-                                                )
-                                              : Icon(
-                                                  Icons.camera_alt_rounded,
-                                                  size: 15,
-                                                  color: Theme.of(context).colorScheme.onPrimary,
-                                                ),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 22),
-                        Expanded(
-                          child: StatsRow(
-                            posts: _count(postsCount),
-                            followers: _count(followers),
-                            following: _count(following),
-                            loading: loading,
-                            onFollowers: () => _showSocialList('Followers'),
-                            onFollowing: () => _showSocialList('Following'),
+                              ],
+                            ),
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 52),
+                    StatsRow(
+                      posts: _count(postsCount),
+                      followers: _count(followers),
+                      following: _count(following),
+                      loading: loading,
+                      onFollowers: () => _showSocialList('Followers'),
+                      onFollowing: () => _showSocialList('Following'),
                     ),
                     const SizedBox(height: 16),
                     Text(

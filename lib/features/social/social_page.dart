@@ -33,6 +33,8 @@ class _SocialPageState extends State<SocialPage> {
   bool hasMore = true, loadingMore = false, newPostsAvailable = false;
   final dismissedSuggestions = <String>{};
   final followedSuggestions = <String>{};
+  int unreadNotifications = 0;
+  bool loadingUnreadNotifications = false;
 
   @override
   void initState() {
@@ -40,6 +42,7 @@ class _SocialPageState extends State<SocialPage> {
     media = EazyMediaService(api);
     scrollController.addListener(_onScroll);
     load();
+    _loadUnreadNotifications();
     if (widget.openComposerOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) compose();
@@ -52,6 +55,33 @@ class _SocialPageState extends State<SocialPage> {
     composer.dispose();
     scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadUnreadNotifications() async {
+    if (loadingUnreadNotifications) return;
+    loadingUnreadNotifications = true;
+    try {
+      final response = await api.get('notifications?page=1&limit=100', auth: true);
+      final items = (response['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item));
+      final count = items.where((item) {
+        final type = item['type']?.toString().toLowerCase() ?? '';
+        return item['isRead'] != true &&
+            type != 'payment' &&
+            type != 'order';
+      }).length;
+      if (mounted) setState(() => unreadNotifications = count);
+    } catch (_) {
+      // Keep the feed usable even when the counter endpoint is unavailable.
+    } finally {
+      loadingUnreadNotifications = false;
+    }
+  }
+
+  Future<void> _openNotifications() async {
+    await context.push('/notifications');
+    if (mounted) await _loadUnreadNotifications();
   }
 
   void _onScroll() {
@@ -330,9 +360,43 @@ class _SocialPageState extends State<SocialPage> {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Notifications',
-                    onPressed: () => context.push('/notifications'),
-                    icon: Icon(Icons.notifications_none_rounded),
+                    tooltip: unreadNotifications > 0
+                        ? 'Notifications, ' + unreadNotifications.toString() + ' unread'
+                        : 'Notifications',
+                    onPressed: _openNotifications,
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.notifications_none_rounded),
+                        if (unreadNotifications > 0)
+                          Positioned(
+                            right: -7,
+                            top: -6,
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE53935),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  width: 1.5,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                unreadNotifications > 99 ? '99+' : unreadNotifications.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  height: 1,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                   IconButton(
                     onPressed: posting ? null : compose,

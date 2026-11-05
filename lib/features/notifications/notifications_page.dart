@@ -23,7 +23,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
   int unread = 0;
   String error = '';
   bool loading = true, pushBusy = false;
-  bool assistVisible = true;
+  bool _assistParked = true;
+  bool _assistDockRight = true;
   final _assistStorage = const FlutterSecureStorage();
   double? _assistLeft;
   double? _assistTop;
@@ -59,10 +60,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
     try {
       final left = double.tryParse(await _assistStorage.read(key: 'eazy.assist.left') ?? '');
       final top = double.tryParse(await _assistStorage.read(key: 'eazy.assist.top') ?? '');
-      if (mounted && left != null && top != null) {
+      final edge = await _assistStorage.read(key: 'eazy.assist.edge');
+      if (mounted) {
         setState(() {
           _assistLeft = left;
           _assistTop = top;
+          _assistDockRight = edge != 'left';
+          _assistParked = true;
         });
       }
     } catch (_) {}
@@ -73,6 +77,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       if (_assistLeft != null && _assistTop != null) {
         await _assistStorage.write(key: 'eazy.assist.left', value: _assistLeft.toString());
         await _assistStorage.write(key: 'eazy.assist.top', value: _assistTop.toString());
+        await _assistStorage.write(key: 'eazy.assist.edge', value: _assistDockRight ? 'right' : 'left');
       }
     } catch (_) {}
   }
@@ -270,113 +275,155 @@ class _NotificationsPageState extends State<NotificationsPage> {
     ),
     body: LayoutBuilder(
       builder: (context, constraints) {
-        final defaultLeft = (constraints.maxWidth - 88).clamp(8.0, constraints.maxWidth - 80).toDouble();
-        final defaultTop = (constraints.maxHeight - 170).clamp(8.0, constraints.maxHeight - 160).toDouble();
-        final left = (_assistLeft ?? defaultLeft).clamp(8.0, constraints.maxWidth - 80).toDouble();
-        final top = (_assistTop ?? defaultTop).clamp(8.0, constraints.maxHeight - 160).toDouble();
+        final padding = MediaQuery.paddingOf(context);
         final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+        final controlHeight = _assistParked ? 58.0 : 64.0;
+        final minimumTop = padding.top + 12;
+        final maximumTop = (constraints.maxHeight - padding.bottom - controlHeight - 12)
+            .clamp(minimumTop, constraints.maxHeight - controlHeight)
+            .toDouble();
+        final top = (_assistTop ?? constraints.maxHeight * .52)
+            .clamp(minimumTop, maximumTop)
+            .toDouble();
+        final parkedLeft = _assistDockRight ? constraints.maxWidth - 26 : -30.0;
+        final defaultLeft = (constraints.maxWidth - 72)
+            .clamp(8.0, constraints.maxWidth - 72)
+            .toDouble();
+        final expandedLeft = (_assistLeft ?? defaultLeft)
+            .clamp(8.0, constraints.maxWidth - 72)
+            .toDouble();
+        final left = _assistParked ? parkedLeft : expandedLeft;
+
         return Stack(
+          clipBehavior: Clip.none,
           children: [
-            Positioned.fill(child: NotificationListener<ScrollNotification>(
-      onNotification: (notification) {
-        if (notification is UserScrollNotification &&
-            notification.direction != ScrollDirection.idle) {
-          final shouldShow = notification.direction == ScrollDirection.forward;
-          if (assistVisible != shouldShow) {
-            setState(() => assistVisible = shouldShow);
-          }
-        }
-        return false;
-      },
-      child: RefreshIndicator(
-      onRefresh: load,
-      child:
-          loading
-              ? const Center(child: CircularProgressIndicator())
-              : error.isNotEmpty
-              ? ListView(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      error,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
-                    ),
-                  ),
-                ],
-              )
-              : ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(12, 12, 12, MediaQuery.paddingOf(context).bottom + 24),
-                itemCount: _filteredItems.isEmpty ? 2 : _filteredItems.length + 1,
-                itemBuilder: (_, i) {
-                  if (i == 0) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _filterBar(),
-                    );
-                  }
-                  if (_filteredItems.isEmpty) {
-                    final emptyText = switch (filter) {
-                      'social' => 'No social activity yet.',
-                      'messages' => 'No message notifications yet.',
-                      'system' => 'No system updates yet.',
-                      _ => 'You’re all caught up.',
-                    };
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 90),
-                      child: Center(
-                        child: Text(
-                          emptyText,
-                          style: TextStyle(color: context.eazyMuted),
-                        ),
-                      ),
-                    );
-                  }
-                  final n = _filteredItems[i - 1];
-                  return Card(
-                    child: ListTile(
-                      onTap: () => openNotification(Map<String, dynamic>.from(n)),
-                      leading: CircleAvatar(
-                        child: Icon(icon(n['type']?.toString())),
-                      ),
-                      title: Text(
-                        n['title']?.toString() ?? 'Eazy notification',
-                      ),
-                      subtitle: Text(
-                        n['body']?.toString() ?? 'Activity on Eazy',
-                      ),
-                      trailing: n['isRead'] == true
-                          ? null
-                          : Icon(
-                              Icons.circle,
-                              size: 9,
-                              color: context.eazyAccent,
+            Positioned.fill(
+              child: RefreshIndicator(
+                onRefresh: load,
+                child: loading
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(height: 260),
+                          Center(child: CircularProgressIndicator()),
+                        ],
+                      )
+                    : error.isNotEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Text(
+                                  error,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(
+                              12, 12, 12, padding.bottom + 24,
                             ),
-                    ),
-                  );
-                },
-              )
-      ),
-    ),),
-            if (assistVisible && !keyboardOpen)
-              Positioned(
+                            itemCount: _filteredItems.isEmpty ? 2 : _filteredItems.length + 1,
+                            itemBuilder: (_, i) {
+                              if (i == 0) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _filterBar(),
+                                );
+                              }
+                              if (_filteredItems.isEmpty) {
+                                final emptyText = switch (filter) {
+                                  'social' => 'No social activity yet.',
+                                  'messages' => 'No message notifications yet.',
+                                  'system' => 'No system updates yet.',
+                                  _ => 'You’re all caught up.',
+                                };
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 90),
+                                  child: Center(
+                                    child: Text(
+                                      emptyText,
+                                      style: TextStyle(color: context.eazyMuted),
+                                    ),
+                                  ),
+                                );
+                              }
+                              final n = _filteredItems[i - 1];
+                              return Card(
+                                child: ListTile(
+                                  onTap: () => openNotification(Map<String, dynamic>.from(n)),
+                                  leading: CircleAvatar(
+                                    child: Icon(icon(n['type']?.toString())),
+                                  ),
+                                  title: Text(n['title']?.toString() ?? 'Eazy notification'),
+                                  subtitle: Text(n['body']?.toString() ?? 'Activity on Eazy'),
+                                  trailing: n['isRead'] == true
+                                      ? null
+                                      : Icon(
+                                          Icons.circle,
+                                          size: 9,
+                                          color: context.eazyAccent,
+                                        ),
+                                ),
+                              );
+                            },
+                          ),
+              ),
+            ),
+            if (!keyboardOpen)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
                 left: left,
                 top: top,
                 child: GestureDetector(
-                  onPanUpdate: (details) {
+                  behavior: HitTestBehavior.opaque,
+                  onPanStart: (_) {
                     setState(() {
-                      _assistLeft = (left + details.delta.dx).clamp(8.0, constraints.maxWidth - 80).toDouble();
-                      _assistTop = (top + details.delta.dy).clamp(8.0, constraints.maxHeight - 160).toDouble();
+                      _assistParked = false;
+                      _assistLeft = _assistDockRight
+                          ? constraints.maxWidth - 64
+                          : 8;
+                      _assistTop = top;
                     });
                   },
-                  onPanEnd: (_) => _saveAssistPosition(),
-                  child: const EazyAssistFab(),
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _assistLeft = ((_assistLeft ?? expandedLeft) + details.delta.dx)
+                          .clamp(8.0, constraints.maxWidth - 72)
+                          .toDouble();
+                      _assistTop = ((_assistTop ?? top) + details.delta.dy)
+                          .clamp(
+                            minimumTop,
+                            (constraints.maxHeight - padding.bottom - 64 - 12)
+                                .clamp(minimumTop, constraints.maxHeight - 64)
+                                .toDouble(),
+                          )
+                          .toDouble();
+                    });
+                  },
+                  onPanEnd: (_) {
+                    final currentLeft = _assistLeft ?? defaultLeft;
+                    setState(() {
+                      _assistDockRight = currentLeft + 32 >= constraints.maxWidth / 2;
+                      _assistLeft = _assistDockRight
+                          ? constraints.maxWidth - 28
+                          : -28;
+                      _assistParked = true;
+                    });
+                    _saveAssistPosition();
+                  },
+                  child: EazyAssistFab(parked: _assistParked),
                 ),
               ),
           ],
         );
       },
-    ),
+    )
   );
 }

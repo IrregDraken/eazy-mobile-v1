@@ -22,6 +22,89 @@ class _TranslationPageState extends State<TranslationPage> {
   bool loadingLanguages = true;
   bool providerAvailable = false;
   bool busy = false;
+  String _languageName(String code) {
+    if (code == 'auto') return 'Detect automatically';
+    return languages.firstWhere(
+      (language) => language['code'] == code,
+      orElse: () => {'name': code},
+    )['name']!;
+  }
+
+  Future<void> _chooseLanguage({required bool isSource}) async {
+    final controller = TextEditingController();
+    String query = '';
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final filtered = languages.where((language) {
+            if (isSource && language['code'] == target) return false;
+            if (!isSource && language['code'] == source) return false;
+            final value = (language['name']! + ' ' + language['code']!).toLowerCase();
+            return value.contains(query.toLowerCase());
+          }).toList();
+          return SafeArea(
+            child: SizedBox(
+              height: MediaQuery.sizeOf(sheetContext).height * .78,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+                    child: TextField(
+                      controller: controller,
+                      autofocus: true,
+                      onChanged: (value) => setSheetState(() => query = value),
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search_rounded),
+                        hintText: 'Search languages or language codes',
+                      ),
+                    ),
+                  ),
+                  if (isSource)
+                    ListTile(
+                      leading: const Icon(Icons.auto_awesome_rounded),
+                      title: const Text('Detect automatically'),
+                      onTap: () => Navigator.pop(sheetContext, 'auto'),
+                    ),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(child: Text('No matching supported languages.'))
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (_, index) {
+                              final language = filtered[index];
+                              return ListTile(
+                                title: Text(language['name']!),
+                                trailing: Text(
+                                  language['code']!,
+                                  style: TextStyle(color: Theme.of(sheetContext).colorScheme.onSurfaceVariant),
+                                ),
+                                onTap: () => Navigator.pop(sheetContext, language['code']),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    controller.dispose();
+    if (!mounted || selected == null) return;
+    setState(() {
+      if (isSource) {
+        source = selected;
+        if (source == target) source = 'auto';
+      } else {
+        target = selected;
+        if (target == source) source = 'auto';
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -145,35 +228,60 @@ class _TranslationPageState extends State<TranslationPage> {
             if (loadingLanguages)
               const LinearProgressIndicator()
             else if (languages.isNotEmpty) ...[
-              DropdownButtonFormField<String>(
-                initialValue: source,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Translate from'),
-                items: [
-                  const DropdownMenuItem(value: 'auto', child: Text('Detect automatically')),
-                  ...languages.map((language) => DropdownMenuItem(
-                        value: language['code'],
-                        child: Text(language['name']!, overflow: TextOverflow.ellipsis),
-                      )),
-                ],
-                onChanged: (value) => setState(() {
-                  source = value ?? 'auto';
-                  if (source == target) source = 'auto';
-                }),
+              Text(
+                '${languages.length} languages supported by the configured provider',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: target.isEmpty ? null : target,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Translate to'),
-                items: languages
-                    .where((language) => language['code'] != source)
-                    .map((language) => DropdownMenuItem(
-                          value: language['code'],
-                          child: Text(language['name']!, overflow: TextOverflow.ellipsis),
-                        ))
-                    .toList(),
-                onChanged: (value) => setState(() => target = value ?? ''),
+              const SizedBox(height: 9),
+              OutlinedButton(
+                onPressed: () => _chooseLanguage(isSource: true),
+                style: OutlinedButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.translate_rounded),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Translate from', style: TextStyle(fontSize: 11)),
+                          Text(_languageName(source), style: const TextStyle(fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.keyboard_arrow_down_rounded),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton(
+                onPressed: () => _chooseLanguage(isSource: false),
+                style: OutlinedButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.language_rounded),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Translate to', style: TextStyle(fontSize: 11)),
+                          Text(_languageName(target), style: const TextStyle(fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.keyboard_arrow_down_rounded),
+                  ],
+                ),
               ),
             ],
             const SizedBox(height: 14),

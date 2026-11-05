@@ -7,6 +7,6 @@ export function createMediaController(service: MediaService) {
     capabilities: (async (_req, res) => sendSuccess(res, service.capabilities())) as RequestHandler,
     upload: (async (req, res) => sendSuccess(res, await service.createUpload(currentUserId(req), req.body))) as RequestHandler,
     sign: (async (req, res) => sendSuccess(res, await service.signRead(currentUserId(req), req.body.path))) as RequestHandler,
-    signMessageAttachment: (async (req, res) => sendSuccess(res, { signedUrl: await service.signMessageAttachmentRead(currentUserId(req), req.body.path) })) as RequestHandler
+    signMessageAttachment: (async (req, res) => sendSuccess(res, await service.signMessageAttachmentRead(currentUserId(req), req.body.path))) as RequestHandler
   };
 }
