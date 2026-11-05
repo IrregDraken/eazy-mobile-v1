@@ -260,13 +260,17 @@ class _WalletActivationPageState extends State<WalletActivationPage> {
 
   Future<void> _continueAfterVerification() async {
     if (!mounted) return;
-    final status = await api.get('wallet/payment-pin/status', auth: true);
-    pinConfigured = status['configured'] == true;
-    if (pinConfigured) {
-      await _refreshActivationStatus();
-      if (mounted) setState(() => stage = _ActivationStage.account);
-    } else {
-      setState(() => stage = _ActivationStage.pin);
+    try {
+      final status = await api.get('wallet/payment-pin/status', auth: true);
+      pinConfigured = status['configured'] == true;
+      if (pinConfigured) {
+        await _refreshActivationStatus();
+        if (mounted) setState(() => stage = _ActivationStage.account);
+      } else {
+        setState(() => stage = _ActivationStage.pin);
+      }
+    } on ApiException catch (error) {
+      _showError(error.message);
     }
   }
 
