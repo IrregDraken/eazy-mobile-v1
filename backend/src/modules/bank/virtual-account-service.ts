@@ -44,6 +44,7 @@ export class VirtualAccountService {
         // Keep the persisted pending state. Webhooks remain the authoritative assignment signal.
       }
     }
+    await this.ensureActivationNotification(account);
     return { virtualAccount: account ? this.safeProjection(account) : null };
   }
 
