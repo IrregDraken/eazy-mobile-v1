@@ -751,7 +751,7 @@ class _Skeletons extends StatelessWidget {
                     color:
                         Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: const BorderRadius.all(Radius.circular(17)),
-                    border: Border.all(color: Theme.of(context).dividerColor),
+
                   ),
                 ),
                 const SizedBox(width: 13),
