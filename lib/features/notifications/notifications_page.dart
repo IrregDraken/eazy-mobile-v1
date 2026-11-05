@@ -301,8 +301,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
               child: RefreshIndicator(
                 onRefresh: load,
                 child: loading
-                    ? const ListView(
-                        physics: AlwaysScrollableScrollPhysics(),
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
                         children: [
                           SizedBox(height: 260),
                           Center(child: CircularProgressIndicator()),
